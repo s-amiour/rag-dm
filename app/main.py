@@ -27,6 +27,7 @@ from .core import (
     resolve_chunking,
     INVALID_ANSWER_MESSAGE,
     build_chunks,
+    corpus_status,
     read_corpus,
     load_questions,
     generate_answer,
@@ -99,21 +100,12 @@ def home():
 @app.get("/api/status")
 def status():
     return {
-        "corpora": {
-            corpus: {
-                "documents": len(read_corpus(corpus)),
-                "chunks": len(build_chunks(corpus, 800, 10)),
-                "questions": len(load_questions(corpus))
-            }
-            for corpus in ["kestrel", "own"]
-        },
+        # each corpus at the chunking that is evaluated (core.DEFAULT_CHUNKING), v3T18
+        "corpora": {corpus: corpus_status(corpus) for corpus in DEFAULT_CHUNKING},
         "llm_configured": bool(
             os.getenv("LLM_API_KEY")
             and os.getenv("LLM_BASE_URL")
             and os.getenv("LLM_MODEL")
-        ),
-        "deadline_note": (
-            "Kestrel course corpus and official starter questions are installed."
         )
     }
 

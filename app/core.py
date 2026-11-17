@@ -377,6 +377,32 @@ def question_words(
     }
 
 
+def corpus_status(corpus: str) -> dict[str, Any]:
+    """What /api/status reports for one corpus (v3T18): the selected documents, the chunk count at
+    the chunking that is evaluated (DEFAULT_CHUNKING), and the questions per type. Numbers copied
+    into REPORT.md from here match the results files."""
+    from .evaluation import TYPE_ORDER, canonical_type  # local import: evaluation imports core
+
+    size, overlap = resolve_chunking(corpus)
+    questions = load_questions(corpus)
+    counts: dict[str, int] = {}
+
+    for q in questions:
+        t = canonical_type(q.get("type"))
+        counts[t] = counts.get(t, 0) + 1
+
+    ordered = sorted(counts, key=lambda t: (TYPE_ORDER.index(t) if t in TYPE_ORDER else len(TYPE_ORDER), t))
+
+    return {
+        "documents": len(read_corpus(corpus)),
+        "chunk_size": size,
+        "overlap": overlap,
+        "chunks": len(build_chunks(corpus, size, overlap)),
+        "questions": len(questions),
+        "questions_by_type": {t: counts[t] for t in ordered},
+    }
+
+
 def load_questions(corpus: str) -> list[dict[str, Any]]:
     path = DATA / "questions" / f"{safe_name(corpus)}.jsonl"
 
