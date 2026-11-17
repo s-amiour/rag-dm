@@ -15,6 +15,8 @@ from .bm25 import STOPWORDS
 from .retrieval import RetrieverUnavailable
 
 MAX_NGRAM = 4
+MAX_HOPS = 2
+HUB_CAP = 15   # an intermediate node with more edges than this is reached but not expanded
 # Single words that are nodes of our graph but name nothing specific in a question: as start
 # entities they would pull in unrelated chunks ("team" is both a Team and the Team plan, "support"
 # a Service node). Measured on the 12 Kestrel questions, DECISIONS D-29.
@@ -137,3 +139,36 @@ def match_entities(g: LoadedGraph, question: str) -> list[dict]:
             used[i:i + n] = [True] * n
 
     return found
+
+
+@dataclass
+class Walk:
+    reached: dict[int, int]     # node -> hop at which it was first reached (start entities: 0)
+    followed: dict[int, int]    # edge -> hop at which it was followed
+    capped: list[int]           # intermediate nodes not expanded because of HUB_CAP
+
+
+def walk(g: LoadedGraph, starts: list[int], max_hops: int = MAX_HOPS, hub_cap: int = HUB_CAP) -> Walk:
+    """Breadth-first from the start entities, edges in both directions, up to max_hops.
+    Start entities are always expanded; a node reached on the way with more than
+    hub_cap edges is kept but not expanded, so "Kestrel" or "workspace" cannot pull
+    in half the corpus."""
+    reached = {node: 0 for node in starts}
+    followed: dict[int, int] = {}
+    capped: list[int] = []
+    frontier = sorted(set(starts))
+
+    for hop in range(1, max_hops + 1):
+        nxt = []
+        for node in frontier:
+            if reached[node] > 0 and g.degree(node) > hub_cap:
+                capped.append(node)
+                continue
+            for other, eid in g.neighbours.get(node, []):
+                followed.setdefault(eid, hop)
+                if other not in reached:
+                    reached[other] = hop
+                    nxt.append(other)
+        frontier = sorted(nxt)
+
+    return Walk(reached, followed, sorted(set(capped)))

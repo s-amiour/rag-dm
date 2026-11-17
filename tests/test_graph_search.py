@@ -71,3 +71,45 @@ class MatchTests(SearchFixture):
         postroom = next(i for i, (n, _) in g.names.items() if n == "postroom")
         g.alias_keys.setdefault("letterbox", set()).add(postroom)          # an alias no node is named
         self.assertEqual(self.names("Is letterbox down?"), [("postroom", "letterbox")])
+
+
+def toy_graph(edges, chunk_of_edge=lambda eid: f"c:{eid}"):
+    """A hand-made LoadedGraph: edges = [(source name, relation, target name)]."""
+    names, ids = {}, {}
+    for s, _, t in edges:
+        for n in (s, t):
+            if n not in ids:
+                ids[n] = len(ids) + 1
+                names[ids[n]] = (n, "Service")
+    g = graph_search.LoadedGraph("toy", names, keys={n.lower(): {i} for n, i in ids.items()})
+    for eid, (s, rel, t) in enumerate(edges, start=1):
+        g.edges[eid] = (ids[s], rel, ids[t])
+        g.neighbours.setdefault(ids[s], []).append((ids[t], eid))
+        g.neighbours.setdefault(ids[t], []).append((ids[s], eid))
+        g.edge_chunks[eid] = [chunk_of_edge(eid)]
+    return g, ids
+
+
+class WalkTests(SearchFixture):
+    def test_two_hops_both_directions(self):
+        g = graph_search.load("kestrel", 800, 10)
+        start = next(i for i, (n, _) in g.names.items() if n == "KST-5031")
+        w = graph_search.walk(g, [start])
+        hops = {g.names[n][0]: h for n, h in w.reached.items()}
+        self.assertEqual(hops, {"KST-5031": 0, "postroom": 1, "Messaging": 2, "mailman": 2})
+        self.assertEqual(sorted(w.followed.values()), [1, 2, 2])
+
+    def test_hub_above_the_cap_is_reached_but_not_expanded(self):
+        edges = [("A", "depends_on", "Hub")] + [("Hub", "has_feature", f"F{i}") for i in range(16)]
+        g, ids = toy_graph(edges)
+        w = graph_search.walk(g, [ids["A"]])
+        self.assertIn(ids["Hub"], w.reached)
+        self.assertEqual(w.capped, [ids["Hub"]])
+        self.assertNotIn(ids["F0"], w.reached)
+        g, ids = toy_graph(edges[:15])                                    # 15 edges: not above the cap
+        self.assertIn(ids["F0"], graph_search.walk(g, [ids["A"]]).reached)
+
+    def test_a_start_entity_is_expanded_even_if_it_is_a_hub(self):
+        g, ids = toy_graph([("Hub", "has_feature", f"F{i}") for i in range(20)])
+        w = graph_search.walk(g, [ids["Hub"]])
+        self.assertEqual((len(w.reached), w.capped), (21, []))
