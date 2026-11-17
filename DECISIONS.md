@@ -102,6 +102,9 @@ weight, so the model is tempted to use one of them. `TYPE_ALIASES` stays in `eva
 `tests/test_questions.py` checks that own types are canonical, that every relabelled row is in the changelog, and that there is an
 unanswerable question. Effect: the own corpus has no `two_hop` question any more, and its per-type numbers change, so the V3 matrix
 must be rerun before REPORT numbers are updated.
+*Update (review of PR #12):* added OWN-14 (`not_in_corpus`, the price) and OWN-15 (`two_hop`: E25 → descaling programme →
+about 30 minutes, hops in different chunks at 500/20), so the own set now has 2 unanswerable questions and 1 real two_hop;
+tests check unique ids and that two_hop hops are in different chunks.
 
 ## Concept graph
 

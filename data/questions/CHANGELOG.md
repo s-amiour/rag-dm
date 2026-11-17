@@ -25,3 +25,12 @@ Added:
 Effect: the own corpus now has no `two_hop` question; its per-type numbers change, so the V3 matrix must be rerun
 (rerun gate, ticket v3T05). OWN-13 is excluded from Hit@k / Recall@k like every unanswerable question; it still needs a
 no-context run and a hand-graded answer (correct = "not in the documents").
+
+## 2026-11-18 · v3T13 review (PR #12) · `own.jsonl`
+
+Added (no existing row changed):
+
+| Id | Type | Why |
+|---|---|---|
+| OWN-14 | `not_in_corpus` | The ticket asked for two unanswerable questions; OWN-13 was the only one. The manual never gives a price. |
+| OWN-15 | `two_hop` | After OWN-05 was relabelled, the own set had no real two_hop question. E25 → "run the descaling programme" (error section), then the programme takes about 30 minutes (descaling section). One quote per hop, in different chunks at 500/20; the question does not name the descaling programme. |

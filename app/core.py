@@ -477,6 +477,17 @@ def parse_llm_answer(content: str, allowed_ids: set[str]) -> dict[str, Any]:
     }
 
 
+def llm_request_options() -> dict[str, Any]:
+    """max_tokens and the thinking switch for every answer-type LLM call (answers and
+    the no-context baseline), from LLM_MAX_TOKENS and LLM_DISABLE_THINKING. DECISIONS D-35."""
+    options: dict[str, Any] = {"max_tokens": int(os.getenv("LLM_MAX_TOKENS", "2048"))}
+    if os.getenv("LLM_DISABLE_THINKING", "0").strip().lower() in ("1", "true", "yes"):
+        options["extra_body"] = {
+            "chat_template_kwargs": {"enable_thinking": False, "thinking": False}
+        }
+    return options
+
+
 def generate_answer(
     question: str,
     retrieved: list[dict[str, Any]]
