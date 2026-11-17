@@ -58,6 +58,12 @@ def load(corpus: str, chunk_size: int, overlap: int,
             f"({chunk_size}/{overlap}). Run the graph build: "
             f"python -m app.graph build --corpus {corpus} --chunk-size {chunk_size} --overlap {overlap}"
         )
+    # a test build (--limit or --rules) is also "fresh": refuse it, so results never come from a half-built graph
+    if status.get("chunks_missing", "0") != "0" or status.get("rules") != ",".join(graph_resolve.RULES):
+        raise RetrieverUnavailable(
+            "Graph is partial (built with --limit) or built without entity resolution (--rules). "
+            f"Rebuild it: python -m app.graph build --corpus {corpus}"
+        )
 
     key = (corpus, chunk_size, overlap, status["fingerprint"], status.get("build_id", ""))
     if key in _CACHE:
