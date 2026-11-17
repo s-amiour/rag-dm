@@ -56,7 +56,7 @@ the path: entities found in the question, edges followed, and the chunks they ca
 ### Build the graph
 
 ```bash
-python -m app.graph build --corpus kestrel --limit 2   # optional: try the prompt on 2 chunks first
+python -m app.graph build --corpus kestrel --limit 3   # first 3 chunks only: cheap check (again: 0 calls)
 python -m app.graph build --corpus kestrel             # every chunk (43 at 800/10), needs LLM_* in .env
 python -m app.graph status                             # missing / stale / fresh
 python -m app.graph check                              # integrity: every node and edge has evidence

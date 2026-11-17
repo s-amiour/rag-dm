@@ -345,6 +345,17 @@ class BuildTests(GraphTestCase):
         self.assertEqual(graph.graph_status(records=changed)["state"], "fresh")
         self.assertTrue(s["integrity"]["ok"])
 
+    def test_limit_means_the_first_n_chunks_so_a_rerun_is_free(self):
+        llm = FakeLLM()
+        s = self.run_build(llm, limit=2)
+        self.assertEqual([c[0] for c in llm.calls], ["support-runbook-errors_md:0", "service-catalog_md:0"])
+        self.assertEqual((s["extracted"], s["not_attempted"]), (2, 1))
+        llm = FakeLLM()
+        s = self.run_build(llm, limit=2)                      # same command again: nothing new to pay for
+        self.assertEqual((len(llm.calls), s["cached"], s["not_attempted"]), (0, 2, 1))
+        s = self.run_build(FakeLLM())                         # the full build pays only for the rest
+        self.assertEqual((s["run"]["llm_calls"], s["state"]), (1, "complete"))
+
     def test_rate_limit_backs_off_then_succeeds(self):
         waits = []
         with mock.patch.object(graph, "_sleep", waits.append):

@@ -886,7 +886,7 @@ def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap
                     counts["skipped"] += 1
                 continue
 
-            if aborted or (limit is not None and attempted >= limit):
+            if aborted or (limit is not None and i > limit):  # only the first `limit` chunks: a rerun is free
                 counts["not_attempted"] += 1
                 continue
 
@@ -1042,7 +1042,7 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--retry-skipped", action="store_true",
                    help="ask the LLM again for chunks that failed validation twice in an earlier build")
     b.add_argument("--limit", type=int, default=None,
-                   help="extract at most N new chunks (try the prompt cheaply before a full build)")
+                   help="only the first N chunks (a cheap end-to-end check; the same command again makes 0 calls)")
     b.add_argument("--strict", action="store_true",
                    help="ticket rule: a chunk invalid twice is skipped entirely (default: keep its valid part, D-26)")
     b.add_argument("--delay", type=float, default=None,
