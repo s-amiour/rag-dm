@@ -188,6 +188,31 @@ class ResolvedBuildTests(GraphTestCase):
                           "JOIN nodes n2 ON n2.id=e.target_id WHERE e.relation='replaces'")
         self.assertEqual(edge, [("postroom", "replaces", "mailman")])
 
+    def test_rebuilding_without_rules_gives_the_unmerged_graph_without_calls(self):
+        merged = self.build()
+
+        class NoCalls(FakeLLM):
+            def complete(self, messages):
+                raise AssertionError("the LLM must not be called")
+
+        plain = graph.build("kestrel", records=RECORDS, llm=NoCalls(), delay_s=0, log=lambda *_: None, rules=())
+        self.assertEqual((plain["run"]["llm_calls"], plain["entities"], plain["resolution"]["merges"]), (0, 5, 0))
+        self.assertEqual(self.query("SELECT COUNT(*) FROM merges"), [(0,)])
+        self.assertEqual(self.query("SELECT value FROM meta WHERE key='rules'"), [("none",)])
+        again = graph.build("kestrel", records=RECORDS, llm=NoCalls(), delay_s=0, log=lambda *_: None)
+        self.assertEqual(again["entities"], merged["entities"])
+
+    def test_one_rule_off(self):
+        s = graph.build("kestrel", records=RECORDS, llm=FakeLLM({k: list(v) for k, v in SCRIPT.items()}),
+                        delay_s=0, log=lambda *_: None, rules=("identifier", "alias"))
+        self.assertEqual(s["resolution"]["merges"], 0)        # "the Messaging team" needs the normalised rule
+
+    def test_parse_rules(self):
+        self.assertEqual(graph.parse_rules("alias,identifier"), ("identifier", "alias"))
+        self.assertEqual(graph.parse_rules("none"), ())
+        with self.assertRaises(ValueError):
+            graph.parse_rules("embedding")
+
     def test_integrity_flags_a_merge_without_evidence(self):
         self.build()
         con = graph.connect("kestrel")

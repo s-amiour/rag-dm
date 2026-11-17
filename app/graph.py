@@ -1119,6 +1119,15 @@ def format_summary(s: dict[str, Any]) -> str:
 # CLI
 # ---------------------------------------------------------------------------
 
+def parse_rules(text: str) -> tuple[str, ...]:
+    """'identifier,alias' -> ('identifier', 'alias'); 'none' or '' -> ()."""
+    names = [r.strip() for r in text.split(",") if r.strip() and r.strip().lower() != "none"]
+    unknown = sorted(set(names) - set(graph_resolve.RULES))
+    if unknown:
+        raise ValueError(f"unknown rule(s) {unknown}; choose from {list(graph_resolve.RULES)} or 'none'")
+    return tuple(r for r in graph_resolve.RULES if r in names)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.graph", description="Kestrel concept graph (extraction).")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -1134,6 +1143,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="ask the LLM again for chunks that failed validation twice in an earlier build")
     b.add_argument("--limit", type=int, default=None,
                    help="only the first N chunks (a cheap end-to-end check; the same command again makes 0 calls)")
+    b.add_argument("--rules", default=",".join(graph_resolve.RULES),
+                   help="entity resolution rules, comma separated, in any subset of "
+                        f"{','.join(graph_resolve.RULES)}; 'none' gives the unmerged T1 graph (0 LLM calls)")
     b.add_argument("--strict", action="store_true",
                    help="ticket rule: a chunk invalid twice is skipped entirely (default: keep its valid part, D-26)")
     b.add_argument("--delay", type=float, default=None,
@@ -1145,9 +1157,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "build":
         try:
+            rules = parse_rules(args.rules)
             summary = build(args.corpus, args.chunk_size, args.overlap,
                             retry_skipped=args.retry_skipped, limit=args.limit, delay_s=args.delay,
-                            strict=args.strict)
+                            strict=args.strict, rules=rules)
         except (RuntimeError, ValueError) as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2
