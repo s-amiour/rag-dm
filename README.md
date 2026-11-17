@@ -62,6 +62,17 @@ python -m app.graph status                             # missing / stale / fresh
 python -m app.graph check                              # integrity: every node and edge has evidence
 ```
 
+The extraction cache lives in `data/index/` (git-ignored), so a fresh checkout pays for extraction once: about 82 calls and 5 minutes.
+To reproduce REPORT §7, use the same endpoint and model as DECISIONS D-24 in `.env` (`GRAPH_LLM_MODEL` overrides only the model, not
+the URL or the key):
+
+```
+LLM_BASE_URL=https://integrate.api.nvidia.com/v1
+LLM_API_KEY=<your NVIDIA key>
+GRAPH_LLM_MODEL=nvidia/nemotron-3.5-lightning-30b-a3b
+GRAPH_DISABLE_THINKING=1
+```
+
 For each chunk (same chunking as the other retrievers, Kestrel 800/10), one LLM call returns entities and
 `(source, relation, target, quote)` triples. These are validated against the fixed schema in `app/graph_schema.py` (types,
 allowed source/target types, and the quote must be copied from the chunk and name one end of the relation). An invalid reply gets one retry; if the second reply
