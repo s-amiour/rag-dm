@@ -1,4 +1,4 @@
-"""Core RAG, corpus, words analytics and evaluation logic for RAG V2."""
+"""Chunking, corpus loading, dense retriever, Words-tab analytics and answer generation."""
 from __future__ import annotations
 
 import hashlib
