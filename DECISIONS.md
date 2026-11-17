@@ -1,7 +1,7 @@
 # Decision log (V3)
 
 Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented in V3;
-D-20 to D-27 record its extraction step (ticket v3T01). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
+D-20 to D-27 record its extraction step (ticket v3T01), D-28 entity resolution (v3T02). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
 V2 decisions (chunk size, overlap, top-k, embedding model) are in `docs/REPORT_V2.md`.
 
 ## Fusion
@@ -245,6 +245,33 @@ of them, the true ones with the false ones), plus 5 elsewhere, every one unsuppo
 Cost: the plans table now gives no edge (known failure 15). The prompt does not state the new rule yet (that would be prompt v3 and
 re-extract all 43 chunks); the retry message explains it when it fires.
 
+**D-28. Entity resolution: rules, constraints, alternatives (v3T02).** T1 makes one node per (type, name) as written, case and spacing
+ignored. Resolution (`app/graph_resolve.py`) then clusters those nodes when the graph is rebuilt from the cache (0 LLM calls).
+*Rules, in this order:* (1) **identifier**: error codes (`KST-\d{4}`), IP addresses and plan names (Free, Starter, Team, Business,
+Enterprise, with or without "plan") match exactly or not at all; (2) **normalised** name, same type only: lowercase, accents folded
+(`bm25.fold`), text in brackets, punctuation, leading articles and the suffixes team/service removed, so "the Messaging team" and
+"Messaging (owner of postroom)" become `messaging`; a word is never removed when it is the last one (otherwise the plan "Team" and the
+node "Plan" both became "" and merged); (3) **alias**: a name the extraction listed as an alias in the same chunk.
+*Constraints that always hold:* never across types (keeps the workspace role "Owner" apart from "Owner: Messaging"); never two clusters
+with different identifiers (KST-5031 / KST-5038); **never the two ends of a `replaces` edge** (postroom replaced mailman: two
+entities with a history, which q12 tests; refused even if the LLM lists mailman as an alias, and the refusal is recorded).
+*Recorded and reversible:* every union is a row of `merges` {node_id, merged_names, method, evidence_chunk_ids}, exported to
+`data/results/graph/merges.jsonl`; merged names stay as aliases on the surviving node (searchable by T3); the surviving name is the one
+most chunks use. `--rules none` (or any subset) rebuilds without them, from the cache.
+*Alternatives not chosen:* **embedding similarity** (merge when cosine > a threshold) would catch "Analytics Eng" / "Analytics
+Engine", but its false merges are the dangerous kind: close vectors for different identifiers (KST-5031 / KST-5038 differ by one
+character), for siblings (Identity / Platform, both teams) and for old / new (mailman / postroom: same job, same vocabulary); a
+threshold tuned on 171 nodes has no held-out set, and a false merge silently sends a chain to the wrong team. **An LLM judge** (ask
+"are A and B the same?") understands context (it could say "Analytics Eng is cut") but costs a call per candidate pair, is not
+deterministic, needs its own validation and logging, and can invent equivalences, the risk T1's quote check exists for. Both would
+lower missed merges and raise false merges; our rules accept more missed merges (known failure 16) for zero false ones we know of,
+and each merge can be explained in one line.
+*Fix found on the way (T1 code):* a relation's ends are now looked up by entity name before alias: with mailman listed as an alias of
+postroom, "postroom replaces mailman" had resolved to "postroom replaces postroom", losing the edge the constraint above relies on.
+*On our graph* (`python -m app.graph build`, 0 calls): 171 → 166 entities, 5 merges (identifier 3, normalised 2, alias 0), 0 refused.
+The alias rule found nothing to merge (the one alias, SSO, has no node of its own) and the mailman trap did not occur (the LLM did not
+list mailman as an alias); both are covered by tests.
+
 ## Process
 
 **D-17. Hidden instructions.** The V2 materials contained an instruction invisible on the slide (text in an unreadable colour) that
@@ -289,3 +316,7 @@ are not visible on the slide, unless confirmed by the teacher.
     does not know which plan has which feature. Team table: rows give Team nodes only (no relation in the schema links a team to its
     channel) and the Messaging row is missing (13). A deterministic parser of markdown tables (one edge or node per row, the row as quote,
     no LLM) would fix both; not done in this ticket.
+16. Missed merges split one team into three nodes: "Analytics Engine" (Team) owns query-engine and scheduler; "Analytics Engine"
+    typed **Service** by the LLM (KST-3020 escalates to it) cannot merge with it, because resolution never crosses types; "Analytics Eng"
+    (KST-3012 escalates to it) is the name cut by the chunk boundary at 800 characters, which no rule can safely complete. Walks from
+    KST-3012 and KST-3020 stop after one hop and never reach the team or its channel.
