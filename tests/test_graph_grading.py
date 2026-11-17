@@ -9,7 +9,9 @@ from app import graph, graph_grading
 from tests.test_graph import FakeLLM, GraphTestCase, RECORDS
 
 
-class SampleTests(GraphTestCase):
+class GradingFixture(GraphTestCase):
+    """A small graph built with the fake LLM (no test of its own)."""
+
     def setUp(self):
         super().setUp()
         graph.build("kestrel", records=RECORDS, llm=FakeLLM(), delay_s=0, log=lambda *_: None)
@@ -25,6 +27,8 @@ class SampleTests(GraphTestCase):
     def triples(self, data):
         return [(t["source"], t["relation"], t["target"]) for t in data["triples"]]
 
+
+class SampleTests(GradingFixture):
     def test_same_seed_same_graph_same_triples(self):
         self.assertEqual(self.triples(self.draw()), self.triples(self.draw()))
         self.assertEqual(self.draw()["meta"]["graph_hash"], self.draw()["meta"]["graph_hash"])
@@ -83,3 +87,50 @@ class ChunkCommandTests(GraphTestCase):
         code, _, err = self.run_cli("chunk", "service-catalog_md:99")
         self.assertEqual(code, 1)
         self.assertIn("No chunk", err)
+
+
+class GradesTests(GradingFixture):
+    def graded(self):
+        data = self.draw(n=4)
+        for t in data["triples"]:
+            t.update(grade="correct", graded_chunk=t["evidence"][0]["chunk_id"], note="stated in the chunk")
+        data["meta"].update(graded_by="A", reviewed_by="B")
+        return data
+
+    def test_counts_and_no_problem(self):
+        data = self.graded()
+        data["triples"][0]["grade"] = "wrong"
+        res = graph_grading.check(data, data["meta"]["graph_hash"])
+        self.assertEqual(res["counts"], {"correct": 3, "wrong": 1, "unsupported": 0})
+        self.assertEqual((res["problems"], res["warnings"]), ([], []))
+
+    def test_only_the_three_grades(self):
+        data = self.graded()
+        data["triples"][0]["grade"] = "partly correct"
+        res = graph_grading.check(data)
+        self.assertEqual(len(res["problems"]), 1)
+        self.assertIn("not one of correct, wrong, unsupported", res["problems"][0])
+
+    def test_note_and_evidence_chunk_required(self):
+        data = self.graded()
+        data["triples"][0]["note"] = ""
+        data["triples"][1]["graded_chunk"] = "some-other-chunk:0"
+        problems = graph_grading.check(data)["problems"]
+        self.assertTrue(any("note" in p for p in problems))
+        self.assertTrue(any("graded_chunk" in p for p in problems))
+
+    def test_warnings_ungraded_reviewer_and_rebuilt_graph(self):
+        data = self.draw(n=4)
+        res = graph_grading.check(data, current_hash="something else")
+        self.assertEqual(res["ungraded"], 4)
+        self.assertEqual(len(res["warnings"]), 4)
+        self.assertTrue(any("graph changed" in w for w in res["warnings"]))
+
+    def test_render_has_counts_table_and_excerpts(self):
+        data = self.graded()
+        text = graph_grading.render(data, graph_grading.check(data))
+        self.assertIn("**Counts: correct 4 / wrong 0 / unsupported 0**", text)
+        self.assertIn("seed 42", text)
+        self.assertIn(data["meta"]["graph_hash"][:16], text)
+        self.assertEqual(text.count("| correct |"), 4)
+        self.assertIn("## Chunk excerpts", text)

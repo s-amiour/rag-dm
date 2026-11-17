@@ -124,3 +124,96 @@ def write_sample(data: dict[str, Any], out_dir: Path | None = None, force: bool 
     json_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return json_path
+
+
+def check(data: dict[str, Any], current_hash: str | None = None) -> dict[str, Any]:
+    """Problems block the result (an unknown grade, a grade without note or chunk);
+    warnings do not (ungraded triples, no reviewer yet, a graph rebuilt since sampling)."""
+    problems: list[str] = []
+    warnings: list[str] = []
+    counts = {g: 0 for g in GRADES}
+    ungraded = 0
+
+    for t in data.get("triples", []):
+        label = f"#{t.get('n')} ({t.get('source')} -{t.get('relation')}-> {t.get('target')})"
+        grade = (t.get("grade") or "").strip()
+        if not grade:
+            ungraded += 1
+            continue
+        if grade not in GRADES:
+            problems.append(f"{label}: grade {grade!r} is not one of {', '.join(GRADES)}")
+            continue
+        counts[grade] += 1
+        if not (t.get("note") or "").strip():
+            problems.append(f"{label}: a graded triple needs a one-line note")
+        chunks = [e["chunk_id"] for e in t.get("evidence", [])]
+        if t.get("graded_chunk") not in chunks:
+            problems.append(f"{label}: graded_chunk must be one of its evidence chunks {chunks}")
+
+    meta = data.get("meta", {})
+    if ungraded:
+        warnings.append(f"{ungraded} triple(s) not graded yet")
+    if not meta.get("graded_by"):
+        warnings.append("meta.graded_by is empty")
+    if not meta.get("reviewed_by"):
+        warnings.append("meta.reviewed_by is empty: a second person reviews every grade")
+    if current_hash and current_hash != meta.get("graph_hash"):
+        warnings.append("the graph changed since this sample was drawn: these grades describe an older graph "
+                        "(re-sample with the same seed and grade again, or say which graph was graded)")
+    return {"counts": counts, "graded": sum(counts.values()), "ungraded": ungraded,
+            "problems": problems, "warnings": warnings}
+
+
+def _cell(text: str) -> str:
+    return str(text).replace("|", "\\|").replace("\n", " ")
+
+
+def render(data: dict[str, Any], result: dict[str, Any]) -> str:
+    m, c = data["meta"], result["counts"]
+    lines = [
+        "# Extraction quality: 10 graph triples graded by hand",
+        "",
+        f"**Counts: correct {c['correct']} / wrong {c['wrong']} / unsupported {c['unsupported']}**"
+        + (f" ({result['ungraded']} not graded yet)" if result["ungraded"] else ""),
+        "",
+        f"Sample: `python -m app.graph sample --n {m['n']} --seed {m['seed']}`, {m['n']} of {m['edges_in_graph']} edges of the "
+        f"resolved graph (rules: {m.get('rules') or '?'}; chunks {m.get('chunk_size')}/{m.get('overlap')}). "
+        f"Graph hash `{m['graph_hash'][:16]}`, fingerprint `{m.get('graph_fingerprint', '')[:16]}`, build `{m.get('build_id')}`.",
+        f"Rules: `{m['grading_rules']}`. Graded by: {m.get('graded_by') or '?'}. Reviewed by: {m.get('reviewed_by') or '?'}.",
+        "Ten triples are a sanity check, not an accuracy measure: one triple moves a rate by 10 points.",
+        "",
+    ]
+    for w in result["warnings"]:
+        lines.append(f"> Warning: {w}")
+    if result["warnings"]:
+        lines.append("")
+    lines += ["| # | Triple | Evidence chunk(s) | Quote | Grade | Graded on | Note | Review |",
+              "|--:|---|---|---|---|---|---|---|"]
+    for t in data["triples"]:
+        triple = f"{t['source']} ({t['source_type']}) -**{t['relation']}**-> {t['target']} ({t['target_type']})"
+        chunks = ", ".join(f"`{e['chunk_id']}`" for e in t["evidence"])
+        quotes = " / ".join(f"\"{e['quote']}\"" for e in t["evidence"])
+        lines.append(f"| {t['n']} | {_cell(triple)} | {chunks} | {_cell(quotes)} | {t.get('grade') or ''} | "
+                     f"{t.get('graded_chunk') or ''} | {_cell(t.get('note') or '')} | {_cell(t.get('review_note') or '')} |")
+    lines += ["", "## Chunk excerpts", ""]
+    for t in data["triples"]:
+        lines.append(f"**{t['n']}. {t['source']} -{t['relation']}-> {t['target']}**"
+                     + (f" (aliases: {', '.join(t['source_aliases'] + t['target_aliases'])})"
+                        if t["source_aliases"] or t["target_aliases"] else ""))
+        for e in t["evidence"]:
+            lines.append(f"- `{e['chunk_id']}`: {e['excerpt']}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def load(out_dir: Path | None = None) -> dict[str, Any]:
+    json_path, _ = out_paths(out_dir)
+    if not json_path.exists():
+        raise FileNotFoundError(f"{json_path} does not exist: python -m app.graph sample --n 10 --seed 42")
+    return json.loads(json_path.read_text(encoding="utf-8"))
+
+
+def write_render(data: dict[str, Any], result: dict[str, Any], out_dir: Path | None = None) -> Path:
+    _, md_path = out_paths(out_dir)
+    md_path.write_text(render(data, result) + "\n", encoding="utf-8")
+    return md_path
