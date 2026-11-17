@@ -58,19 +58,18 @@ def fold(text: str) -> str:
     return "".join(c for c in decomposed if not unicodedata.combining(c)).lower()
 
 
-def tokenize(text: str) -> list[str]:
-    """Words, plus both the whole identifier and its parts for hyphenated ones.
+def analyse(text: str) -> tuple[list[str], list[str]]:
+    """Tokens exactly as BM25 indexes them, plus the stop words it dropped.
 
-    'KST-5031' -> ['kst-5031', 'kst', '5031']. The whole token is rare (high IDF)
-    and pins the exact code (KST-5031 is not KST-5038); the parts keep partial
-    matches working ('5031' alone, or 'KST' codes in general). Query and chunks
-    go through the same function, so they always agree. No stop-word list:
-    IDF already pushes frequent words to ~0.
+    Shared by BM25 and the Words tab (core.words_for_corpus / question_words),
+    so the Words tab shows the same words BM25 scores.
     """
     tokens: list[str] = []
+    ignored: list[str] = []
 
     for match in _WORD.findall(fold(text)):
         if _use_stopwords and match in STOPWORDS:
+            ignored.append(match)
             continue
 
         tokens.append(match)
@@ -78,7 +77,19 @@ def tokenize(text: str) -> list[str]:
         if "-" in match:
             tokens.extend(part for part in match.split("-") if part)
 
-    return tokens
+    return tokens, ignored
+
+
+def tokenize(text: str) -> list[str]:
+    """Words, plus both the whole identifier and its parts for hyphenated ones.
+
+    'KST-5031' -> ['kst-5031', 'kst', '5031']. The whole token is rare (high IDF)
+    and pins the exact code (KST-5031 is not KST-5038); the parts keep partial
+    matches working ('5031' alone, or 'KST' codes in general). Query and chunks
+    go through the same function, so they always agree. English stop words are
+    dropped by default (BM25_STOPWORDS=0 or set_stopwords(False) keeps them).
+    """
+    return analyse(text)[0]
 
 
 class BM25Index:
