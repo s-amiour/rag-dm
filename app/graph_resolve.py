@@ -100,12 +100,15 @@ class Resolution:
 
 
 def resolve(surfaces: dict[Ref, Surface], alias_links: list[tuple[Ref, str, str]] = (),
-            rules: tuple[str, ...] = RULES) -> Resolution:
+            rules: tuple[str, ...] = RULES, never_merge: set[frozenset[Ref]] = frozenset()) -> Resolution:
     """Cluster T1 nodes with the rules switched on, in RULES order.
 
     alias_links: (node, alias name, chunk id) for every alias the extraction listed.
+    never_merge: pairs of nodes that must stay apart, e.g. both ends of a `replaces`
+    edge: "postroom replaced mailman" is history between two entities, not a second
+    name (q12 tests it), even if the LLM also listed mailman as an alias of postroom.
     Constraints that always hold, whatever the rules: never across types; never two
-    clusters whose identifiers differ (KST-5031 / KST-5038).
+    clusters whose identifiers differ (KST-5031 / KST-5038); never_merge.
     """
     unknown = set(rules) - set(RULES)
     if unknown:
@@ -129,6 +132,8 @@ def resolve(surfaces: dict[Ref, Surface], alias_links: list[tuple[Ref, str, str]
             return "different types"
         if ids[a] and ids[b] and ids[a] != ids[b]:
             return f"different identifiers {sorted(ids[a])} / {sorted(ids[b])}"
+        if any(frozenset((x, y)) in never_merge for x in members[a] for y in members[b]):
+            return "linked by a replaces edge"
         return None
 
     def union(a: Ref, b: Ref, method: str, chunks: set[str]):
@@ -192,3 +197,8 @@ def _key(name: str) -> str:
 
 def _names(refs: list[Ref], surfaces: dict[Ref, Surface]) -> list[str]:
     return sorted({n for r in refs for n in surfaces[r].names})
+
+
+def replaces_pairs(edges: list[tuple[Ref, str, Ref]]) -> set[frozenset[Ref]]:
+    """Both ends of every `replaces` edge: an old and a new entity, never one."""
+    return {frozenset((src, dst)) for src, rel, dst in edges if rel == "replaces" and src != dst}

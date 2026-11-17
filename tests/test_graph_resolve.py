@@ -107,6 +107,17 @@ class ResolveTests(unittest.TestCase):
         res = gr.resolve(s, rules=())
         self.assertEqual((len(res.clusters), res.merges), (2, []))
 
+    def test_mailman_is_never_merged_into_postroom(self):
+        # the trap of the ticket: the LLM lists mailman as an alias of postroom, AND the catalog says postroom replaced it
+        s = surfaces(("Service", "postroom", "c:2"), ("Service", "mailman", "c:2"))
+        links = [(("Service", "postroom"), "mailman", "c:2")]
+        edges = [(("Service", "postroom"), "replaces", ("Service", "mailman"))]
+        self.assertTrue(same(gr.resolve(s, links), ("Service", "postroom"), ("Service", "mailman")))  # without the guard
+        res = gr.resolve(s, links, never_merge=gr.replaces_pairs(edges))
+        self.assertFalse(same(res, ("Service", "postroom"), ("Service", "mailman")))
+        self.assertEqual(res.refused[0]["reason"], "linked by a replaces edge")
+        self.assertEqual((res.refused[0]["a"], res.refused[0]["b"]), (["postroom"], ["mailman"]))
+
     def test_unknown_rule(self):
         with self.assertRaises(ValueError):
             gr.resolve({}, rules=("embedding",))
