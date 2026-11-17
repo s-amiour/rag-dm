@@ -1,4 +1,6 @@
 """Graph search (v3T03) on the fixture graph of the resolution tests: no LLM, no network."""
+import contextlib
+import io
 from unittest import mock
 
 from app import core, graph, graph_search
@@ -194,3 +196,15 @@ class ContractTests(SearchFixture):
         from app import graph_retriever
         with self.assertRaises(RetrieverUnavailable):
             graph_retriever.search("own", self.Q, 10, 500, 20)
+
+
+class SearchCommandTests(SearchFixture):
+    def test_prints_entities_edges_and_ranking(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = graph.main(["search", RankTests.Q])
+        text = out.getvalue()
+        self.assertEqual(code, 0)
+        self.assertIn("KST-5031 (ErrorCode) <- 'kst-5031'", text)
+        self.assertIn("hop 1: KST-5031 -raised_by-> postroom", text)
+        self.assertIn("1. support-runbook-errors_md:8", text)
