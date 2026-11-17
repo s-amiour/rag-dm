@@ -17,6 +17,19 @@ DATA = ROOT / "data"
 DOCS = ROOT / "docs"
 INDEX_DIR = DATA / "index"  # derived data (BM25 index, embeddings): git-ignored
 
+# Evaluation defaults shared by the CLI, the API and the UI (v3T08). Chunking is V2's final
+# value per corpus (REPORT V2 section 7), so V3 is measured against V2 on the same footing.
+DEFAULT_CHUNKING = {"kestrel": (800, 10), "own": (500, 20)}
+DEFAULT_TOP_K = 10
+DEFAULT_CANDIDATES = 10
+DEFAULT_RRF_K = 60
+
+
+def resolve_chunking(corpus: str, size: int | None = None, overlap: int | None = None) -> tuple[int, int]:
+    """Chunk size and overlap for a corpus: the given values, or the corpus default."""
+    default_size, default_overlap = DEFAULT_CHUNKING.get(corpus, (800, 10))
+    return (size or default_size), (default_overlap if overlap is None else overlap)
+
 load_dotenv(ROOT / ".env")
 
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "800"))
