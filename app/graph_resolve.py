@@ -6,8 +6,12 @@ nodes are the same thing, with simple rules that can be explained and undone.
 from __future__ import annotations
 
 import re
+from collections import defaultdict
+from dataclasses import dataclass, field
 
 from .bm25 import fold
+
+RULES = ("identifier", "normalised", "alias")  # applied in this order
 
 ARTICLES = {"the", "a", "an"}
 GENERIC_SUFFIXES = {"team", "teams", "service", "services"}
@@ -57,3 +61,134 @@ def identifiers(name: str, entity_type: str) -> frozenset[str]:
             ids.add(f"plan:{words[0]}")
 
     return frozenset(ids)
+
+
+# ---------------------------------------------------------------------------
+# Clustering
+# ---------------------------------------------------------------------------
+
+Ref = tuple[str, str]  # a T1 node: (type, key) where key = graph.norm_key(name)
+
+
+@dataclass
+class Surface:
+    """One T1 node: every way it was written, and the chunks it comes from."""
+    type: str
+    key: str
+    names: dict[str, int] = field(default_factory=dict)   # surface name -> mentions
+    chunks: set[str] = field(default_factory=set)
+
+    @property
+    def ref(self) -> Ref:
+        return (self.type, self.key)
+
+
+@dataclass
+class Resolution:
+    root: dict[Ref, Ref]                 # every T1 node -> the representative of its cluster
+    clusters: dict[Ref, list[Ref]]       # representative -> members (representative first)
+    merges: list[dict]                   # one per union: method, into, absorbed, chunks
+    refused: list[dict]                  # unions a rule wanted but a constraint blocked
+
+    def canonical_name(self, rep: Ref, surfaces: dict[Ref, Surface]) -> str:
+        """The name most chunks use; ties: the shortest, then alphabetical."""
+        count: dict[str, set[str]] = defaultdict(set)
+        for ref in self.clusters[rep]:
+            for name in surfaces[ref].names:
+                count[name] |= surfaces[ref].chunks
+        return min(count, key=lambda n: (-len(count[n]), len(n), n))
+
+
+def resolve(surfaces: dict[Ref, Surface], alias_links: list[tuple[Ref, str, str]] = (),
+            rules: tuple[str, ...] = RULES) -> Resolution:
+    """Cluster T1 nodes with the rules switched on, in RULES order.
+
+    alias_links: (node, alias name, chunk id) for every alias the extraction listed.
+    Constraints that always hold, whatever the rules: never across types; never two
+    clusters whose identifiers differ (KST-5031 / KST-5038).
+    """
+    unknown = set(rules) - set(RULES)
+    if unknown:
+        raise ValueError(f"unknown rule(s) {sorted(unknown)}; choose from {list(RULES)}")
+
+    parent = {ref: ref for ref in surfaces}
+    members = {ref: [ref] for ref in surfaces}
+    ids = {ref: set().union(*(identifiers(n, ref[0]) for n in s.names)) if s.names else set()
+           for ref, s in surfaces.items()}
+    merges: list[dict] = []
+    refused: list[dict] = []
+
+    def find(ref: Ref) -> Ref:
+        while parent[ref] != ref:
+            parent[ref] = parent[parent[ref]]
+            ref = parent[ref]
+        return ref
+
+    def blocked(a: Ref, b: Ref) -> str | None:
+        if a[0] != b[0]:
+            return "different types"
+        if ids[a] and ids[b] and ids[a] != ids[b]:
+            return f"different identifiers {sorted(ids[a])} / {sorted(ids[b])}"
+        return None
+
+    def union(a: Ref, b: Ref, method: str, chunks: set[str]):
+        ra, rb = find(a), find(b)
+        if ra == rb:
+            return
+        reason = blocked(ra, rb)
+        if reason:
+            refused.append({"method": method, "a": _names(members[ra], surfaces),
+                            "b": _names(members[rb], surfaces), "reason": reason})
+            return
+        parent[rb] = ra
+        merges.append({"method": method, "into": ra, "absorbed": list(members[rb]),
+                       "chunks": sorted(chunks | set().union(*(surfaces[m].chunks for m in members[rb])))})
+        members[ra] += members.pop(rb)
+        ids[ra] |= ids.pop(rb)
+
+    ordered = sorted(surfaces)  # deterministic
+
+    for rule in RULES:
+        if rule not in rules:
+            continue
+
+        if rule in ("identifier", "normalised"):
+            groups: dict[tuple, list[Ref]] = defaultdict(list)
+            for ref in ordered:
+                if rule == "identifier":
+                    found = set().union(*(identifiers(n, ref[0]) for n in surfaces[ref].names))
+                    if found:
+                        groups[(ref[0], frozenset(found))].append(ref)
+                else:
+                    for key in {normalise_name(n) for n in surfaces[ref].names}:
+                        groups[(ref[0], key)].append(ref)
+            for group in groups.values():
+                for other in group[1:]:
+                    union(group[0], other, rule, set())
+
+        else:  # alias
+            by_name: dict[tuple[str, str], list[Ref]] = defaultdict(list)
+            for ref in ordered:
+                for n in surfaces[ref].names:
+                    by_name[(ref[0], _key(n))].append(ref)
+                    if "normalised" in rules:
+                        by_name[(ref[0], normalise_name(n))].append(ref)
+            for ref, alias, chunk in alias_links:
+                for other in by_name.get((ref[0], _key(alias)), []) + (
+                        by_name.get((ref[0], normalise_name(alias)), []) if "normalised" in rules else []):
+                    union(ref, other, "alias", {chunk})
+
+    clusters: dict[Ref, list[Ref]] = {}
+    for ref in ordered:
+        clusters.setdefault(find(ref), []).append(ref)
+    root = {ref: rep for rep, refs in clusters.items() for ref in refs}
+    final_merges = [{**m, "into": find(m["into"])} for m in merges]
+    return Resolution(root, clusters, final_merges, refused)
+
+
+def _key(name: str) -> str:
+    return " ".join(fold(name).replace("*", "").replace("`", "").split())
+
+
+def _names(refs: list[Ref], surfaces: dict[Ref, Surface]) -> list[str]:
+    return sorted({n for r in refs for n in surfaces[r].names})
