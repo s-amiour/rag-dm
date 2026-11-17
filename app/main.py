@@ -16,8 +16,14 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
+from . import evaluate as cli_eval  # the CLI's run-and-save path, shared with /api/evaluate (v3T08)
 from .core import (
     DATA,
+    DEFAULT_CANDIDATES,
+    DEFAULT_CHUNKING,
+    DEFAULT_RRF_K,
+    DEFAULT_TOP_K,
+    resolve_chunking,
     INVALID_ANSWER_MESSAGE,
     build_chunks,
     read_corpus,
@@ -31,7 +37,6 @@ from .core import (
 )
 
 from .bm25 import get_bm25
-from .evaluation import evaluate_corpus
 from .retrieval import (
     RETRIEVERS,
     RetrieverUnavailable,
@@ -55,8 +60,9 @@ RetrieverName = Literal["dense", "bm25", "graph"]
 class AskRequest(BaseModel):
     corpus: Literal["kestrel", "own"] = "own"
     question: str = Field(min_length=2, max_length=4000)
-    chunk_size: int = Field(default=800, ge=100, le=10000)
-    overlap: int = Field(default=10, ge=0, le=89)
+    # None = the corpus default (core.DEFAULT_CHUNKING), the chunking that was evaluated
+    chunk_size: int | None = Field(default=None, ge=100, le=10000)
+    overlap: int | None = Field(default=None, ge=0, le=89)
     top_k: int = Field(default=5, ge=1, le=20)
     retrievers: list[RetrieverName] = Field(default_factory=default_retrievers)
     rrf_k: int = Field(default=60, ge=1, le=1000)
@@ -67,13 +73,15 @@ class AskRequest(BaseModel):
 
 class EvalRequest(BaseModel):
     corpus: Literal["kestrel", "own"] = "own"
-    chunk_size: int = Field(default=800, ge=100, le=10000)
-    overlap: int = Field(default=10, ge=0, le=89)
-    top_k: int = Field(default=5, ge=1, le=20)
+    # None = the same defaults as the CLI (core.DEFAULT_*), so a UI run matches the reference run
+    chunk_size: int | None = Field(default=None, ge=100, le=10000)
+    overlap: int | None = Field(default=None, ge=0, le=89)
+    top_k: int | None = Field(default=None, ge=1, le=20)
     generate_answers: bool = False
     retrievers: list[RetrieverName] = Field(default_factory=default_retrievers)
-    rrf_k: int = Field(default=60, ge=1, le=1000)
-    candidates: int = Field(default=10, ge=1, le=200)
+    rrf_k: int | None = Field(default=None, ge=1, le=1000)
+    candidates: int | None = Field(default=None, ge=1, le=200)
+    weights: dict[str, float] | None = None
     allow_tfidf_fallback: bool = False  # same meaning as the CLI's --allow-tfidf-fallback
 
 
@@ -240,6 +248,12 @@ def config():
             "graph": graph_available()
         },
         "default": default_retrievers(),
+        "defaults": {
+            "chunking": {c: {"chunk_size": s, "overlap": o} for c, (s, o) in DEFAULT_CHUNKING.items()},
+            "top_k": DEFAULT_TOP_K,
+            "candidates": DEFAULT_CANDIDATES,
+            "rrf_k": DEFAULT_RRF_K
+        },
         "graph_corpora": ["kestrel"]
     }
 
@@ -259,10 +273,11 @@ def rebuild_index(
 
 @app.post("/api/ask")
 def ask(req: AskRequest):
+    chunk_size, overlap = resolve_chunking(req.corpus, req.chunk_size, req.overlap)
     records = build_chunks(
         req.corpus,
-        req.chunk_size,
-        req.overlap
+        chunk_size,
+        overlap
     )
 
     if not records:
@@ -275,8 +290,8 @@ def ask(req: AskRequest):
         out = retrieve(
             req.corpus,
             req.question,
-            req.chunk_size,
-            req.overlap,
+            chunk_size,
+            overlap,
             req.retrievers,
             depth=req.top_k,
             candidates=req.candidates,
@@ -373,35 +388,30 @@ def questions(corpus: Literal["kestrel", "own"]):
 
 @app.post("/api/evaluate")
 def evaluate(req: EvalRequest):
+    # Same path as `python -m app.evaluate run`: same defaults, run name, file and summary (v3T08).
     try:
-        result = evaluate_corpus(
+        name, result, path = cli_eval.run_and_save(
             req.corpus,
-            req.chunk_size,
-            req.overlap,
-            req.top_k,
             req.retrievers,
-            generate_answers=req.generate_answers,
+            chunk_size=req.chunk_size,
+            overlap=req.overlap,
+            top_k=req.top_k,
             rrf_k=req.rrf_k,
             candidates=req.candidates,
-            strict_dense=not req.allow_tfidf_fallback
+            weights=req.weights,
+            generate_answers=req.generate_answers,
+            strict_dense=not req.allow_tfidf_fallback,
+            out_dir=cli_eval.DEFAULT_OUT
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
     except (RetrieverUnavailable, RuntimeError) as e:
         raise HTTPException(503, str(e))
 
-    stamp = (
-        time.strftime("%Y%m%d-%H%M%S")
-        + f"-{time.time_ns() % 1_000_000_000:09d}"
-    )
-
-    path = DATA / "results" / f"{req.corpus}-{stamp}.json"
-
-    save_json(path, result)
-
     return {
         **result,
-        "saved_to": str(path.relative_to(ROOT))
+        "run_name": name,
+        "saved_to": str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
     }
 
 
