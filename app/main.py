@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
+# Load environment variables before importing core.
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
@@ -57,6 +58,7 @@ class AskRequest(BaseModel):
     chunk_size: int = Field(default=800, ge=100, le=10000)
     overlap: int = Field(default=10, ge=0, le=89)
     top_k: int = Field(default=5, ge=1, le=20)
+    # Which retrievers are switched on. Several on => RRF fusion.
     retrievers: list[RetrieverName] = Field(default_factory=default_retrievers)
     rrf_k: int = Field(default=60, ge=1, le=1000)
     candidates: int = Field(default=10, ge=1, le=200)
@@ -71,6 +73,7 @@ class EvalRequest(BaseModel):
     retrievers: list[RetrieverName] = Field(default_factory=default_retrievers)
     rrf_k: int = Field(default=60, ge=1, le=1000)
     candidates: int = Field(default=10, ge=1, le=200)
+    # True: fail instead of silently measuring TF-IDF when MiniLM cannot load.
     strict_dense: bool = False
 
 
@@ -130,6 +133,32 @@ def documents(corpus: Literal["kestrel", "own"] = "own"):
     ]
 
 
+def _update_selection_file(folder: Path, add: str | None = None, remove: str | None = None):
+    """Keep selection.json in step with uploads and deletes.
+
+    No selection.json means "every document is selected", so there is
+    nothing to update. If it exists, a new upload is added to it (otherwise
+    the upload would be silently left out of retrieval) and a deleted
+    document is removed from it.
+    """
+    selection_file = folder / "selection.json"
+
+    if not selection_file.exists():
+        return
+
+    try:
+        selected = set(json.loads(selection_file.read_text(encoding="utf-8")))
+    except (OSError, ValueError, TypeError):
+        return  # unreadable: leave it, read_corpus ignores it too
+
+    if add:
+        selected.add(add)
+    if remove:
+        selected.discard(remove)
+
+    save_json(selection_file, sorted(selected))
+
+
 class SelectionRequest(BaseModel):
     selected: list[str]
 
@@ -171,7 +200,7 @@ async def upload_document(
 
     if suffix not in {".txt", ".md"}:
         raise HTTPException(
-            400,
+            415,
             "Only UTF-8 .txt and .md documents are supported."
         )
 
@@ -194,6 +223,7 @@ async def upload_document(
         )
 
     (folder / name).write_text(text, encoding="utf-8")
+    _update_selection_file(folder, add=name)
 
     return {
         "uploaded": name,
@@ -223,6 +253,7 @@ def delete_document(
         raise HTTPException(404, "Document not found")
 
     path.unlink()
+    _update_selection_file(path.parent, remove=path.name)
 
     return {"deleted": path.name}
 

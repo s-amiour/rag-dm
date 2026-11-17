@@ -71,10 +71,6 @@ def read_corpus(corpus: str) -> list[dict[str, Any]]:
         except (OSError, ValueError, TypeError):
             pass
 
-    # Default own corpus: Vellora espresso machine manual.
-    if corpus == "own" and not files:
-        files = [DOCS / "vellora-duo-espresso-machine.txt"]
-
     docs = []
 
     for path in files:
