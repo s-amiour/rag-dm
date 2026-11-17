@@ -25,5 +25,25 @@ class NormaliseTests(unittest.TestCase):
         self.assertEqual(gr.normalise_name("The service"), "service")
 
 
+class IdentifierTests(unittest.TestCase):
+    def test_error_codes_exact(self):
+        self.assertEqual(gr.identifiers("KST-5031", "ErrorCode"), {"KST-5031"})
+        self.assertEqual(gr.identifiers("KST-5031 - Scheduled report not delivered", "ErrorCode"), {"KST-5031"})
+        self.assertNotEqual(gr.identifiers("KST-5031", "ErrorCode"), gr.identifiers("KST-5038", "ErrorCode"))
+
+    def test_ip_addresses(self):
+        self.assertEqual(gr.identifiers("203.0.113.10", "Service"), {"203.0.113.10"})
+
+    def test_plan_names(self):
+        self.assertEqual(gr.identifiers("Enterprise plans", "Plan"), {"plan:enterprise"})
+        self.assertEqual(gr.identifiers("Free plan", "Plan"), gr.identifiers("Free", "Plan"))
+        self.assertEqual(gr.identifiers("Team", "Plan"), {"plan:team"})
+        self.assertEqual(gr.identifiers("Annual plans", "Plan"), frozenset())
+        self.assertEqual(gr.identifiers("Team", "Team"), frozenset())   # a team called Team is not a plan
+
+    def test_plain_names_have_none(self):
+        self.assertEqual(gr.identifiers("postroom", "Service"), frozenset())
+
+
 if __name__ == "__main__":
     unittest.main()

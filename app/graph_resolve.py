@@ -12,6 +12,10 @@ from .bm25 import fold
 ARTICLES = {"the", "a", "an"}
 GENERIC_SUFFIXES = {"team", "teams", "service", "services"}
 
+PLAN_NAMES = {"free", "starter", "team", "business", "enterprise"}  # product guide, section 2
+
+_ERROR_CODE = re.compile(r"\bKST-\d{4}\b", re.IGNORECASE)
+_IP = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
 _BRACKETS = re.compile(r"\([^)]*\)")
 _PUNCT = re.compile(r"[^\w\s-]")
 
@@ -34,3 +38,22 @@ def normalise_name(name: str) -> str:
         words.pop()
 
     return " ".join(words)
+
+
+def identifiers(name: str, entity_type: str) -> frozenset[str]:
+    """Identifiers in a name. They match exactly or not at all.
+
+    Error codes (KST-5031) and IP addresses anywhere in the name; for a Plan, the
+    plan name itself, with or without "plan(s)": "Enterprise", "Enterprise plan"
+    and "Enterprise plans" all give plan:enterprise, "Annual plans" gives none.
+    """
+    ids = {code.upper() for code in _ERROR_CODE.findall(name)} | set(_IP.findall(name))
+
+    if entity_type == "Plan":
+        words = normalise_name(name).split()
+        if len(words) > 1 and words[-1] in ("plan", "plans"):
+            words = words[:-1]
+        if len(words) == 1 and words[0] in PLAN_NAMES:
+            ids.add(f"plan:{words[0]}")
+
+    return frozenset(ids)
