@@ -24,7 +24,7 @@ from typing import Any, Callable
 
 from . import bm25 as bm25_module
 from . import core
-from .retrieval import retrieve
+from .retrieval import get_dense, retrieve
 
 CUTOFFS = (1, 3, 5, 10)
 
@@ -125,7 +125,7 @@ def _warm(
     info: dict[str, Any] = {}
 
     if "dense" in names:
-        dense = core.get_dense(corpus, size, overlap, records=records, strict=strict_dense)
+        dense = get_dense(corpus, size, overlap, records=records, strict=strict_dense)
         info["dense"] = {
             "backend": dense.backend,
             "build_seconds": dense.build_seconds,
