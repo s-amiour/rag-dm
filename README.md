@@ -64,7 +64,7 @@ python -m app.graph check                              # integrity: every node a
 
 For each chunk (same chunking as the other retrievers, Kestrel 800/10), one LLM call returns entities and
 `(source, relation, target, quote)` triples. These are validated against the fixed schema in `app/graph_schema.py` (types,
-allowed source/target types, and the quote must be copied from the chunk). An invalid reply gets one retry; if the second reply
+allowed source/target types, and the quote must be copied from the chunk and name one end of the relation). An invalid reply gets one retry; if the second reply
 is still invalid, its valid entities and relations are kept and the invalid ones are dropped and logged (`partial`, DECISIONS D-26);
 with `--strict` the whole chunk is skipped instead. A reply with nothing valid is skipped and logged. The build never stops on a bad reply. It prints chunks processed / skipped, entities, relations, LLM calls,
 tokens and wall time.
@@ -73,7 +73,8 @@ tokens and wall time.
   points to `{doc, chunk_id, quote}`.
 - **Rerun = free:** each chunk's extraction is cached by the hash of its text, so a rerun with unchanged documents makes **0 LLM
   calls**, and a rerun after a crash or rate limit only pays for the missing chunks. A changed document, chunking, schema or prompt
-  makes the graph `stale` and re-extracts only the chunks that changed. `--retry-skipped` asks again for chunks that failed twice.
+  makes the graph `stale` and re-extracts only the chunks that changed. A change of the validation rules (`VALIDATION_VERSION`)
+  re-checks the cached extractions without any call. `--retry-skipped` asks again for chunks that failed twice.
 - **Cost log** (committed): `data/results/graph/llm_calls.jsonl` (one row per call: model, tokens, latency, outcome),
   `graph_errors.jsonl` (skipped chunks with the raw reply) and `build-kestrel.json` (the summary). Numbers in REPORT §7 come from there.
 - **Rate limits:** a 429 is retried with back-off. If a free tier runs out, set another key or `GRAPH_LLM_MODEL` and run the

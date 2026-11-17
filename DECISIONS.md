@@ -1,7 +1,7 @@
 # Decision log (V3)
 
 Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented in V3;
-D-20 to D-26 record its extraction step (V4, ticket v3T01). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
+D-20 to D-27 record its extraction step (V4, ticket v3T01). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
 V2 decisions (chunk size, overlap, top-k, embedding model) are in `docs/REPORT_V2.md`.
 
 ## Fusion
@@ -97,7 +97,7 @@ unmeasured graph. The decisions that remain open, for whoever continues: fixed o
 that fails validation, how to merge aliases (q12: mailman → postroom), and how to turn a question into ranked chunks
 (entity-neighbourhood expansion, path search, GraphRAG community summaries, LightRAG-style dual-level retrieval).
 
-*Update (V4, ticket v3T01):* extraction, schema, validation, provenance and build cost are now done (D-20 to D-26).
+*Update (V4, ticket v3T01):* extraction, schema, validation, provenance and build cost are now done (D-20 to D-27).
 Entity resolution (T2), the graph retriever (T3) and the UI (T4) are still open; until T3, selecting the graph returns 503.
 
 **D-20. Schema: fixed types, plus two relations.** File `app/graph_schema.py` (versioned: `SCHEMA_VERSION`). Options: (a) an
@@ -228,6 +228,21 @@ see (a true quote read the wrong way, known failure 11); the extraction-quality 
 Measured result: D-25's table (skipped chunks 30 → 1, relations kept 111). This changes the v3T01 acceptance criterion "bad output → one retry, then a logged skip"; under `--strict` it holds exactly
 (`tests/test_graph.py` checks both modes). To agree with the team before merging.
 
+**D-27. A quote must name one end of its relation (validation v2).** Checking the plans table (ticket N.B. "check that table rows
+produce triples") showed that it gave 57 edges whose quotes were single cells: `Business has_feature SCIM user provisioning`, quote
+"Yes". "Yes" is in the chunk, so D-21's check passed, but it comes from another cell, and the edge is **false** (SCIM is Enterprise only).
+A one-word quote is in every table, so it defeats the "quote is in the chunk" check that is meant to catch invented triples. Options:
+(a) a minimum quote length (arbitrary: "Owner: **Identity**." is short and valid); (b) **the quote must contain the name or an alias of the
+source or the target**; (c) both ends (too strict: "This error is raised by postroom" does not repeat the error code, which is in the
+heading). **Chosen: (b).** A table row like `| SCIM user provisioning | — | — | — | — | Yes |` still passes, a bare "Yes" does not.
+The rules have a version (`VALIDATION_VERSION`, part of the graph fingerprint, not of the cache key): after a change, the next build
+re-checks every cached extraction with the new rules and drops what no longer passes, **without any LLM call**; under `--strict` such a
+chunk is skipped. Result on our graph (0 calls): 62 relations dropped in 7 chunks, all for this reason: 57 from the plans table (all
+of them, the true ones with the false ones), plus 5 elsewhere, every one unsupported (`connector-hub has_feature e sign-on (SAML)`,
+`KST-1001 escalates_to on-call`, a "Kestrel Analytics" edge…). Relations 111 → 49; the 5 chain edges of q08, q11, q12 are unchanged.
+Cost: the plans table now gives no edge (known failure 15). The prompt does not state the new rule yet (that would be prompt v3 and
+re-extract all 43 chunks); the retry message explains it when it fires.
+
 ## Process
 
 **D-17. Hidden instructions.** The V2 materials contained an instruction invisible on the slide (text in an unreadable colour) that
@@ -268,3 +283,7 @@ are not visible on the slide, unless confirmed by the teacher.
     q08's and q12's last hop. q11's last hop is present (Payments Core has evidence in the table chunks 3 and 4).
 14. A section cut by a chunk boundary loses its subject: `### ledger` is in `service-catalog_md:2` and its "Owner: **Payments Core**."
     line in `:3`, so `ledger owned_by Payments Core` is missing and the model invented a `Payments Core` *Service* owned by the team.
+15. Tables give few or no triples. Plans table: its 57 edges quoted single cells ("Yes", "1") and were all dropped by D-27, so the graph
+    does not know which plan has which feature. Team table: rows give Team nodes only (no relation in the schema links a team to its
+    channel) and the Messaging row is missing (13). A deterministic parser of markdown tables (one edge or node per row, the row as quote,
+    no LLM) would fix both; not done in this ticket.

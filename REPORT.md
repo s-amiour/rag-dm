@@ -149,16 +149,17 @@ Recall@10 = 0.72 for dense and for dense+bm25. Open design decisions are listed 
 Numbers below are copied from `data/results/graph/build-kestrel.json`; every call is in `data/results/graph/llm_calls.jsonl`.
 
 Model: `nvidia/nemotron-3.5-lightning-30b-a3b` on NVIDIA's endpoint, thinking off (D-24); prompt v2 (D-25); invalid items of a
-twice-invalid reply dropped, the rest kept (D-26).
+twice-invalid reply dropped, the rest kept (D-26); a quote must name an end of its relation (D-27, validation v2).
 
 | | Value |
 |---|---:|
 | Chunks | 43 |
-| Valid at first try / after one retry | 4 / 9 |
-| Kept in part (invalid items dropped and logged, D-26) | 29 |
+| Fully valid: at first try / after one retry | 3 / 5 |
+| Kept in part (invalid items dropped, D-26 and D-27) | 34 |
 | Skipped (nothing valid, in `graph_errors.jsonl`) | 1 (`product-guide_md:11`) |
-| Entities / relations / aliases | 171 / 111 / 1 |
-| Raw triples (before identical ones are merged) | 112 |
+| Entities / relations / aliases | 171 / 49 / 1 |
+| Raw triples (before identical ones are merged) | 50 |
+| Relations dropped by the D-27 re-check (0 calls) | 62 (57 from the plans table) |
 | LLM calls behind this graph | 82 |
 | Prompt + completion tokens | 135,390 + 33,797 |
 | Time in LLM calls | 286.0 s (about 3.3 s per call) |
@@ -167,10 +168,11 @@ twice-invalid reply dropped, the rest kept (D-26).
 | Whole experiment (prompt v1 + v2, all runs) | 164 calls, 243,380 + 65,138 tokens, 504.6 s |
 
 Chain edges (q08, q11, q12): `KST-5031 raised_by postroom`, `KST-5031 escalates_to postroom`, `postroom owned_by Messaging`,
-`postroom replaces mailman` and `KST-6010 escalates_to Payments Core` are in the graph; `ledger owned_by Payments Core` is not
+`postroom replaces mailman` and `KST-6010 escalates_to Payments Core` are in the graph (unchanged by D-27); `ledger owned_by Payments Core` is not
 (section cut by a chunk boundary). The last hop of q08 / q12 (the Messaging row of the team table, with its channel) is missing, and one
-wrong edge, `postroom owned_by Identity`, competes with the right one. Details: DECISIONS known failures 10 to 14.
-Relations by type: has_feature 51, included_in 27, owned_by 11, escalates_to 9, causes 6, raised_by 5, replaces 1, governed_by 1.
+wrong edge, `postroom owned_by Identity`, competes with the right one. The plans table gives no edge since D-27. Details: DECISIONS known failures 10 to 15.
+Relations by type: has_feature 18, owned_by 11, escalates_to 7, causes 5, raised_by 4, included_in 2, replaces 1, governed_by 1
+(before D-27: 111 relations, of which has_feature 51 and included_in 27).
 
 Schema, validation, storage, model choice: DECISIONS D-20 to D-24. Prompt v1 → v2 (v1 skipped 22 of 43 chunks): D-25. Keeping the valid part of a failed reply: D-26. Entity resolution, merges, retrieval and extraction-quality grades: not done yet
 (next tickets).
