@@ -113,3 +113,48 @@ class WalkTests(SearchFixture):
         g, ids = toy_graph([("Hub", "has_feature", f"F{i}") for i in range(20)])
         w = graph_search.walk(g, [ids["Hub"]])
         self.assertEqual((len(w.reached), w.capped), (21, []))
+
+
+class RankTests(SearchFixture):
+    Q = "Error KST-5031 happened twice. Which team should I contact, and where?"
+
+    def search(self, question, k=10):
+        return graph_search.search_graph(graph_search.load("kestrel", 800, 10), question, k,
+                                         {r["id"] for r in RECORDS})
+
+    def test_two_hop_chain_returns_both_chunks(self):
+        out = self.search(self.Q)
+        ids = [h["id"] for h in out["hits"]]
+        # hop 1: the runbook entry; hop 2: the team table, reached through "the Messaging team" merge
+        self.assertEqual(ids, ["support-runbook-errors_md:8", "service-catalog_md:2", "service-catalog_md:3"])
+        self.assertEqual([h["score"] for h in out["hits"]], [1.0, 0.5, 1 / 3])
+
+    def test_path_for_the_ui(self):
+        path = self.search(self.Q)["path"]
+        self.assertEqual([(e["name"], e["matched_text"]) for e in path["entities"]], [("KST-5031", "kst-5031")])
+        self.assertEqual(path["edges"][0], {"source": "KST-5031", "relation": "raised_by", "target": "postroom",
+                                            "hop": 1, "chunk_ids": ["support-runbook-errors_md:8"]})
+        self.assertEqual({e["hop"] for e in path["edges"]}, {1, 2})
+        self.assertEqual(path["chunks"], [h["id"] for h in self.search(self.Q)["hits"]])
+
+    def test_no_entity_gives_empty_hits_and_path(self):
+        out = self.search("How do I change my password?")
+        self.assertEqual(out["hits"], [])
+        self.assertEqual((out["path"]["entities"], out["path"]["edges"], out["path"]["chunks"]), ([], [], []))
+
+    def test_same_input_same_ranking(self):
+        self.assertEqual(self.search(self.Q), self.search(self.Q))
+
+    def test_k_and_unknown_chunk_ids(self):
+        self.assertEqual(len(self.search(self.Q, k=1)["hits"]), 1)
+        g = graph_search.load("kestrel", 800, 10)
+        out = graph_search.search_graph(g, self.Q, 10, {"support-runbook-errors_md:8"})
+        self.assertEqual([h["id"] for h in out["hits"]], ["support-runbook-errors_md:8"])
+
+    def test_ties_broken_by_supported_edges_then_chunk_id(self):
+        g, ids = toy_graph([("Alpha", "depends_on", "Beta"), ("Alpha", "depends_on", "Gamma")],
+                           chunk_of_edge=lambda eid: "c:shared" if eid == 1 else "c:other")
+        g.edge_chunks[2] = ["c:shared", "c:z"]
+        g.keys = {"alpha": {ids["Alpha"]}}
+        out = graph_search.search_graph(g, "what about alpha", 10)
+        self.assertEqual([h["id"] for h in out["hits"]], ["c:shared", "c:z"])   # 2 edges, then 1

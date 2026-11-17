@@ -172,3 +172,43 @@ def walk(g: LoadedGraph, starts: list[int], max_hops: int = MAX_HOPS, hub_cap: i
         frontier = sorted(nxt)
 
     return Walk(reached, followed, sorted(set(capped)))
+
+
+def search_graph(g: LoadedGraph, question: str, k: int, valid_ids: set[str] | None = None) -> dict:
+    """Question -> ranked chunks + the path behind them.
+
+    Candidates: the evidence chunks of every node reached (start entities at hop 0) and of
+    every edge followed, each at its best hop. Score = 1 / (1 + best hop); ties: more
+    followed edges supported by the chunk first, then chunk id, so the ranking is
+    deterministic. Only chunks of the current chunking (valid_ids) are returned.
+    No entity in the question: empty hits and an empty path, never an error."""
+    entities = match_entities(g, question)
+    w = walk(g, [e["id"] for e in entities])
+
+    best: dict[str, int] = {}
+    support: dict[str, int] = defaultdict(int)
+    for node, hop in w.reached.items():
+        for chunk in g.node_chunks.get(node, []):
+            best[chunk] = min(best.get(chunk, hop), hop)
+    for eid, hop in w.followed.items():
+        for chunk in g.edge_chunks.get(eid, []):
+            best[chunk] = min(best.get(chunk, hop), hop)
+            support[chunk] += 1
+
+    ranked = sorted(best, key=lambda c: (best[c], -support[c], c))
+    if valid_ids is not None:
+        ranked = [c for c in ranked if c in valid_ids]
+    hits = [{"id": c, "score": 1.0 / (1 + best[c])} for c in ranked[:k]]
+
+    edges = []
+    for eid, hop in sorted(w.followed.items(), key=lambda x: (x[1], x[0])):
+        src, rel, dst = g.edges[eid]
+        edges.append({"source": g.names[src][0], "relation": rel, "target": g.names[dst][0],
+                      "hop": hop, "chunk_ids": g.edge_chunks.get(eid, [])})
+    path = {
+        "entities": entities,
+        "edges": edges,
+        "chunks": [h["id"] for h in hits],
+        "capped": [g.names[n][0] for n in w.capped],
+    }
+    return {"hits": hits, "path": path}
