@@ -173,6 +173,13 @@ Output in `data/results/v3/`: one JSON per run (every question, per-hop gold chu
 cost) and `summary.md` / `summary.json`: results table (configurations × corpora × question types), cost per question and index
 build, and the automatic list of questions where adding a retriever made things worse.
 
+The summary is **rebuilt from every run file in the folder** (`{corpus}__{name}.json`) after each run, whether it was started
+with `run`, `matrix` or the Evaluate button: rerunning one configuration replaces only its own row and keeps the others. The
+"Configurations in this folder" table shows when each configuration was run and with which settings, so older results stand out.
+To produce a report from **one consistent run**, write it to a fresh folder, e.g.
+`python -m app.evaluate matrix --required-only --out-dir data/results/v3-final` (or empty `data/results/v3/` first: run files are
+never deleted automatically).
+
 **Metrics.** A question has one *hop* per evidence quote. *Hit@k*: at least one hop has a gold chunk in the top k (V2's metric).
 *Recall@k*: share of hops that have a gold chunk in the top k, so it tells whether **all** hops of a chain were retrieved.
 `not_in_corpus` questions have no gold chunk and are excluded from both. Gold chunks = chunks containing the quote, same

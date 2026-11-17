@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -119,6 +120,7 @@ def run_and_save(
         bm25_module.set_stopwords(previous)  # a failed run must not change later runs
 
     result["summary"]["wall_seconds"] = time.perf_counter() - started
+    result["summary"]["run_at"] = time.strftime("%Y-%m-%d %H:%M:%S")  # v3T09: shows mixed-age results in the summary
     path = save(result, out_dir, corpus, name)
     rebuild_summary(out_dir)
 
@@ -227,6 +229,32 @@ def regression_report(runs) -> str:
     return out or "\n(no comparable pairs were run)\n"
 
 
+def write_atomic(path: Path, text: str) -> None:
+    """Write to a temporary file, then rename: a UI run and a CLI run finishing together can never
+    leave a half-written summary (same pattern as the BM25 index)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def configurations_table(runs) -> str:
+    """One row per configuration file: when it was run and with which settings, so a configuration
+    rerun after a code change stands out instead of silently mixing with older numbers (v3T09)."""
+    out = "| Corpus | Configuration | Run at | Chunking | Top-k | Candidates | RRF k | Dense backend |\n"
+    out += "|---|---|---|---|---:|---:|---:|---|\n"
+
+    for corpus, name, result in runs:
+        s = result["summary"]
+        c = s["config"]
+        out += (
+            f"| {corpus} | {name} | {s.get('run_at') or '– (before v3T09)'} | {c.get('chunk_size')}/{c.get('overlap')} | "
+            f"{c.get('top_k')} | {c.get('candidates')} | {c.get('rrf_k')} | {c.get('dense_backend') or '–'} |\n"
+        )
+
+    return out
+
+
 def write_summary(runs, out_dir: Path) -> Path:
     unmatched = {
         (corpus, name): r["summary"]["questions_with_unmatched_hops"]
@@ -247,7 +275,8 @@ def write_summary(runs, out_dir: Path) -> Path:
             + ". These numbers are NOT comparable with V2. Install sentence-transformers and rerun without --allow-tfidf-fallback.**\n\n"
         )
 
-    md += "## Results: configurations × corpora × question types\n\n" + results_table(runs)
+    md += "## Configurations in this folder\n\n" + configurations_table(runs)
+    md += "\n## Results: configurations × corpora × question types\n\n" + results_table(runs)
     md += "\n## Cost per question and index build\n\n" + cost_table(runs)
     md += "\n## Where adding a retriever made things worse\n" + regression_report(runs)
     flagged = {k: v for k, v in unmatched.items() if v}
@@ -259,10 +288,11 @@ def write_summary(runs, out_dir: Path) -> Path:
             md += f"- {corpus} / {name}: {', '.join(map(str, ids))}\n"
 
     path = out_dir / "summary.md"
-    path.write_text(md, encoding="utf-8")
-    core.save_json(out_dir / "summary.json", [
-        {"corpus": c, "configuration": n, "summary": r["summary"]} for c, n, r in runs
-    ])
+    write_atomic(path, md)
+    write_atomic(out_dir / "summary.json", json.dumps(
+        [{"corpus": c, "configuration": n, "summary": r["summary"]} for c, n, r in runs],
+        ensure_ascii=False, indent=2
+    ))
 
     return path
 
