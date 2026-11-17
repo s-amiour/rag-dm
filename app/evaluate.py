@@ -18,6 +18,7 @@ stops instead of silently measuring TF-IDF. Use --allow-tfidf-fallback to overri
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import time
@@ -51,7 +52,11 @@ def parse_weights(text: str | None) -> dict[str, float] | None:
     return out
 
 
-def run_name(retrievers: list[str], stopwords: bool = True, weights=None) -> str:
+def run_name(retrievers: list[str], stopwords: bool = True, weights=None, corpus: str | None = None,
+             size: int | None = None, overlap: int | None = None, top_k: int | None = None,
+             candidates: int | None = None, rrf_k: int | None = None) -> str:
+    """'dense+bm25' for a reference run. Any setting that differs from the defaults is added
+    to the name ('dense+bm25 (500-20, cand 30)'), so a one-off run never overwrites a reference file."""
     name = "+".join(retrievers)
 
     if "bm25" in retrievers and not stopwords:
@@ -59,6 +64,20 @@ def run_name(retrievers: list[str], stopwords: bool = True, weights=None) -> str
 
     if weights:
         name += " (weighted " + ",".join(f"{k}={v:g}" for k, v in weights.items()) + ")"
+
+    extra = []
+
+    if corpus is not None and size is not None and overlap is not None \
+            and (size, overlap) != core.resolve_chunking(corpus):
+        extra.append(f"{size}-{overlap}")
+    if top_k is not None and top_k != core.DEFAULT_TOP_K:
+        extra.append(f"top-k {top_k}")
+    if candidates is not None and candidates != core.DEFAULT_CANDIDATES:
+        extra.append(f"cand {candidates}")
+    if rrf_k is not None and rrf_k != core.DEFAULT_RRF_K:
+        extra.append(f"rrf {rrf_k}")
+    if extra:
+        name += " (" + ", ".join(extra) + ")"
 
     return name
 
@@ -71,21 +90,48 @@ def save(result: dict[str, Any], out_dir: Path, corpus: str, name: str) -> Path:
     return path
 
 
+def run_and_save(
+    corpus: str, retrievers: list[str], *, chunk_size: int | None = None, overlap: int | None = None,
+    top_k: int | None = None, rrf_k: int | None = None, candidates: int | None = None, weights=None,
+    stopwords: bool = True, strict_dense: bool = True, generate_answers: bool = False,
+    questions: list[dict[str, Any]] | None = None, out_dir: Path | None = None, progress=None
+) -> tuple[str, dict[str, Any], Path]:
+    """Evaluate one configuration and save it as {out_dir}/{corpus}__{name}.json, then rebuild the
+    folder's summary. The one path used by the CLI and by /api/evaluate (v3T08): same defaults,
+    same run name, same file, same summary, whichever way the run was started."""
+    size, overlap = core.resolve_chunking(corpus, chunk_size, overlap)
+    top_k = top_k or core.DEFAULT_TOP_K
+    rrf_k = rrf_k or core.DEFAULT_RRF_K
+    candidates = candidates or core.DEFAULT_CANDIDATES
+    out_dir = Path(out_dir or DEFAULT_OUT)
+    name = run_name(retrievers, stopwords, weights, corpus, size, overlap, top_k, candidates, rrf_k)
+    started = time.perf_counter()
+    previous = bm25_module.stopwords_enabled()
+    bm25_module.set_stopwords(stopwords)
+
+    try:
+        result = evaluate_corpus(
+            corpus, size, overlap, top_k, retrievers, questions=questions,
+            generate_answers=generate_answers, rrf_k=rrf_k, candidates=candidates, weights=weights,
+            strict_dense=strict_dense, label=name, progress=progress
+        )
+    finally:
+        bm25_module.set_stopwords(previous)  # a failed run must not change later runs
+
+    result["summary"]["wall_seconds"] = time.perf_counter() - started
+    path = save(result, out_dir, corpus, name)
+    rebuild_summary(out_dir)
+
+    return name, result, path
+
+
 def execute(
     corpus: str, retrievers: list[str], args, stopwords: bool = True, weights=None,
     size: int | None = None, overlap: int | None = None
 ) -> tuple[str, dict[str, Any], Path]:
-    size = size or (args.chunk_size or V2_CHUNKING[corpus][0])
-    overlap = overlap if overlap is not None else (
-        args.overlap if args.overlap is not None else V2_CHUNKING[corpus][1]
-    )
-    bm25_module.set_stopwords(stopwords)
-    name = run_name(retrievers, stopwords, weights)
-    started = time.perf_counter()
-
     def progress(i: int, n: int, qid: str):
         if sys.stdout.isatty():
-            print(f"  [{corpus} | {name}] {i}/{n} {qid}", end="\r", flush=True)
+            print(f"  [{corpus} | {'+'.join(retrievers)}] {i}/{n} {qid}", end="\r", flush=True)
 
     questions = None
 
@@ -93,16 +139,13 @@ def execute(
         wanted = {i.strip() for i in args.ids.split(",") if i.strip()}
         questions = [q for q in core.load_questions(corpus) if q.get("id") in wanted]
 
-    result = evaluate_corpus(
-        corpus, size, overlap, args.top_k, retrievers, questions=questions,
-        generate_answers=args.generate,
-        rrf_k=args.rrf_k, candidates=args.candidates, weights=weights,
-        strict_dense=not args.allow_tfidf_fallback,
-        label=name, progress=progress
+    name, result, path = run_and_save(
+        corpus, retrievers, chunk_size=size or args.chunk_size,
+        overlap=overlap if overlap is not None else args.overlap,
+        top_k=args.top_k, rrf_k=args.rrf_k, candidates=args.candidates, weights=weights,
+        stopwords=stopwords, strict_dense=not args.allow_tfidf_fallback,
+        generate_answers=args.generate, questions=questions, out_dir=Path(args.out_dir), progress=progress
     )
-    result["summary"]["wall_seconds"] = time.perf_counter() - started
-    path = save(result, Path(args.out_dir), corpus, name)
-    bm25_module.set_stopwords(True)
     print(f"  [{corpus} | {name}] done -> {path.relative_to(core.ROOT) if path.is_relative_to(core.ROOT) else path}      ")
 
     return name, result, path
@@ -224,14 +267,45 @@ def write_summary(runs, out_dir: Path) -> Path:
     return path
 
 
+RUN_ORDER = ("dense", "dense+bm25", "dense+bm25+graph")
+
+
+def load_runs(out_dir: Path) -> list[tuple[str, str, dict[str, Any]]]:
+    """Every configuration file in a results folder ({corpus}__{name}.json), in a stable order:
+    corpus, then dense, dense+bm25, dense+bm25+graph, then the rest alphabetically. Files that
+    are not runs (summary.json, graded triples) are skipped."""
+    runs = []
+
+    for path in sorted(Path(out_dir).glob("*__*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        s = data.get("summary") if isinstance(data, dict) else None
+
+        if not s or "config" not in s:
+            continue
+
+        runs.append((s.get("corpus") or path.stem.split("__")[0], s.get("label") or path.stem.split("__", 1)[1], data))
+
+    def order(run):
+        corpus, name, _ = run
+        return (corpus, RUN_ORDER.index(name) if name in RUN_ORDER else len(RUN_ORDER), name)
+
+    return sorted(runs, key=order)
+
+
+def rebuild_summary(out_dir: Path) -> Path | None:
+    """summary.md / summary.json describe every configuration in the folder, not only the
+    last run (so a single run, CLI or UI, never erases the others)."""
+    runs = load_runs(out_dir)
+
+    return write_summary(runs, Path(out_dir)) if runs else None
+
+
 def cmd_run(args) -> int:
     retrievers = parse_retrievers(args.retrievers)
     name, result, _ = execute(
         args.corpus, retrievers, args, stopwords=not args.no_stopwords,
         weights=parse_weights(args.weights)
     )
-    out_dir = Path(args.out_dir)
-    write_summary([(args.corpus, name, result)], out_dir)
     print(results_table([(args.corpus, name, result)]))
 
     return 0
@@ -263,7 +337,7 @@ def cmd_matrix(args) -> int:
         name, result, _ = execute(corpus, retrievers, args, stopwords=stop)
         runs.append((corpus, name, result))
 
-    path = write_summary(runs, Path(args.out_dir))
+    path = rebuild_summary(Path(args.out_dir))
     print(f"\nSummary written to {path}")
 
     return 0
