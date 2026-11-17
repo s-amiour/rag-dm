@@ -1238,6 +1238,9 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--n", type=int, default=10)
     sp.add_argument("--seed", type=int, default=42)
     sp.add_argument("--force", action="store_true", help="replace a sample that already has grades")
+    ch = sub.add_parser("chunk", help="print a chunk in full, e.g. support-runbook-errors_md:8")
+    common(ch)
+    ch.add_argument("chunk_id")
     w = sub.add_parser("walk", help="walk the graph from an entity, e.g. KST-5031")
     common(w)
     w.add_argument("start", help="entity name or alias")
@@ -1258,6 +1261,17 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if summary["integrity"]["ok"] else 1
 
     records = core.build_chunks(args.corpus, args.chunk_size, args.overlap)
+
+    if args.cmd == "chunk":
+        found = next((r for r in records if r["id"] == args.chunk_id), None)
+        if found is None:
+            print(f"No chunk {args.chunk_id!r} at {args.chunk_size}/{args.overlap}.", file=sys.stderr)
+            return 1
+        print(f"--- {found['id']}  ({found['document']}, chunk {found['index']}, {len(found['text'])} characters)")
+        print(found["text"])
+        print("---")
+        return 0
+
     status = graph_status(args.corpus, args.chunk_size, args.overlap, records=records)
 
     if args.cmd == "status":

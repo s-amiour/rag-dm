@@ -1,7 +1,9 @@
 """Grading a sample of graph triples (v3T06), on a fixture graph built with a fake LLM."""
+import contextlib
+import io
 import json
-import tempfile
 from pathlib import Path
+from unittest import mock
 
 from app import graph, graph_grading
 from tests.test_graph import FakeLLM, GraphTestCase, RECORDS
@@ -61,3 +63,23 @@ class SampleTests(GraphTestCase):
             graph_grading.write_sample(data, self.out)
         graph_grading.write_sample(data, self.out, force=True)
         self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["triples"][0]["grade"], "")
+
+
+class ChunkCommandTests(GraphTestCase):
+    def run_cli(self, *argv):
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(graph.core, "build_chunks", lambda *a: RECORDS), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = graph.main(list(argv))
+        return code, out.getvalue(), err.getvalue()
+
+    def test_prints_the_whole_chunk(self):
+        code, out, _ = self.run_cli("chunk", "service-catalog_md:0")
+        self.assertEqual(code, 0)
+        self.assertIn("Owner: **Messaging**.", out)
+        self.assertIn("postroom replaced the older mailman service", out)
+
+    def test_unknown_chunk(self):
+        code, _, err = self.run_cli("chunk", "service-catalog_md:99")
+        self.assertEqual(code, 1)
+        self.assertIn("No chunk", err)
