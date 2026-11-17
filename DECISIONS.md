@@ -195,7 +195,9 @@ direction with four examples ("an error code is never the source of `causes`"), 
 error code and service, so it cannot leak answers about the real corpus; a test checks it passes our own validation), and makes the retry
 message say what to delete. (c) is kept in reserve: it changes the ticket's "retry once, then skip" rule, so we only consider it if v2
 still loses chunks the chain questions need. Bumping `PROMPT_VERSION` changes every cache key, so v2 re-extracts all chunks
-(v1's calls stay in `llm_calls.jsonl`; `build-kestrel-prompt-v1.json` keeps v1's summary).
+(v1's calls stay in `llm_calls.jsonl`; `build-kestrel-prompt-v1.json` keeps v1's summary). The v2 strict run was stopped
+before it finished and wrote no summary: its column below is counted per chunk from `llm_calls.jsonl` (builds `20261117-151844-…`
+and `20261117-152437-…`, outcome of each chunk's last call).
 Result of v2, and of v1 replayed with D-26 on its stored replies (no new call), same 43 chunks:
 
 | | v1 strict | v2 strict | v1 + keep valid part | **v2 + keep valid part (built)** |
