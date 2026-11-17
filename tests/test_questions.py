@@ -42,3 +42,36 @@ class QuestionFileTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+CANONICAL_TYPES = {"exact_identifier", "split_answer", "vocabulary", "not_in_corpus", "versions", "two_hop", "other"}
+
+
+class OwnQuestionLabelTests(unittest.TestCase):
+    """v3T13: own.jsonl uses the assignment's type names, and every relabel is recorded."""
+
+    def setUp(self):
+        self.own = core.load_questions("own")
+
+    def test_own_types_are_canonical(self):
+        for q in self.own:
+            self.assertIn(q["type"], CANONICAL_TYPES, q["id"])
+
+    def test_relabelled_rows_keep_their_old_type_and_are_in_the_changelog(self):
+        changelog = (core.DATA / "questions" / "CHANGELOG.md").read_text(encoding="utf-8")
+        for q in self.own:
+            if "type_original" in q:
+                self.assertNotEqual(q["type_original"], q["type"], q["id"])
+                self.assertIn(q["id"], changelog)
+
+    def test_own_has_an_unanswerable_question(self):
+        unanswerable = [q for q in self.own if q.get("answerable") is False]
+        self.assertTrue(unanswerable)
+        for q in unanswerable:
+            self.assertEqual(q["type"], "not_in_corpus", q["id"])
+            self.assertEqual(q.get("evidence", []), [], q["id"])
+
+    def test_two_hop_questions_have_one_quote_per_hop(self):
+        for q in self.own:
+            if q["type"] == "two_hop":
+                self.assertGreaterEqual(len(question_hops(q)), 2, q["id"])
