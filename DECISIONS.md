@@ -2,7 +2,8 @@
 
 Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented in V3;
 D-20 to D-27 record its extraction step (ticket v3T01), D-28 entity resolution (v3T02), D-29 graph retrieval (v3T03), D-30 the graph path in the UI (v3T04);
-D-31 to D-33 record answer validation (v3T12), the shared tokenizer (v3T11) and own-corpus storage (v3T10, v3T19). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
+D-31 to D-33 record answer validation (v3T12), the shared tokenizer (v3T11) and own-corpus storage (v3T10, v3T19);
+D-34 the own question labels (v3T13). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
 V2 decisions (chunk size, overlap, top-k, embedding model) are in `docs/REPORT_V2.md`.
 
 ## Fusion
@@ -81,11 +82,26 @@ V2 row and the V3 rows is the retriever set. The `dense` row is the re-measured 
 assignment uses `vocabulary` and `two_hop`: we map names at report time (`type_raw` keeps the original) instead of editing old
 rows. `not_in_corpus_trap` (OWN-04) is **not** mapped to `not_in_corpus`: it is answerable (the manual says never to use vinegar),
 so our own corpus has no truly unanswerable question; the report says so instead of pretending.
+*Update (v3T13, D-34):* the labels are now changed in the file itself, with a changelog, and OWN-13 is a real unanswerable question.
 
 **D-10. New questions.** q11 (KST-6010 → Payments Core → #oncall-payments; cross-document, 2 hops) and q12 (mailman → postroom →
 Messaging → channel; an alias plus 3 hops, which exercises entity resolution). Both: the question names neither intermediate entity,
 and every hop has an evidence quote that matches exactly one chunk at 800/10 (checked by `tests/test_questions.py`).
 Known weakness of q12: its first two hops sit in the same chunk, so a retriever can get 2/3 of the recall with one chunk.
+
+**D-34. Own question labels, edited with a changelog (v3T13).** D-09 kept the own set's old type names and mapped them at report
+time. That left two problems the mapping could not fix: OWN-05 was labelled `two_hops` but has one quote in one chunk, so it was the own
+corpus's only "two_hop" question and gave that type a Recall of 1.00 it did not earn; and the own set had no unanswerable question, so
+`not_in_corpus` was never measured on it. Options: (a) keep the file and add per-question overrides in the code (the file stays wrong for
+anyone who reads it); (b) **edit the type field, keep the old value in the row (`type_original`) and list every change in
+`data/questions/CHANGELOG.md`**. **Chosen: (b).** The brief's rule is "never edit old ones *silently*": ids and question texts are
+unchanged, and each change is recorded twice (row and changelog). Changes: OWN-03, 07, 11 `different_vocabulary` → `vocabulary`;
+OWN-04 `not_in_corpus_trap` → `other` (it sounds unanswerable but the manual answers it); OWN-05 `two_hops` → `other`. Added OWN-13,
+"How much does the Vellora Duo weigh?" (`not_in_corpus`): the manual gives the tank capacity and the ventilation space but never the
+weight, so the model is tempted to use one of them. `TYPE_ALIASES` stays in `evaluation.py` so older result files still read correctly.
+`tests/test_questions.py` checks that own types are canonical, that every relabelled row is in the changelog, and that there is an
+unanswerable question. Effect: the own corpus has no `two_hop` question any more, and its per-type numbers change, so the V3 matrix
+must be rerun before REPORT numbers are updated.
 
 ## Concept graph
 
