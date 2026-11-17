@@ -468,12 +468,10 @@ class ClientOptionsTests(unittest.TestCase):
         self.assertIn("GRAPH_DISABLE_THINKING", text)
 
 
-class RetrieverStillUnavailableTests(unittest.TestCase):
-    def test_graph_selection_still_unavailable_until_t3(self):
+class GraphRetrieverAvailableTests(unittest.TestCase):
+    def test_graph_selection_is_available_since_t3(self):
         from app import retrieval
-        self.assertFalse(retrieval.graph_available())
-        with self.assertRaises(retrieval.RetrieverUnavailable):
-            retrieval._run_graph("kestrel", "q", 5, 800, 10)
+        self.assertTrue(retrieval.graph_available())
 
 
 if __name__ == "__main__":

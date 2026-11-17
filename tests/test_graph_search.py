@@ -158,3 +158,39 @@ class RankTests(SearchFixture):
         g.keys = {"alpha": {ids["Alpha"]}}
         out = graph_search.search_graph(g, "what about alpha", 10)
         self.assertEqual([h["id"] for h in out["hits"]], ["c:shared", "c:z"])   # 2 edges, then 1
+
+
+class ContractTests(SearchFixture):
+    Q = RankTests.Q
+
+    def test_search_contract(self):
+        from app import graph_retriever
+        out = graph_retriever.search("kestrel", self.Q, 10, 800, 10)
+        self.assertEqual(set(out), {"hits", "path", "usage"})
+        self.assertEqual(out["usage"], {"llm_calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
+        self.assertTrue(all(set(h) == {"id", "score"} for h in out["hits"]))
+        self.assertTrue({"entities", "edges", "chunks"} <= set(out["path"]))
+
+    def test_retrieve_with_graph_only_and_with_fusion(self):
+        from app import retrieval
+        out = retrieval.retrieve("kestrel", self.Q, 800, 10, ["graph"], depth=5, records=RECORDS)
+        self.assertEqual(out["hits"][0]["id"], "support-runbook-errors_md:8")
+        self.assertEqual(out["hits"][0]["sources"], {"graph": {"rank": 1, "score": 1.0}})
+        self.assertTrue(out["graph_path"]["edges"])
+        self.assertEqual(out["usage"], {"llm_calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
+        fused = retrieval.retrieve("kestrel", self.Q, 800, 10, ["bm25", "graph"], depth=5, records=RECORDS)
+        self.assertEqual(fused["retrievers"], ["bm25", "graph"])
+        self.assertTrue(any("graph" in h["sources"] for h in fused["hits"]))
+
+    def test_stale_graph_is_a_503_not_an_empty_result(self):
+        from app import retrieval
+        changed = [*RECORDS[:2], rec("service-catalog.md", 3, RECORDS[2]["text"] + " (edited)")]
+        with mock.patch.object(core, "build_chunks", lambda *a: changed), \
+                self.assertRaises(retrieval.RetrieverUnavailable) as ctx:
+            retrieval.retrieve("kestrel", self.Q, 800, 10, ["graph"], records=changed)
+        self.assertIn("Run the graph build", str(ctx.exception))
+
+    def test_other_corpus(self):
+        from app import graph_retriever
+        with self.assertRaises(RetrieverUnavailable):
+            graph_retriever.search("own", self.Q, 10, 500, 20)
