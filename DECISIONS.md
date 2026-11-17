@@ -1,7 +1,7 @@
 # Decision log (V3)
 
 Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented in V3;
-D-20 to D-27 record its extraction step (ticket v3T01), D-28 entity resolution (v3T02). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
+D-20 to D-27 record its extraction step (ticket v3T01), D-28 entity resolution (v3T02), D-29 graph retrieval (v3T03). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
 V2 decisions (chunk size, overlap, top-k, embedding model) are in `docs/REPORT_V2.md`.
 
 ## Fusion
@@ -272,6 +272,31 @@ postroom, "postroom replaces mailman" had resolved to "postroom replaces postroo
 The alias rule found nothing to merge (the one alias, SSO, has no node of its own) and the mailman trap did not occur (the LLM did not
 list mailman as an alias); both are covered by tests.
 
+**D-29. Graph retrieval: a local walk from the question's entities (v3T03).** `app/graph_retriever.py` (contract of
+`retrieval.py`) on top of `app/graph_search.py`. No LLM call at query time (usage 0).
+*Steps.* (1) Load the resolved graph, cached per build; missing or stale for the current chunking → `RetrieverUnavailable`
+(503 with the rebuild command), never an empty result that would look like a retrieval miss. (2) Entities: 1- to 4-word n-grams of the
+folded question, each normalised with T2's `normalise_name`, matched on node names, then aliases only if no node has that name
+("mailman" is the mailman node, not postroom); longest match first; identifiers exact (KST-5031 ≠ KST-5038); stop words and
+**generic words** (team, service, support, admin, owner, plan, kestrel, workspace, user, customer, error, feature) never match alone.
+The list is measured: on the 12 Kestrel questions, "support", "team", "admin", "plan", "service" and "kestrel" matched nodes in 7
+questions and would have started walks from a Service called "support" or the plan "Team". (3) Walk 2 hops, edges in both
+directions; start entities always expanded; an intermediate node with more than 15 edges is kept but not expanded (hub cap). (4)
+Candidates: the evidence chunks of every node reached and every edge followed, at their best hop; score 1/(1 + hop); ties: more
+followed edges supported, then chunk id.
+*Interpretation of the ticket.* Its §5 lists the evidence of the start entities and of the edges followed, but its N.B. on q12 relies
+on "the evidence chunk of the Messaging node". We count the evidence of every reached node. Measured on our graph, graph alone, top 10:
+the literal §5 rule finds the first hop of q08, q11 and q12 and **none of their last hops**; with node evidence, all of them
+(REPORT §7). The cost is more candidates per question, ranked below the edges' chunks of the same hop only by the tie rule.
+*Hub cap.* Never fires on our graph: the highest degree is 5 (postroom). Kept, and tested on a fixture, for a larger graph.
+*Alternatives not chosen.* **Expansion from hybrid results** (take the entities of the dense/BM25 top chunks and walk from them):
+finds chains whose first hop the other retrievers already found, but makes the graph depend on them, so its own contribution
+cannot be measured in the configuration table, and a wrong first chunk starts a wrong walk. **Fusion by graph distance** (re-score
+dense/BM25 hits by their distance to the question's entities): no new chunk can enter the list, which is exactly what two_hop needs,
+and it adds a weight to tune on 10 questions. **Path as context** (give the LLM the triples of the path with the chunks): acts on the
+answer, not on retrieval; it is the optional teams-of-3 piece, out of this ticket. **LLM entity extraction at query time**: would
+catch paraphrases ("the e-mail service" for postroom) at one call per question; out of scope (ticket) and measurable later.
+
 ## Process
 
 **D-17. Hidden instructions.** The V2 materials contained an instruction invisible on the slide (text in an unreadable colour) that
@@ -320,3 +345,8 @@ are not visible on the slide, unless confirmed by the teacher.
     typed **Service** by the LLM (KST-3020 escalates to it) cannot merge with it, because resolution never crosses types; "Analytics Eng"
     (KST-3012 escalates to it) is the name cut by the chunk boundary at 800 characters, which no rule can safely complete. Walks from
     KST-3012 and KST-3020 stop after one hop and never reach the team or its channel.
+17. Graph retrieval can return the right chunk for the wrong reason: for q08 and q12 the team-table chunk (`service-catalog_md:3`)
+    reaches the top 10 through the wrong edge `postroom owned_by Identity` (Identity's node has evidence in the team table), not through
+    Messaging, whose only evidence is `service-catalog_md:2` (known failure 13). Recall@k counts it as found.
+18. The graph adds nothing when the question names no entity of the graph: 5 of the 12 Kestrel questions (q03, q05, q06, q07, q09) give
+    0 graph hits; and it adds noise to an unanswerable question that names one (q10, "Business": 5 hits).
