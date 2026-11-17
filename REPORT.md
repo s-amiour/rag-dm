@@ -13,7 +13,7 @@
 
 - V3 adds **BM25** (both corpora, persistent index), **RRF fusion** with every retriever switchable from the UI, the API and the
   evaluation command, and **Recall@k per hop** next to V2's HitRate@k.
-- **Concept graph: extraction done (ticket v3T01, section 7); entity resolution, retrieval and UI pending** (section 6). The third
+- **Concept graph: extraction and entity resolution done (tickets v3T01, v3T02; section 7); retrieval and UI pending** (section 6). The third
   required configuration (`dense+bm25+graph`) has not been run yet.
 - **BM25 helps, but only once fusion is configured carefully.** On Kestrel, plain RRF with 30 candidates per retriever left Hit@k unchanged
   (0.50 / 0.80 / 0.90 / 1.00 at k = 1, 3, 5, 10) and lowered Recall@3 from 0.72 to 0.54. Limiting each retriever to its 10 best candidates
@@ -132,10 +132,11 @@ The measured costs of generation (1 LLM call per question) are the same in every
 
 ## 6. Concept graph
 
-**Status: extraction done (ticket v3T01); entity resolution, retrieval and UI pending.** The V3 submission had no graph. Since then:
+**Status: extraction and entity resolution done (v3T01, v3T02); retrieval and UI pending.** The V3 submission had no graph. Since then:
 
-- done: schema, LLM extraction, validation, provenance, storage, build cost (section 7, DECISIONS D-20 to D-27);
-- pending: entity resolution and merges, graph retrieval, extraction-quality grades, the UI path;
+- done: schema, LLM extraction, validation, provenance, storage, build cost (section 7, DECISIONS D-20 to D-27); entity resolution
+  with recorded merges (D-28) and a walk over the resolved graph;
+- pending: graph retrieval, extraction-quality grades, the UI path;
 - so the required third configuration (`dense+bm25+graph`) has not been run, and the "graph's chunks after fusion" question cannot
   be answered yet.
 
@@ -277,7 +278,7 @@ own OWN-02 rank 2 → 3. The full automatic list is in `data/results/v3/summary.
 
 ## 10. Decision log and known failures
 
-`DECISIONS.md`, D-01 to D-18 (V3) and D-20 to D-27 (concept graph extraction), and its "Known failures" section. In short: BM25 returns nothing for vocabulary-mismatch questions;
+`DECISIONS.md`, D-01 to D-18 (V3), D-20 to D-27 (concept graph extraction) and D-28 (entity resolution), and its "Known failures" section. In short: BM25 returns nothing for vocabulary-mismatch questions;
 rank-only fusion lets double votes displace a correct single-retriever hit (q05); `split_answer` Recall@3 drops with BM25; `two_hop`
 Recall@5 and @10 are unchanged by BM25 (0.56, 0.72); the English-only stop-word list; no incremental BM25 update; gold chunks are found by quote matching
 (a quote cut by a chunk boundary yields no gold chunk; none occurs in our question files, checked by `tests/test_questions.py`);
