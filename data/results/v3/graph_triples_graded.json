@@ -1,0 +1,257 @@
+{
+  "meta": {
+    "seed": 42,
+    "n": 10,
+    "edges_in_graph": 49,
+    "graph_hash": "a461fb5b66bf96f8934e77e75224bb29d7ab324bf91579d3169bbf6209cb2968",
+    "graph_fingerprint": "359e5c0282635100815db15b5ed8bbc441ee04ec4178cda5dc1fecc4c9c6d2ac",
+    "build_id": "20261117-171907-137697",
+    "rules": "identifier,normalised,alias",
+    "chunk_size": "800",
+    "overlap": "10",
+    "grading_rules": "data/results/v3/graph_triples_grading_rules.md",
+    "graded_by": "",
+    "reviewed_by": ""
+  },
+  "triples": [
+    {
+      "n": 1,
+      "edge_id": 41,
+      "source": "KST-2044",
+      "source_type": "ErrorCode",
+      "source_aliases": [],
+      "relation": "escalates_to",
+      "target": "Data Integrations",
+      "target_type": "Team",
+      "target_aliases": [],
+      "evidence": [
+        {
+          "chunk_id": "support-runbook-errors_md:4",
+          "document": "support-runbook-errors.md",
+          "quote": "to Data Integrations if several customers report it for the same source type at the same time",
+          "excerpt": "ps the connection. / **Support action:** ask the customer to confirm the database is reachable from outside their network, on the host and port configured in the connector. / **Escalate:** to Data Integrations if several customers report it for the same source type at the same time. /  / ### KST-2044 — Source refused the connection /  / **User sees:** \"Your data source refused the connection from Kestrel.\" / **Cause:** the database only accepts connections from an allowlist of IP addresses, and the Kestrel ..."
+        }
+      ],
+      "grade": "",
+      "graded_chunk": "",
+      "note": "",
+      "review_note": ""
+    },
+    {
+      "n": 2,
+      "edge_id": 8,
+      "source": "Invoice",
+      "source_type": "Product",
+      "source_aliases": [],
+      "relation": "has_feature",
+      "target": "company details",
+      "target_type": "Feature",
+      "target_aliases": [],
+      "evidence": [
+        {
+          "chunk_id": "billing-policy-2026_md:2",
+          "document": "billing-policy-2026.md",
+          "quote": "The billing contact and the company details printed on invoices (name, address, VAT number)",
+          "excerpt": "... are held by our payment processor. /  / ## 4. Invoices /  / An invoice is issued for every charge and sent by e-mail to the billing contact of the workspace. Invoices can also be downloaded from **Settings → Plan → Invoices**. The billing contact and the company details printed on invoices (name, address, VAT number) can be changed by the Owner; changes apply to future invoices only. A corrected copy of a past invoice can be requested from support within 12 months of its date. /  / ## 5. Adding and removing seats /  / Seats can be added at ..."
+        }
+      ],
+      "grade": "",
+      "graded_chunk": "",
+      "note": "",
+      "review_note": ""
+    },
+    {
+      "n": 3,
+      "edge_id": 2,
+      "source": "Invoices",
+      "source_type": "Product",
+      "source_aliases": [],
+      "relation": "has_feature",
+      "target": "company details",
+      "target_type": "Feature",
+      "target_aliases": [],
+      "evidence": [
+        {
+          "chunk_id": "billing-policy-2025_md:2",
+          "document": "billing-policy-2025.md",
+          "quote": "Invoices can also be downloaded from Settings → Plan → Invoices. The billing contact and the company details printed on invoices (name, address, VAT number) can be changed by the Owner; changes apply to future invoices only.",
+          "excerpt": " We do not store full card numbers; they are held by our payment processor. /  / ## 4. Invoices /  / An invoice is issued for every charge and sent by e-mail to the billing contact of the workspace. Invoices can also be downloaded from **Settings → Plan → Invoices**. The billing contact and the company details printed on invoices (name, address, VAT number) can be changed by the Owner; changes apply to future invoices only. A corrected copy of ..."
+        }
+      ],
+      "grade": "",
+      "graded_chunk": "",
+      "note": "",
+      "review_note": ""
+    },
+    {
+      "n": 4,
+      "edge_id": 18,
+      "source": "dataset",
+      "source_type": "Product",
+      "source_aliases": [],
+      "relation": "has_feature",
+      "target": "schedule",
+      "target_type": "Feature",
+      "target_aliases": [],
+      "evidence": [
+        {
+          "chunk_id": "product-guide_md:8",
+          "document": "product-guide.md",
+          "quote": "Any dashboard can be sent as a PDF on a schedule",
+          "excerpt": "...ection 2). /  / You can see when a dataset was last refreshed by hovering over the clock icon in the corner of any tile. A red clock means the last refresh failed; the tooltip shows the error code. /  / ## 8. Scheduled reports /  / Any dashboard can be sent as a PDF on a schedule: daily, weekly or monthly. A schedule can have up to 50 recipients, wh"
+        }
+      ],
+      "grade": "",
+      "graded_chunk": "",
+      "note": "",
+      "review_note": ""
+    },
+    {
+      "n": 5,
+      "edge_id": 16,
+      "source": "Kestrel",
+      "source_type": "Product",
+      "source_aliases": [],
+      "relation": "has_feature",
+      "target": "Forgot password",
+      "target_type": "Feature",
+      "target_aliases": [],
+      "evidence": [
+        {
+          "chunk_id": "product-guide_md:7",
+          "document": "product-guide.md",
+          "quote": "To reset a forgotten password, choose **Forgot password** on the sign-in page.",
+          "excerpt": "port verifies your identity before resetting anything; this verification can take up to 2 business days. /  / To reset a forgotten password, choose **Forgot password** on the sign-in page. The reset link is valid for 1 hour. /  / ## 6. Data connectors /  / A connector stores the connection details for one data source. Kestrel supports PostgreSQL, MySQL, Google BigQuery, Snowflake, Google Sheets and CSV upload. A ..."
+        }
+      ],
+      "grade": "",
+      "graded_chunk": "",
+      "note": "",
+      "review_note": ""
+    },
+    {
+      "n": 6,
+      "edge_id": 15,
+      "source": "single sign-on",
+      "source_type": "Feature",
+      "source_aliases": [
+        "SSO",
+        "Single sign-on (SAML)"
+      ],
+      "relation": "included_in",
+      "target": "Enterprise",
+      "target_type": "Plan",
+      "target_aliases": [
+        "Enterprise plan",
+        "Enterprise plans"
+      ],
+      "evidence": [
+        {
+          "chunk_id": "product-guide_md:5",
+          "document": "product-guide.md",
+          "quote": "On the Business and Enterprise plans, workspaces can use single sign-on with any SAML 2.0 identity provider.",
+          "excerpt": "...authenticator device. /  / Admins can make two-factor authentication mandatory for every member from **Settings → Security**. Members who have not set it up are asked to do so at their next sign-in. /  / ### 5.2 Single sign-on /  / On the Business and Enterprise plans, workspaces can use single sign-on with any SAML 2.0 identity provider. To set it up, an Admin opens **Settings → Security → Single sign-on**, downloads the Kestrel service provider metadata, registers Kestrel in the identity provider, and pastes the identity provider metadata URL back into..."
+        }
+      ],
+      "grade": "",
+      "graded_chunk": "",
+      "note": "",
+      "review_note": ""
+    },
+    {
+      "n": 7,
+      "edge_id": 9,
+      "source": "Kestrel Analytics",
+      "source_type": "Product",
+      "source_aliases": [],
+      "relation": "has_feature",
+      "target": "dashboard",
+      "target_type": "Feature",
+      "target_aliases": [],
+      "evidence": [
+        {
+          "chunk_id": "product-guide_md:0",
+          "document": "product-guide.md",
+          "quote": "turn those datasets into dashboards that refresh automatically",
+          "excerpt": "... Audience: customers and workspace administrators /  / ## 1. What Kestrel does /  / Kestrel Analytics is a dashboard and business intelligence service for teams. You connect your data sources, build datasets on top of them, and turn those datasets into dashboards that refresh automatically. Dashboards can be shared with colleagues, sent as scheduled PDF reports, or embedded in your own web applications. /  / Everything in Kestrel lives inside a **workspace**. A workspace has members, connectors, datasets and ..."
+        }
+      ],
+      "grade": "",
+      "graded_chunk": "",
+      "note": "",
+      "review_note": ""
+    },
+    {
+      "n": 8,
+      "edge_id": 7,
+      "source": "Owner",
+      "source_type": "Product",
+      "source_aliases": [],
+      "relation": "has_feature",
+      "target": "billing contact",
+      "target_type": "Feature",
+      "target_aliases": [],
+      "evidence": [
+        {
+          "chunk_id": "billing-policy-2026_md:2",
+          "document": "billing-policy-2026.md",
+          "quote": "The billing contact and the company details printed on invoices (name, address, VAT number) can be changed by the Owner; changes apply to future invoices only.",
+          "excerpt": "... are held by our payment processor. /  / ## 4. Invoices /  / An invoice is issued for every charge and sent by e-mail to the billing contact of the workspace. Invoices can also be downloaded from **Settings → Plan → Invoices**. The billing contact and the company details printed on invoices (name, address, VAT number) can be changed by the Owner; changes apply to future invoices only. A corrected copy of a past invoice can be requested from support within 12 months of its date. /  / ## 5. Adding and removing seats /  / Seats can be added at any time"
+        }
+      ],
+      "grade": "",
+      "graded_chunk": "",
+      "note": "",
+      "review_note": ""
+    },
+    {
+      "n": 9,
+      "edge_id": 35,
+      "source": "single sign-on",
+      "source_type": "Feature",
+      "source_aliases": [
+        "SSO",
+        "Single sign-on (SAML)"
+      ],
+      "relation": "causes",
+      "target": "KST-1001",
+      "target_type": "ErrorCode",
+      "target_aliases": [],
+      "evidence": [
+        {
+          "chunk_id": "support-runbook-errors_md:1",
+          "document": "support-runbook-errors.md",
+          "quote": "wrong password, or the user is signing in to a workspace that enforces single sign-on",
+          "excerpt": "...ur with a workaround | Next business day | / | SEV-4 | Question, cosmetic issue | Normal queue | /  / ## Sign-in (KST-1xxx) /  / ### KST-1001 — Invalid credentials /  / **User sees:** \"The e-mail or password is incorrect.\" / **Cause:** wrong password, or the user is signing in to a workspace that enforces single sign-on. / **Support action:** check whether the workspace enforces single sign-on. If it "
+        }
+      ],
+      "grade": "",
+      "graded_chunk": "",
+      "note": "",
+      "review_note": ""
+    },
+    {
+      "n": 10,
+      "edge_id": 6,
+      "source": "Owner",
+      "source_type": "Product",
+      "source_aliases": [],
+      "relation": "has_feature",
+      "target": "Settings → Plan → Invoices",
+      "target_type": "Feature",
+      "target_aliases": [],
+      "evidence": [
+        {
+          "chunk_id": "billing-policy-2026_md:2",
+          "document": "billing-policy-2026.md",
+          "quote": "Invoices can also be downloaded from **Settings → Plan → Invoices**.",
+          "excerpt": "... Payment method**. We do not store full card or account numbers; they are held by our payment processor. /  / ## 4. Invoices /  / An invoice is issued for every charge and sent by e-mail to the billing contact of the workspace. Invoices can also be downloaded from **Settings → Plan → Invoices**. The billing contact and the company details printed on invoices (name, address, VAT number) can be changed by the Owner; changes apply to future invoices only. A corrected copy of a past invoice can be requested from su..."
+        }
+      ],
+      "grade": "",
+      "graded_chunk": "",
+      "note": "",
+      "review_note": ""
+    }
+  ]
+}
