@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -228,6 +229,15 @@ def regression_report(runs) -> str:
     return out or "\n(no comparable pairs were run)\n"
 
 
+def write_atomic(path: Path, text: str) -> None:
+    """Write to a temporary file, then rename: a UI run and a CLI run finishing together can never
+    leave a half-written summary (same pattern as the BM25 index)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def configurations_table(runs) -> str:
     """One row per configuration file: when it was run and with which settings, so a configuration
     rerun after a code change stands out instead of silently mixing with older numbers (v3T09)."""
@@ -278,10 +288,11 @@ def write_summary(runs, out_dir: Path) -> Path:
             md += f"- {corpus} / {name}: {', '.join(map(str, ids))}\n"
 
     path = out_dir / "summary.md"
-    path.write_text(md, encoding="utf-8")
-    core.save_json(out_dir / "summary.json", [
-        {"corpus": c, "configuration": n, "summary": r["summary"]} for c, n, r in runs
-    ])
+    write_atomic(path, md)
+    write_atomic(out_dir / "summary.json", json.dumps(
+        [{"corpus": c, "configuration": n, "summary": r["summary"]} for c, n, r in runs],
+        ensure_ascii=False, indent=2
+    ))
 
     return path
 
