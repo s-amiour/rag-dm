@@ -208,7 +208,7 @@ Relations by type: has_feature 18, owned_by 11, escalates_to 7, causes 5, raised
 (before D-27: 111 relations, of which has_feature 51 and included_in 27).
 
 Schema, validation, storage, model choice: DECISIONS D-20 to D-24. Prompt v1 → v2 (v1 skipped 22 of 43 chunks): D-25. Keeping the
-valid part of a failed reply: D-26. Retrieval and extraction-quality grades: not done yet (next tickets).
+valid part of a failed reply: D-26. Retrieval: section 6 (v3T03). Extraction quality: 10 graded triples, end of this section (v3T06).
 
 ### Entity resolution (ticket v3T02)
 
@@ -265,6 +265,33 @@ The walk crosses from the runbook to the service catalog and reaches the Messagi
 "Owner: **Messaging**."), the acceptance criterion of v3T02. It does not reach the Messaging row of the team table (with
 `#oncall-messaging`): that row was never extracted (known failure 13), so there is nothing to merge it with. The walk does reach the team
 table chunk, but through the wrong edge `postroom owned_by Identity` (known failure 11): a retriever must not trust a single path.
+
+### Extraction quality: 10 triples graded by hand (ticket v3T06)
+
+`python -m app.graph sample --n 10 --seed 42`: 10 of the 49 edges of the resolved graph (graph hash `a461fb5b66bf`), graded against
+their evidence chunks with rules committed before any grade (`data/results/v3/graph_triples_grading_rules.md`). Graded by Muhammad
+Saad JAVED (grades drafted with AI assistance, each checked against its chunk), reviewed by Sultan Amiour. Details:
+`data/results/v3/graph_triples_graded.md`.
+
+**Counts: correct 3 / wrong 5 / unsupported 2.** Ten triples are a sanity check, not an accuracy measure: one triple moves a rate by
+10 points.
+
+One disagreement, settled: #5 `Kestrel has_feature Forgot password` was graded correct and reviewed unsupported. The sentence never
+names Kestrel; only the guide as a whole is about it. By our rules (only the evidence chunk counts; when unsure, the worse grade) it is
+**unsupported**.
+
+What the 7 bad triples have in common: four force a relation onto something that is not a feature or not a product (#2, #3: company
+details are *printed on* invoices; #8, #10: `Owner` is a role, typed `Product`). The schema has no relation for "a role can do X" or
+"is printed on", so the model falls back on `has_feature`. One takes the wrong entity from the same section (#4: dashboards are sent on
+a schedule, not datasets). One is inferred (#5). One comes from a chunk boundary (#1, below).
+
+**One bad triple and what it cost: #1 `KST-2044 escalates_to Data Integrations`, wrong.** Chunk `support-runbook-errors_md:4`
+starts in the middle of KST-2040's section, so KST-2040's line "**Escalate:** to Data Integrations if several customers report it…"
+sits just above the `### KST-2044` heading, and the model attached it to the only error code in sight. KST-2044's own section says
+"**Escalate:** no." It is the mirror of `postroom owned_by Identity` (known failure 11): there the heading was cut at the bottom of
+the chunk, here at the top. Cost: q01 asks exactly about KST-2044, and `python -m app.graph search` for q01 follows this edge at hop 1,
+so the graph path shown in the UI tells support to escalate an error the runbook says not to escalate. The quote check (D-21, D-27)
+cannot catch it: the quote is in the chunk and names an end of the relation.
 
 ## 8. Fusion: what happened to chunks after RRF
 
