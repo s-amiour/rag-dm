@@ -1,5 +1,5 @@
 {
-  "build_id": "20261117-160445-692987",
+  "build_id": "20261117-171611-720082",
   "corpus": "kestrel",
   "chunk_size": 800,
   "overlap": 10,
@@ -14,10 +14,25 @@
   "skipped": 1,
   "errors": 0,
   "not_attempted": 0,
-  "entities": 171,
+  "entities": 166,
   "relations": 49,
-  "aliases": 1,
+  "aliases": 7,
   "raw_triples": 50,
+  "resolution": {
+    "rules": [
+      "identifier",
+      "normalised",
+      "alias"
+    ],
+    "entities_before": 171,
+    "entities_after": 166,
+    "merges": 5,
+    "by_method": {
+      "identifier": 3,
+      "normalised": 2
+    },
+    "refused": []
+  },
   "run": {
     "llm_calls": 0,
     "prompt_tokens": 0,
@@ -41,7 +56,8 @@
     "nodes_without_evidence": 0,
     "edges_without_evidence": 0,
     "dangling_edges": 0,
-    "unknown_chunk_ids": []
+    "unknown_chunk_ids": [],
+    "merges_without_method_or_evidence": 0
   },
   "state": "complete, 1 chunk(s) skipped (invalid output twice, see graph_errors)",
   "mode": "keep valid part (D-26)",

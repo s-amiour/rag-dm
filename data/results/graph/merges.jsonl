@@ -1,0 +1,5 @@
+{"id": 1, "node": "Enterprise", "type": "Plan", "merged_names": ["Enterprise plan"], "method": "identifier", "evidence_chunk_ids": ["product-guide_md:10"]}
+{"id": 2, "node": "Enterprise", "type": "Plan", "merged_names": ["Enterprise plans"], "method": "identifier", "evidence_chunk_ids": ["product-guide_md:5"]}
+{"id": 3, "node": "Free", "type": "Plan", "merged_names": ["Free plan"], "method": "identifier", "evidence_chunk_ids": ["billing-policy-2025_md:5", "billing-policy-2026_md:6"]}
+{"id": 4, "node": "single sign-on", "type": "Feature", "merged_names": ["Single sign-on (SAML)"], "method": "normalised", "evidence_chunk_ids": ["product-guide_md:1"]}
+{"id": 5, "node": "Platform", "type": "Team", "merged_names": ["Platform team"], "method": "normalised", "evidence_chunk_ids": ["support-runbook-errors_md:0"]}

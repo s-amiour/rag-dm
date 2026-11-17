@@ -60,6 +60,7 @@ python -m app.graph build --corpus kestrel --limit 3   # first 3 chunks only: ch
 python -m app.graph build --corpus kestrel             # every chunk (43 at 800/10), needs LLM_* in .env
 python -m app.graph status                             # missing / stale / fresh
 python -m app.graph check                              # integrity: every node and edge has evidence
+python -m app.graph walk KST-5031 --hops 3             # follow the edges from an entity, with evidence chunks
 ```
 
 The extraction cache lives in `data/index/` (git-ignored), so a fresh checkout pays for extraction once: about 82 calls and 5 minutes.
@@ -80,8 +81,8 @@ is still invalid, its valid entities and relations are kept and the invalid ones
 with `--strict` the whole chunk is skipped instead. A reply with nothing valid is skipped and logged. The build never stops on a bad reply. It prints chunks processed / skipped, entities, relations, LLM calls,
 tokens and wall time.
 
-- **Stored in** `data/index/graph-kestrel.sqlite` (git-ignored): tables `nodes`, `aliases`, `edges`, `evidence`. Every node and edge
-  points to `{doc, chunk_id, quote}`.
+- **Stored in** `data/index/graph-kestrel.sqlite` (git-ignored): tables `nodes`, `aliases`, `edges`, `evidence`, `merges`. Every node
+  and edge points to `{doc, chunk_id, quote}`.
 - **Rerun = free:** each chunk's extraction is cached by the hash of its text, so a rerun with unchanged documents makes **0 LLM
   calls**, and a rerun after a crash or rate limit only pays for the missing chunks. A changed document, chunking, schema or prompt
   makes the graph `stale` and re-extracts only the chunks that changed. A change of the validation rules (`VALIDATION_VERSION`)
@@ -91,7 +92,21 @@ tokens and wall time.
 - **Rate limits:** a 429 is retried with back-off. If a free tier runs out, set another key or `GRAPH_LLM_MODEL` and run the
   command again; finished chunks are not paid again.
 
-Design choices: `DECISIONS.md` D-20 (schema) to D-24 (model choice, hidden reasoning).
+### Entity resolution
+
+After extraction, the build merges nodes that are the same entity (0 LLM calls, from the cache), with three rules applied in order:
+**identifier** (error codes, IP addresses and plan names match exactly or never: KST-5031 is not KST-5038), **normalised** name
+of the same type ("the Messaging team" = "Messaging", "Inès" = "Ines"), and **alias** (a name the extraction listed as an alias). It
+never merges across types, nor the two ends of a `replaces` edge (postroom replaced mailman: two entities). Every merge is a row of the
+`merges` table and of `data/results/graph/merges.jsonl` (method + evidence chunks); merged names stay as aliases. Merges are
+reversible:
+
+```bash
+python -m app.graph build --rules none                 # the unmerged graph
+python -m app.graph build --rules identifier,normalised # any subset; default: identifier,normalised,alias
+```
+
+Design choices: `DECISIONS.md` D-20 (schema) to D-24 (model choice, hidden reasoning), D-28 (entity resolution).
 
 Integration contract, so the graph plugs into fusion, UI and evaluation: `app/graph_retriever.py` must expose
 
@@ -164,7 +179,8 @@ fake LLM, so no download and no API key are needed.
 | `app/bm25.py` | BM25 index, tokenizer, persistence |
 | `app/fusion.py` | RRF |
 | `app/retrieval.py` | retriever switches, fusion, timings, graph contract |
-| `app/graph_schema.py`, `app/graph.py` | concept graph: schema; extraction, validation, storage, build command |
+| `app/graph_schema.py`, `app/graph.py` | concept graph: schema; extraction, validation, storage, build / walk commands |
+| `app/graph_resolve.py` | entity resolution: normalisation, identifiers, merge rules |
 | `app/evaluation.py`, `app/evaluate.py` | metrics, CLI |
 | `app/main.py`, `app/static/index.html` | API and UI |
 | `data/` | corpora, questions, results (`results/v3/` = V3, `results/graph/` = graph build logs), derived indexes (`index/`, git-ignored) |
