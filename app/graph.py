@@ -172,14 +172,24 @@ def _by_key(entities: list[Entity]) -> dict[str, list[Entity]]:
 
 
 def resolve_endpoints(rel: Relation, table: dict[str, list[Entity]]) -> tuple[Entity | None, Entity | None]:
-    """Pick the source and target entities of a relation, preferring a pair of
-    types the relation allows (a name can appear with two types in one chunk)."""
-    sources = table.get(norm_key(rel.source), [])
-    targets = table.get(norm_key(rel.target), [])
-    for s in sources:
-        for t in targets:
-            if relation_allowed(rel.relation, s.type, t.type):
-                return s, t
+    """Pick the source and target entities of a relation, preferring, in order: two
+    different entities, entities whose name (not only an alias) is the one written,
+    and a pair of types the relation allows (a name can appear with two types).
+
+    Without the first two, "postroom replaces mailman" with mailman also listed as
+    an alias of postroom resolved to "postroom replaces postroom"."""
+    def candidates(written: str) -> list[Entity]:
+        found = table.get(norm_key(written), [])
+        by_name = [e for e in found if norm_key(e.name) == norm_key(written)]
+        return by_name + [e for e in found if e not in by_name]
+
+    sources, targets = candidates(rel.source), candidates(rel.target)
+    pairs = [(s, t) for s in sources for t in targets if relation_allowed(rel.relation, s.type, t.type)]
+    for s, t in pairs:
+        if s is not t:
+            return s, t
+    if pairs:
+        return pairs[0]
     return (sources[0] if sources else None), (targets[0] if targets else None)
 
 

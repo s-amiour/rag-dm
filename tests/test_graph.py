@@ -172,6 +172,16 @@ class ValidationTests(unittest.TestCase):
                            "| SCIM user provisioning | — | — | Yes |")])
         self.assertEqual(len(graph.parse_reply(ok, plans).relations), 1)
 
+    def test_relation_ends_are_found_by_name_before_alias(self):
+        raw = json.dumps({
+            "entities": [{"name": "postroom", "type": "Service", "aliases": ["mailman"]},
+                         {"name": "mailman", "type": "Service", "aliases": []}],
+            "relations": [{"source": "postroom", "relation": "replaces", "target": "mailman",
+                           "quote": "postroom replaced the older mailman service"}]})
+        ex = graph.parse_reply(raw, CATALOG)
+        src, dst = graph.resolve_endpoints(ex.relations[0], graph._by_key(ex.entities))
+        self.assertEqual((src.name, dst.name), ("postroom", "mailman"))   # was postroom -> postroom
+
     def test_entity_not_mentioned_in_chunk(self):
         self.assertRejected(reply([("ledger", "Service")], []), CATALOG, "appears in the chunk")
 
