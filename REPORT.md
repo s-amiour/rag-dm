@@ -13,7 +13,8 @@
 
 - V3 adds **BM25** (both corpora, persistent index), **RRF fusion** with every retriever switchable from the UI, the API and the
   evaluation command, and **Recall@k per hop** next to V2's HitRate@k.
-- **The concept graph is not part of this submission** (section 6). The third required configuration (`dense+bm25+graph`) was not run.
+- **Concept graph: extraction done (ticket v3T01, section 7); entity resolution, retrieval and UI pending** (section 6). The third
+  required configuration (`dense+bm25+graph`) has not been run yet.
 - **BM25 helps, but only once fusion is configured carefully.** On Kestrel, plain RRF with 30 candidates per retriever left Hit@k unchanged
   (0.50 / 0.80 / 0.90 / 1.00 at k = 1, 3, 5, 10) and lowered Recall@3 from 0.72 to 0.54. Limiting each retriever to its 10 best candidates
   (D-18) gives Hit@3 **0.90**, Hit@5 **1.00** and Recall@5 **0.79**, the best of all configurations at k = 3 and 5. It fixes
@@ -131,11 +132,12 @@ The measured costs of generation (1 LLM call per question) are the same in every
 
 ## 6. Concept graph
 
-**The concept graph is not implemented in this submission.** It was not finished in the time we had. Consequences, stated plainly:
+**Status: extraction done (ticket v3T01); entity resolution, retrieval and UI pending.** The V3 submission had no graph. Since then:
 
-- no graph build, no schema, validation, entity resolution, graph retrieval or extraction-quality grades;
-- the required third configuration (`dense+bm25+graph`) was not run; there is no graph cost, merge or triple analysis;
-- the "graph's chunks after fusion" question cannot be answered.
+- done: schema, LLM extraction, validation, provenance, storage, build cost (section 7, DECISIONS D-20 to D-27);
+- pending: entity resolution and merges, graph retrieval, extraction-quality grades, the UI path;
+- so the required third configuration (`dense+bm25+graph`) has not been run, and the "graph's chunks after fusion" question cannot
+  be answered yet.
 
 What exists and works toward it: the retriever contract (`app/retrieval.py`, README), the switches in the UI, the API and the evaluation
 command (`--retrievers dense,bm25,graph` is accepted and fails with a clear message while `app/graph_retriever.py` is absent), the graph-path
@@ -219,18 +221,18 @@ own OWN-02 rank 2 → 3. The full automatic list is in `data/results/v3/summary.
 
 ## 10. Decision log and known failures
 
-`DECISIONS.md`, D-01 to D-18, and its "Known failures" section. In short: BM25 returns nothing for vocabulary-mismatch questions;
+`DECISIONS.md`, D-01 to D-18 (V3) and D-20 to D-27 (concept graph extraction), and its "Known failures" section. In short: BM25 returns nothing for vocabulary-mismatch questions;
 rank-only fusion lets double votes displace a correct single-retriever hit (q05); `split_answer` Recall@3 drops with BM25; `two_hop`
 Recall@5 and @10 are unchanged by BM25 (0.56, 0.72); the English-only stop-word list; no incremental BM25 update; gold chunks are found by quote matching
 (a quote cut by a chunk boundary yields no gold chunk; none occurs in our question files, checked by `tests/test_questions.py`);
-the graph is missing.
+the graph is extracted but not yet used for retrieval (known failures 8 to 15 for the graph).
 
 ## 11. How to reproduce
 
 ```bash
 pip install -r requirements.txt
 cp .env.example .env                                  # LLM_* only needed to generate answers
-python -m unittest discover -s tests -t .             # 78 tests, no model download, no API key
+python -m unittest discover -s tests -t .             # all tests; no model download, no API key
 python -m app.graph build --corpus kestrel            # concept graph extraction (LLM_* in .env), section 7
 python -m app.evaluate matrix --required-only         # data/results/v3/ (summary.md = every table above)
 python -m app.evaluate run --corpus kestrel --retrievers dense --ids q01,q02,q03,q04,q05,q06,q07,q08,q09,q10   # V2 check
