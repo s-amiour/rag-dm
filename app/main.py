@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import time
@@ -234,7 +235,7 @@ def config():
     return {
         "retrievers": list(RETRIEVERS),
         "available": {
-            "dense": True,
+            "dense": importlib.util.find_spec("sentence_transformers") is not None,
             "bm25": True,
             "graph": graph_available()
         },
