@@ -4,12 +4,15 @@ The embedding model is made to fail with a patch, so no model is downloaded and
 no LLM is called (generate_answer_with_usage is replaced by a fake).
 """
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from fastapi.testclient import TestClient
 
 from app import core, main
+from app import evaluate as cli_eval
 from app.retrieval import DENSE_UNAVAILABLE
 
 FAKE_ANSWER = (json.dumps({"answer": "ok", "citations": [], "valid": True}),
@@ -31,6 +34,7 @@ class StrictDenseApiTest(unittest.TestCase):
             mock.patch.object(core, "get_embedding_model", side_effect=model_fails),
             mock.patch.object(main, "generate_answer_with_usage", return_value=FAKE_ANSWER),
             mock.patch.object(main, "save_json"),  # never write result files from a test
+            mock.patch.object(cli_eval, "DEFAULT_OUT", Path(tempfile.mkdtemp())),  # v3T08: /api/evaluate saves via the CLI path
         ]
         for p in patches:
             p.start()
