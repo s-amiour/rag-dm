@@ -337,11 +337,13 @@ def ask(req: AskRequest):
         "completion_tokens": (
             out["usage"]["completion_tokens"] + gen_usage["completion_tokens"]
         ),
-        "generation_latency_s": gen_usage["latency_s"]
+        "generation_latency_s": gen_usage["latency_s"],
+        "finish_reason": gen_usage.get("finish_reason"),
+        "thinking": gen_usage.get("thinking")
     }
 
     return {
-        "answer": answer["answer"] if valid else INVALID_ANSWER_MESSAGE,
+        "answer": answer["answer"] if valid else answer.get("user_message", INVALID_ANSWER_MESSAGE),
         "valid": valid,
         "validation_error": answer.get("error"),
         "citations": [
