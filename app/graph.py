@@ -1233,6 +1233,15 @@ def main(argv: list[str] | None = None) -> int:
                    help="seconds between LLM calls (default: GRAPH_CALL_DELAY_S or 1.0)")
     common(sub.add_parser("status", help="missing / stale / fresh"))
     common(sub.add_parser("check", help="integrity check of the stored graph"))
+    sp = sub.add_parser("sample", help="draw n triples at random from the graph, to grade by hand (v3T06)")
+    common(sp)
+    sp.add_argument("--n", type=int, default=10)
+    sp.add_argument("--seed", type=int, default=42)
+    sp.add_argument("--force", action="store_true", help="replace a sample that already has grades")
+    common(sub.add_parser("grades", help="check the graded sample and render it with the counts (v3T06)"))
+    ch = sub.add_parser("chunk", help="print a chunk in full, e.g. support-runbook-errors_md:8")
+    common(ch)
+    ch.add_argument("chunk_id")
     w = sub.add_parser("walk", help="walk the graph from an entity, e.g. KST-5031")
     common(w)
     w.add_argument("start", help="entity name or alias")
@@ -1253,11 +1262,71 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if summary["integrity"]["ok"] else 1
 
     records = core.build_chunks(args.corpus, args.chunk_size, args.overlap)
+
+    if args.cmd == "chunk":
+        found = next((r for r in records if r["id"] == args.chunk_id), None)
+        if found is None:
+            print(f"No chunk {args.chunk_id!r} at {args.chunk_size}/{args.overlap}.", file=sys.stderr)
+            return 1
+        print(f"--- {found['id']}  ({found['document']}, chunk {found['index']}, {len(found['text'])} characters)")
+        print(found["text"])
+        print("---")
+        return 0
+
     status = graph_status(args.corpus, args.chunk_size, args.overlap, records=records)
 
     if args.cmd == "status":
         print(json.dumps(status, indent=2))
         return 0
+
+    if args.cmd == "sample":
+        if status["state"] != "fresh":
+            print(f"The graph is {status['state']}: build it first (python -m app.graph build --corpus {args.corpus}).")
+            return 1
+        from . import graph_grading
+        con = connect(args.corpus)
+        try:
+            data = graph_grading.sample(con, records, args.n, args.seed)
+        finally:
+            con.close()
+        try:
+            path = graph_grading.write_sample(data, force=args.force)
+        except FileExistsError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        for t in data["triples"]:
+            print(f"{t['n']:>3}. {t['source']} -{t['relation']}-> {t['target']}   "
+                  f"[{', '.join(e['chunk_id'] for e in t['evidence'])}]")
+        print(f"\n{data['meta']['n']} of {data['meta']['edges_in_graph']} edges, seed {args.seed}, "
+              f"graph {data['meta']['graph_hash'][:12]}  ->  {path}")
+        print("Grade them with data/results/v3/graph_triples_grading_rules.md, then: python -m app.graph grades")
+        graph_grading.write_render(data, graph_grading.check(data))
+        return 0
+
+    if args.cmd == "grades":
+        from . import graph_grading
+        try:
+            data = graph_grading.load()
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        current = None
+        if status["state"] != "missing":
+            con = connect(args.corpus)
+            try:
+                current = graph_grading.graph_hash(con)
+            finally:
+                con.close()
+        result = graph_grading.check(data, current)
+        path = graph_grading.write_render(data, result)
+        c = result["counts"]
+        print(f"correct {c['correct']} / wrong {c['wrong']} / unsupported {c['unsupported']}"
+              f"   ({result['graded']} graded, {result['ungraded']} not graded)  ->  {path}")
+        for w in result["warnings"]:
+            print(f"warning: {w}")
+        for p_ in result["problems"]:
+            print(f"PROBLEM: {p_}")
+        return 1 if result["problems"] else 0
 
     if args.cmd == "walk":
         if status["state"] == "missing":
