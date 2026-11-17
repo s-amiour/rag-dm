@@ -159,7 +159,7 @@ twice-invalid reply dropped, the rest kept (D-26); a quote must name an end of i
 | Fully valid: at first try / after one retry | 3 / 5 |
 | Kept in part (invalid items dropped, D-26 and D-27) | 34 |
 | Skipped (nothing valid, in `graph_errors.jsonl`) | 1 (`product-guide_md:11`) |
-| Entities / relations / aliases | 171 / 49 / 1 |
+| Entities / relations / aliases | 166 / 49 / 7 (171 entities before resolution, below) |
 | Raw triples (before identical ones are merged) | 50 |
 | Relations dropped by the D-27 re-check (0 calls) | 62 (57 from the plans table) |
 | LLM calls behind this graph | 82 |
@@ -176,8 +176,64 @@ wrong edge, `postroom owned_by Identity`, competes with the right one. The plans
 Relations by type: has_feature 18, owned_by 11, escalates_to 7, causes 5, raised_by 4, included_in 2, replaces 1, governed_by 1
 (before D-27: 111 relations, of which has_feature 51 and included_in 27).
 
-Schema, validation, storage, model choice: DECISIONS D-20 to D-24. Prompt v1 → v2 (v1 skipped 22 of 43 chunks): D-25. Keeping the valid part of a failed reply: D-26. Entity resolution, merges, retrieval and extraction-quality grades: not done yet
-(next tickets).
+Schema, validation, storage, model choice: DECISIONS D-20 to D-24. Prompt v1 → v2 (v1 skipped 22 of 43 chunks): D-25. Keeping the
+valid part of a failed reply: D-26. Retrieval and extraction-quality grades: not done yet (next tickets).
+
+### Entity resolution (ticket v3T02)
+
+Rules identifier → normalised → alias, never across types, identifiers or `replaces` edges (DECISIONS D-28). Run from the cache with
+`python -m app.graph build --rules none` and with the default rules: 0 LLM calls each. Every merge is in
+`data/results/graph/merges.jsonl`.
+
+| | `--rules none` | default rules |
+|---|---:|---:|
+| Entities | 171 | **166** |
+| Merges (identifier / normalised / alias) | 0 | 5 (3 / 2 / 0) |
+| Refused merges | 0 | 0 |
+| Aliases | 1 | 7 |
+| Relations | 49 | 49 |
+| Integrity (incl. every merge has a method and evidence) | OK | OK |
+
+The five merges: `Enterprise plan` and `Enterprise plans` → `Enterprise`, `Free plan` → `Free` (identifier: plan names);
+`Single sign-on (SAML)` → `single sign-on`, `Platform team` → `Platform` (normalised). No rule merged two different things that we could
+find. The alias rule found nothing to merge on this graph and the mailman trap did not occur (the LLM did not list mailman as an alias of
+postroom); both are covered by unit tests, and a `replaces` edge blocks that merge if it ever happens.
+
+**A correct merge, across documents.** "Platform team" (runbook, `support-runbook-errors_md:0`) and "Platform" (service catalog) are one
+`Team` node (method `normalised`). Its evidence now spans both documents: the catalog's header ("Owner: Platform team"), the `Owner:
+**Platform**.` lines of gateway, auth and embed-svc (`service-catalog_md:2`), and the team-table row `| Platform | Samuel Okafor |
+#oncall-platform | 24/7 rotation |` (`service-catalog_md:3`). Without the merge the runbook's "Platform team" is an isolated node with
+no edge.
+
+**A missed merge, and what it cost.** "Analytics Engine" is three nodes (DECISIONS known failure 16):
+
+| Node | Edge | Why not merged |
+|---|---|---|
+| Analytics Engine (Team) | query-engine, scheduler `owned_by` it | the right node |
+| Analytics Engine (Service) | KST-3020 `escalates_to` it | the LLM typed the team as a Service; resolution never crosses types |
+| Analytics Eng (Team) | KST-3012 `escalates_to` it | the 800-character chunk boundary cuts the name in `support-runbook-errors_md:5` |
+
+Cost: `python -m app.graph walk KST-3012` and `walk KST-3020` stop after one hop, at a node with no other edge, so a graph path for
+either error never reaches the team that owns the query engine or its channel. The type constraint that causes the second miss is the one
+that keeps the role "Owner" apart from "Owner: Messaging"; we keep it and accept this miss.
+
+**The q08 chain after resolution** (`python -m app.graph walk KST-5031 --hops 2`, abridged):
+
+```
+KST-5031 (ErrorCode)   chunks: support-runbook-errors_md:7, support-runbook-errors_md:8
+    [1] KST-5031 -escalates_to-> postroom   (edge from support-runbook-errors_md:8)
+        postroom (Service)   chunks: service-catalog_md:1, service-catalog_md:2, support-runbook-errors_md:8
+        [2] postroom -owned_by-> Identity   (edge from service-catalog_md:1)
+            Identity (Team)   chunks: service-catalog_md:1, service-catalog_md:3, support-runbook-errors_md:3
+        [2] postroom -owned_by-> Messaging   (edge from service-catalog_md:2)
+            Messaging (Team)   chunks: service-catalog_md:2
+        [2] postroom -replaces-> mailman   (edge from service-catalog_md:2)
+```
+
+The walk crosses from the runbook to the service catalog and reaches the Messaging team's evidence chunk there (`service-catalog_md:2`,
+"Owner: **Messaging**."), the acceptance criterion of v3T02. It does not reach the Messaging row of the team table (with
+`#oncall-messaging`): that row was never extracted (known failure 13), so there is nothing to merge it with. The walk does reach the team
+table chunk, but through the wrong edge `postroom owned_by Identity` (known failure 11): a retriever must not trust a single path.
 
 ## 8. Fusion: what happened to chunks after RRF
 
