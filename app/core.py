@@ -71,10 +71,6 @@ def read_corpus(corpus: str) -> list[dict[str, Any]]:
         except (OSError, ValueError, TypeError):
             pass
 
-    # Default own corpus: Vellora espresso machine manual.
-    if corpus == "own" and not files:
-        files = [DOCS / "vellora-duo-espresso-machine.txt"]
-
     docs = []
 
     for path in files:
@@ -298,16 +294,18 @@ def words_for_corpus(
     size: int,
     overlap: int
 ) -> dict[str, Any]:
+    """Vocabulary of the corpus, tokenized exactly like BM25 (bm25.analyse):
+    accents folded, hyphenated identifiers kept whole and split, stop words
+    dropped. So a word missing here is a word BM25 cannot match."""
+    from . import bm25  # local import: bm25 imports core
+
     records = build_chunks(corpus, size, overlap)
     vocab: dict[str, dict[str, Any]] = {}
 
     for record in records:
         counts: dict[str, int] = {}
 
-        for word in re.findall(
-            r"[A-Za-z0-9][A-Za-z0-9'-]*",
-            record["text"].lower()
-        ):
+        for word in bm25.tokenize(record["text"]):
             counts[word] = counts.get(word, 0) + 1
 
         for word, count in counts.items():
@@ -330,6 +328,7 @@ def words_for_corpus(
 
     return {
         "chunk_count": len(records),
+        "stopwords_ignored": bm25.stopwords_enabled(),
         "vocabulary": sorted(
             vocab.values(),
             key=lambda x: (-x["occurrences"], x["word"])
@@ -343,16 +342,15 @@ def question_words(
     size: int,
     overlap: int
 ) -> dict[str, Any]:
-    vocab = words_for_corpus(corpus, size, overlap)["vocabulary"]
+    """Which of the question's BM25 tokens exist in the corpus, which do not,
+    and which stop words BM25 ignores."""
+    from . import bm25
 
+    vocab = words_for_corpus(corpus, size, overlap)["vocabulary"]
     index = {v["word"]: v for v in vocab}
 
-    words = list(dict.fromkeys(
-        re.findall(
-            r"[A-Za-z0-9][A-Za-z0-9'-]*",
-            question.lower()
-        )
-    ))
+    tokens, ignored = bm25.analyse(question)
+    words = list(dict.fromkeys(tokens))
 
     return {
         "present": [
@@ -361,7 +359,8 @@ def question_words(
         ],
         "absent": [
             word for word in words if word not in index
-        ]
+        ],
+        "ignored": list(dict.fromkeys(ignored))
     }
 
 
