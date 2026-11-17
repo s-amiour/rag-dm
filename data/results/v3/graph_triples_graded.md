@@ -1,27 +1,25 @@
 # Extraction quality: 10 graph triples graded by hand
 
-**Counts: correct 0 / wrong 0 / unsupported 0** (10 not graded yet)
+**Counts: correct 4 / wrong 5 / unsupported 1**
 
 Sample: `python -m app.graph sample --n 10 --seed 42`, 10 of 49 edges of the resolved graph (rules: identifier,normalised,alias; chunks 800/10). Graph hash `a461fb5b66bf96f8`, fingerprint `359e5c0282635100`, build `20261117-171907-137697`.
-Rules: `data/results/v3/graph_triples_grading_rules.md`. Graded by: ?. Reviewed by: ?.
+Rules: `data/results/v3/graph_triples_grading_rules.md`. Graded by: Muhammad Saad JAVED. Reviewed by: ?.
 Ten triples are a sanity check, not an accuracy measure: one triple moves a rate by 10 points.
 
-> Warning: 10 triple(s) not graded yet
-> Warning: meta.graded_by is empty
 > Warning: meta.reviewed_by is empty: a second person reviews every grade
 
 | # | Triple | Evidence chunk(s) | Quote | Grade | Graded on | Note | Review |
 |--:|---|---|---|---|---|---|---|
-| 1 | KST-2044 (ErrorCode) -**escalates_to**-> Data Integrations (Team) | `support-runbook-errors_md:4` | "to Data Integrations if several customers report it for the same source type at the same time" |  |  |  |  |
-| 2 | Invoice (Product) -**has_feature**-> company details (Feature) | `billing-policy-2026_md:2` | "The billing contact and the company details printed on invoices (name, address, VAT number)" |  |  |  |  |
-| 3 | Invoices (Product) -**has_feature**-> company details (Feature) | `billing-policy-2025_md:2` | "Invoices can also be downloaded from Settings → Plan → Invoices. The billing contact and the company details printed on invoices (name, address, VAT number) can be changed by the Owner; changes apply to future invoices only." |  |  |  |  |
-| 4 | dataset (Product) -**has_feature**-> schedule (Feature) | `product-guide_md:8` | "Any dashboard can be sent as a PDF on a schedule" |  |  |  |  |
-| 5 | Kestrel (Product) -**has_feature**-> Forgot password (Feature) | `product-guide_md:7` | "To reset a forgotten password, choose **Forgot password** on the sign-in page." |  |  |  |  |
-| 6 | single sign-on (Feature) -**included_in**-> Enterprise (Plan) | `product-guide_md:5` | "On the Business and Enterprise plans, workspaces can use single sign-on with any SAML 2.0 identity provider." |  |  |  |  |
-| 7 | Kestrel Analytics (Product) -**has_feature**-> dashboard (Feature) | `product-guide_md:0` | "turn those datasets into dashboards that refresh automatically" |  |  |  |  |
-| 8 | Owner (Product) -**has_feature**-> billing contact (Feature) | `billing-policy-2026_md:2` | "The billing contact and the company details printed on invoices (name, address, VAT number) can be changed by the Owner; changes apply to future invoices only." |  |  |  |  |
-| 9 | single sign-on (Feature) -**causes**-> KST-1001 (ErrorCode) | `support-runbook-errors_md:1` | "wrong password, or the user is signing in to a workspace that enforces single sign-on" |  |  |  |  |
-| 10 | Owner (Product) -**has_feature**-> Settings → Plan → Invoices (Feature) | `billing-policy-2026_md:2` | "Invoices can also be downloaded from **Settings → Plan → Invoices**." |  |  |  |  |
+| 1 | KST-2044 (ErrorCode) -**escalates_to**-> Data Integrations (Team) | `support-runbook-errors_md:4` | "to Data Integrations if several customers report it for the same source type at the same time" | wrong | support-runbook-errors_md:4 | The Escalate line belongs to KST-2040 (its section is cut at the chunk start); KST-2044's own section says 'Escalate: no'. |  |
+| 2 | Invoice (Product) -**has_feature**-> company details (Feature) | `billing-policy-2026_md:2` | "The billing contact and the company details printed on invoices (name, address, VAT number)" | wrong | billing-policy-2026_md:2 | The chunk says company details are printed on invoices, not that an invoice offers a feature: wrong relation. |  |
+| 3 | Invoices (Product) -**has_feature**-> company details (Feature) | `billing-policy-2025_md:2` | "Invoices can also be downloaded from Settings → Plan → Invoices. The billing contact and the company details printed on invoices (name, address, VAT number) can be changed by the Owner; changes apply to future invoices only." | wrong | billing-policy-2025_md:2 | Same as #2 (2025 policy): printed on invoices is not has_feature. 'Invoice' and 'Invoices' were not merged (no plural rule). |  |
+| 4 | dataset (Product) -**has_feature**-> schedule (Feature) | `product-guide_md:8` | "Any dashboard can be sent as a PDF on a schedule" | wrong | product-guide_md:8 | The quote says dashboards are sent on a schedule; the chunk only gives datasets a refresh frequency: wrong entity. |  |
+| 5 | Kestrel (Product) -**has_feature**-> Forgot password (Feature) | `product-guide_md:7` | "To reset a forgotten password, choose **Forgot password** on the sign-in page." | correct | product-guide_md:7 | Product guide: 'choose Forgot password on the sign-in page' (Kestrel's sign-in). Judgment call: the sentence does not name Kestrel. |  |
+| 6 | single sign-on (Feature) -**included_in**-> Enterprise (Plan) | `product-guide_md:5` | "On the Business and Enterprise plans, workspaces can use single sign-on with any SAML 2.0 identity provider." | correct | product-guide_md:5 | 'On the Business and Enterprise plans, workspaces can use single sign-on.' |  |
+| 7 | Kestrel Analytics (Product) -**has_feature**-> dashboard (Feature) | `product-guide_md:0` | "turn those datasets into dashboards that refresh automatically" | correct | product-guide_md:0 | 'Kestrel Analytics is a dashboard and business intelligence service'; dashboards are built from datasets. |  |
+| 8 | Owner (Product) -**has_feature**-> billing contact (Feature) | `billing-policy-2026_md:2` | "The billing contact and the company details printed on invoices (name, address, VAT number) can be changed by the Owner; changes apply to future invoices only." | wrong | billing-policy-2026_md:2 | The Owner can change the billing contact; Owner is a role (typed Product), not something that offers a feature: wrong entity and relation. |  |
+| 9 | single sign-on (Feature) -**causes**-> KST-1001 (ErrorCode) | `support-runbook-errors_md:1` | "wrong password, or the user is signing in to a workspace that enforces single sign-on" | correct | support-runbook-errors_md:1 | Cause of KST-1001: signing in to a workspace that enforces single sign-on; direction cause -> error is right. |  |
+| 10 | Owner (Product) -**has_feature**-> Settings → Plan → Invoices (Feature) | `billing-policy-2026_md:2` | "Invoices can also be downloaded from **Settings → Plan → Invoices**." | unsupported | billing-policy-2026_md:2 | The quote only says invoices are downloaded from that menu; nothing in the chunk links the Owner to it. |  |
 
 ## Chunk excerpts
 
