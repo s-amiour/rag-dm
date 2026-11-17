@@ -145,7 +145,35 @@ Recall@10 = 0.72 for dense and for dense+bm25. Open design decisions are listed 
 
 ## 7. The graph in numbers
 
-Not applicable (section 6).
+*V4 update (ticket v3T01, extraction).* Built with `python -m app.graph build --corpus kestrel` on Kestrel 800/10.
+Numbers below are copied from `data/results/graph/build-kestrel.json`; every call is in `data/results/graph/llm_calls.jsonl`.
+
+Model: `nvidia/nemotron-3.5-lightning-30b-a3b` on NVIDIA's endpoint, thinking off (D-24); prompt v2 (D-25); invalid items of a
+twice-invalid reply dropped, the rest kept (D-26).
+
+| | Value |
+|---|---:|
+| Chunks | 43 |
+| Valid at first try / after one retry | 4 / 9 |
+| Kept in part (invalid items dropped and logged, D-26) | 29 |
+| Skipped (nothing valid, in `graph_errors.jsonl`) | 1 (`product-guide_md:11`) |
+| Entities / relations / aliases | 171 / 111 / 1 |
+| Raw triples (before identical ones are merged) | 112 |
+| LLM calls behind this graph | 82 |
+| Prompt + completion tokens | 135,390 + 33,797 |
+| Time in LLM calls | 286.0 s (about 3.3 s per call) |
+| Rerun with unchanged documents | 0 LLM calls, 0.03 s |
+| Integrity: nodes / edges without evidence, unknown chunk ids | 0 / 0 / 0 |
+| Whole experiment (prompt v1 + v2, all runs) | 164 calls, 243,380 + 65,138 tokens, 504.6 s |
+
+Chain edges (q08, q11, q12): `KST-5031 raised_by postroom`, `KST-5031 escalates_to postroom`, `postroom owned_by Messaging`,
+`postroom replaces mailman` and `KST-6010 escalates_to Payments Core` are in the graph; `ledger owned_by Payments Core` is not
+(section cut by a chunk boundary). The last hop of q08 / q12 (the Messaging row of the team table, with its channel) is missing, and one
+wrong edge, `postroom owned_by Identity`, competes with the right one. Details: DECISIONS known failures 10 to 14.
+Relations by type: has_feature 51, included_in 27, owned_by 11, escalates_to 9, causes 6, raised_by 5, replaces 1, governed_by 1.
+
+Schema, validation, storage, model choice: DECISIONS D-20 to D-24. Prompt v1 → v2 (v1 skipped 22 of 43 chunks): D-25. Keeping the valid part of a failed reply: D-26. Entity resolution, merges, retrieval and extraction-quality grades: not done yet
+(next tickets).
 
 ## 8. Fusion: what happened to chunks after RRF
 
@@ -200,7 +228,8 @@ the graph is missing.
 ```bash
 pip install -r requirements.txt
 cp .env.example .env                                  # LLM_* only needed to generate answers
-python -m unittest discover -s tests -t .             # 54 tests, no model download
+python -m unittest discover -s tests -t .             # 78 tests, no model download, no API key
+python -m app.graph build --corpus kestrel            # concept graph extraction (LLM_* in .env), section 7
 python -m app.evaluate matrix --required-only         # data/results/v3/ (summary.md = every table above)
 python -m app.evaluate run --corpus kestrel --retrievers dense --ids q01,q02,q03,q04,q05,q06,q07,q08,q09,q10   # V2 check
 # ablations with 30 candidates:

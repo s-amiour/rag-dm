@@ -1,0 +1,54 @@
+{
+  "build_id": "20261117-152437-348640",
+  "corpus": "kestrel",
+  "chunk_size": 800,
+  "overlap": 10,
+  "schema_version": "1",
+  "prompt_version": "2",
+  "chunks": 43,
+  "extracted": 9,
+  "retried": 5,
+  "partial": 29,
+  "salvaged_from_cache": 26,
+  "cached": 34,
+  "skipped": 1,
+  "errors": 0,
+  "not_attempted": 0,
+  "entities": 171,
+  "relations": 111,
+  "aliases": 1,
+  "raw_triples": 112,
+  "run": {
+    "llm_calls": 17,
+    "prompt_tokens": 26692,
+    "completion_tokens": 4608,
+    "llm_time_s": 44.3,
+    "models": [
+      "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ]
+  },
+  "graph_total": {
+    "llm_calls": 82,
+    "prompt_tokens": 135390,
+    "completion_tokens": 33797,
+    "llm_time_s": 286.03,
+    "models": [
+      "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ]
+  },
+  "llm_options": {
+    "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "thinking": "off"
+  },
+  "wall_time_s": 46.65,
+  "integrity": {
+    "ok": true,
+    "nodes_without_evidence": 0,
+    "edges_without_evidence": 0,
+    "dangling_edges": 0,
+    "unknown_chunk_ids": []
+  },
+  "state": "complete, 1 chunk(s) skipped (invalid output twice, see graph_errors)",
+  "mode": "keep valid part (D-25)",
+  "aborted": ""
+}
