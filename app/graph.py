@@ -887,6 +887,87 @@ def graph_status(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE,
 
 
 # ---------------------------------------------------------------------------
+# Walk (input for T3, and a way to look at the graph)
+# ---------------------------------------------------------------------------
+
+def find_nodes(con, name: str) -> list[int]:
+    """Nodes called `name`, trying in order and stopping at the first that finds any:
+    a node's own name (case and spacing ignored), an alias, then the entity-resolution
+    normalisation ("the Messaging team" finds Messaging). "mailman" finds the mailman
+    node, not postroom, even though the LLM listed mailman as an alias of postroom."""
+    key, wanted = norm_key(name), graph_resolve.normalise_name(name)
+    tiers = (
+        lambda: [i for (i,) in con.execute("SELECT id FROM nodes WHERE key=?", (key,))],
+        lambda: [i for i, a in con.execute("SELECT node_id, alias FROM aliases") if norm_key(a) == key],
+        lambda: [i for i, n in con.execute("SELECT id, name FROM nodes") if graph_resolve.normalise_name(n) == wanted]
+        + [i for i, a in con.execute("SELECT node_id, alias FROM aliases") if graph_resolve.normalise_name(a) == wanted],
+    )
+    for tier in tiers:
+        ids = tier()
+        if ids:
+            return sorted(set(ids))
+    return []
+
+
+def walk(con, start: str, max_hops: int = 3) -> dict[str, Any]:
+    """Breadth-first walk from the node(s) called `start`, following edges in both
+    directions (postroom -replaces-> mailman is found from mailman too), up to
+    `max_hops`. Every reached node comes with its hop count, the edge that reached
+    it and its evidence chunks."""
+    names = {i: (n, t) for i, n, t in con.execute("SELECT id, name, type FROM nodes")}
+    chunks: dict[int, list[str]] = {}
+    for owner, chunk in con.execute("SELECT owner_id, chunk_id FROM evidence WHERE kind='node' ORDER BY chunk_id"):
+        chunks.setdefault(owner, []).append(chunk)
+    edge_chunks: dict[int, list[str]] = {}
+    for owner, chunk in con.execute("SELECT owner_id, chunk_id FROM evidence WHERE kind='edge' ORDER BY chunk_id"):
+        edge_chunks.setdefault(owner, []).append(chunk)
+    neighbours: dict[int, list[tuple[int, str, int, int]]] = {}
+    for eid, src, rel, dst in con.execute("SELECT id, source_id, relation, target_id FROM edges"):
+        neighbours.setdefault(src, []).append((dst, rel, src, eid))
+        neighbours.setdefault(dst, []).append((src, rel, src, eid))
+
+    starts = find_nodes(con, start)
+    reached = {i: {"id": i, "name": names[i][0], "type": names[i][1], "hops": 0, "via": None,
+                   "chunks": chunks.get(i, [])} for i in starts}
+    frontier = list(starts)
+    for hop in range(1, max_hops + 1):
+        nxt = []
+        for node in frontier:
+            for other, rel, src, eid in sorted(neighbours.get(node, []), key=lambda x: (x[1], names[x[0]][0])):
+                if other in reached:
+                    continue
+                arrow = (f"{names[src][0]} -{rel}-> {names[other if src == node else node][0]}")
+                reached[other] = {"id": other, "name": names[other][0], "type": names[other][1], "hops": hop,
+                                  "via": {"from": node, "edge": arrow, "chunks": edge_chunks.get(eid, [])},
+                                  "chunks": chunks.get(other, [])}
+                nxt.append(other)
+        frontier = nxt
+    return {"start": start, "found": bool(starts), "nodes": list(reached.values())}
+
+
+def format_walk(w: dict[str, Any]) -> str:
+    """The walk as a tree: each node under the node it was reached from."""
+    if not w["found"]:
+        return f"No node called {w['start']!r} (name or alias)."
+    children: dict[int | None, list[dict]] = {}
+    for n in w["nodes"]:
+        children.setdefault(n["via"]["from"] if n["via"] else None, []).append(n)
+    lines: list[str] = []
+
+    def show(n: dict, depth: int):
+        pad = "    " * depth
+        if n["via"]:
+            lines.append(f"{pad}[{n['hops']}] {n['via']['edge']}   (edge from {', '.join(n['via']['chunks'])})")
+        lines.append(f"{pad}{'    ' if n['via'] else ''}{n['name']} ({n['type']})   chunks: {', '.join(n['chunks'])}")
+        for child in children.get(n["id"], []):
+            show(child, depth + 1)
+
+    for root in children.get(None, []):
+        show(root, 0)
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Build
 # ---------------------------------------------------------------------------
 
@@ -1152,6 +1233,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="seconds between LLM calls (default: GRAPH_CALL_DELAY_S or 1.0)")
     common(sub.add_parser("status", help="missing / stale / fresh"))
     common(sub.add_parser("check", help="integrity check of the stored graph"))
+    w = sub.add_parser("walk", help="walk the graph from an entity, e.g. KST-5031")
+    common(w)
+    w.add_argument("start", help="entity name or alias")
+    w.add_argument("--hops", type=int, default=3)
 
     args = parser.parse_args(argv)
 
@@ -1173,6 +1258,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "status":
         print(json.dumps(status, indent=2))
         return 0
+
+    if args.cmd == "walk":
+        if status["state"] == "missing":
+            print("No graph built yet: python -m app.graph build --corpus kestrel")
+            return 1
+        con = connect(args.corpus)
+        try:
+            result = walk(con, args.start, args.hops)
+        finally:
+            con.close()
+        if status["state"] == "stale":
+            print("(graph is stale: rebuild it to see the current documents)")
+        print(format_walk(result))
+        return 0 if result["found"] else 1
 
     if status["state"] == "missing":
         print("No graph built yet: python -m app.graph build --corpus kestrel")

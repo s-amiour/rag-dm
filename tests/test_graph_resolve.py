@@ -213,6 +213,40 @@ class ResolvedBuildTests(GraphTestCase):
         with self.assertRaises(ValueError):
             graph.parse_rules("embedding")
 
+    def walk(self, start, hops=3):
+        con = graph.connect("kestrel")
+        try:
+            return graph.walk(con, start, hops)
+        finally:
+            con.close()
+
+    def test_walk_from_kst_5031_reaches_messaging_and_its_team_table_chunk(self):
+        # acceptance criterion: runbook -> catalog -> the Messaging team's chunk, through the merged node
+        self.build()
+        w = self.walk("KST-5031")
+        messaging = next(n for n in w["nodes"] if n["name"] == "Messaging")
+        self.assertEqual(messaging["hops"], 2)
+        self.assertIn("service-catalog_md:3", messaging["chunks"])          # only reachable after the merge
+        self.assertEqual(messaging["via"]["edge"], "postroom -owned_by-> Messaging")
+        text = graph.format_walk(w).splitlines()
+        self.assertIn("[1] KST-5031 -raised_by-> postroom", text[1])
+        # Messaging is printed under postroom (the node it was reached from), one level deeper
+        line = next(i for i, l in enumerate(text) if "postroom -owned_by-> Messaging" in l)
+        self.assertTrue(text[line].startswith("        ["))
+
+    def test_without_resolution_the_walk_stops_short(self):
+        graph.build("kestrel", records=RECORDS, llm=FakeLLM({k: list(v) for k, v in SCRIPT.items()}),
+                    delay_s=0, log=lambda *_: None, rules=())
+        messaging = next(n for n in self.walk("KST-5031")["nodes"] if n["name"] == "Messaging")
+        self.assertNotIn("service-catalog_md:3", messaging["chunks"])
+
+    def test_walk_follows_edges_backwards_and_finds_aliases(self):
+        self.build()
+        w = self.walk("mailman", hops=1)
+        self.assertEqual([n["name"] for n in w["nodes"]], ["mailman", "postroom"])
+        self.assertEqual([n["name"] for n in self.walk("the Messaging team", hops=0)["nodes"]], ["Messaging"])
+        self.assertFalse(self.walk("KST-9999")["found"])
+
     def test_integrity_flags_a_merge_without_evidence(self):
         self.build()
         con = graph.connect("kestrel")
