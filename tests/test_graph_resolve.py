@@ -1,7 +1,36 @@
 """Entity resolution (v3T02)."""
+import json
 import unittest
 
-from app import graph_resolve as gr
+from app import graph, graph_resolve as gr
+from tests.test_graph import FakeLLM, GraphTestCase, rec
+
+RUNBOOK = ("### KST-5031 - Scheduled report not delivered\n\n"
+           "**Cause:** This error is raised by postroom, the service that sends all Kestrel e-mails.\n"
+           "**Escalate:** escalate to the team that owns postroom, as SEV-2.")
+CATALOG = ("### postroom\n\nSends every e-mail.\nOwner: **Messaging**.\n\n"
+           "postroom replaced the older mailman service; old alerts that mention mailman refer to postroom today.")
+TEAMS = "| Team | On-call channel |\n|---|---|\n| the Messaging team | #oncall-messaging |"
+RECORDS = [rec("support-runbook-errors.md", 8, RUNBOOK), rec("service-catalog.md", 2, CATALOG),
+           rec("service-catalog.md", 3, TEAMS)]
+
+
+def answer(entities, relations):
+    return json.dumps({"entities": [{"name": n, "type": t, "aliases": a} for n, t, a in entities],
+                       "relations": [{"source": s, "relation": r, "target": o, "quote": q} for s, r, o, q in relations]})
+
+
+SCRIPT = {
+    "support-runbook-errors_md:8": [answer(
+        [("KST-5031", "ErrorCode", []), ("postroom", "Service", [])],
+        [("KST-5031", "raised_by", "postroom", "This error is raised by postroom")])],
+    "service-catalog_md:2": [answer(
+        # the trap: mailman listed as an alias of postroom AND a replaces edge between them
+        [("postroom", "Service", ["mailman"]), ("Messaging", "Team", []), ("mailman", "Service", [])],
+        [("postroom", "owned_by", "Messaging", "Owner: **Messaging**."),
+         ("postroom", "replaces", "mailman", "postroom replaced the older mailman service")])],
+    "service-catalog_md:3": [answer([("the Messaging team", "Team", [])], [])],
+}
 
 
 class NormaliseTests(unittest.TestCase):
@@ -121,6 +150,52 @@ class ResolveTests(unittest.TestCase):
     def test_unknown_rule(self):
         with self.assertRaises(ValueError):
             gr.resolve({}, rules=("embedding",))
+
+
+class ResolvedBuildTests(GraphTestCase):
+    def build(self, **kw):
+        return graph.build("kestrel", records=RECORDS, llm=FakeLLM({k: list(v) for k, v in SCRIPT.items()}),
+                           delay_s=0, log=lambda *_: None, **kw)
+
+    def test_counts_merges_table_and_aliases(self):
+        s = self.build()
+        r = s["resolution"]
+        self.assertEqual((r["entities_before"], r["entities_after"], r["merges"]), (5, 4, 1))
+        self.assertEqual(s["entities"], 4)
+        self.assertTrue(s["integrity"]["ok"], s["integrity"])
+        rows = self.query("SELECT n.name, m.merged_names, m.method, m.evidence_chunk_ids FROM merges m "
+                          "JOIN nodes n ON n.id = m.node_id")
+        self.assertEqual(rows, [("Messaging", '["the Messaging team"]', "normalised", '["service-catalog_md:3"]')])
+        aliases = self.query("SELECT a.alias, a.chunk_id FROM aliases a JOIN nodes n ON n.id=a.node_id "
+                             "WHERE n.name='Messaging'")
+        self.assertEqual(aliases, [("the Messaging team", "service-catalog_md:3")])   # still searchable for T3
+        exported = (graph.RESULTS_DIR / "merges.jsonl").read_text(encoding="utf-8")
+        self.assertIn('"method": "normalised"', exported)
+        self.assertIn("resolution         5 -> 4 entities", graph.format_summary(s))
+
+    def test_messaging_node_keeps_the_evidence_of_both_names(self):
+        self.build()
+        chunks = self.query("SELECT e.chunk_id FROM evidence e JOIN nodes n ON e.kind='node' AND e.owner_id=n.id "
+                            "WHERE n.name='Messaging' ORDER BY e.chunk_id")
+        self.assertEqual([c[0] for c in chunks], ["service-catalog_md:2", "service-catalog_md:3"])
+
+    def test_mailman_stays_a_separate_node(self):
+        s = self.build()
+        names = {n for (n,) in self.query("SELECT name FROM nodes WHERE type='Service'")}
+        self.assertEqual(names, {"postroom", "mailman"})
+        self.assertEqual(s["resolution"]["refused"][0]["reason"], "linked by a replaces edge")
+        edge = self.query("SELECT n1.name, e.relation, n2.name FROM edges e JOIN nodes n1 ON n1.id=e.source_id "
+                          "JOIN nodes n2 ON n2.id=e.target_id WHERE e.relation='replaces'")
+        self.assertEqual(edge, [("postroom", "replaces", "mailman")])
+
+    def test_integrity_flags_a_merge_without_evidence(self):
+        self.build()
+        con = graph.connect("kestrel")
+        con.execute("UPDATE merges SET evidence_chunk_ids='[]'")
+        con.commit()
+        result = graph.check_integrity(con, RECORDS)
+        con.close()
+        self.assertEqual((result["ok"], result["merges_without_method_or_evidence"]), (False, 1))
 
 
 if __name__ == "__main__":

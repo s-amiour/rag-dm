@@ -50,6 +50,7 @@ from pydantic import (
 )
 
 from . import core
+from . import graph_resolve
 from .graph_schema import (
     ENTITY_TYPES,
     RELATIONS,
@@ -58,6 +59,7 @@ from .graph_schema import (
     schema_prompt,
 )
 
+RESOLUTION_VERSION = "1"      # bump when entity resolution changes (graph rebuilt from the cache, 0 calls)
 VALIDATION_VERSION = "2"      # bump when the validation rules change: the graph is re-checked from the cache, 0 calls (D-27)
 PROMPT_VERSION = "2"          # bump when the prompt below changes (invalidates the cache). v1 -> v2: DECISIONS D-25
 GRAPH_CORPORA = ("kestrel",)
@@ -97,7 +99,8 @@ def chunk_hash(text: str) -> str:
 
 def graph_fingerprint(records: list[dict[str, Any]]) -> str:
     return core.records_fingerprint(
-        records, extra=f"graph|schema={SCHEMA_VERSION}|prompt={PROMPT_VERSION}|validation={VALIDATION_VERSION}"
+        records, extra=(f"graph|schema={SCHEMA_VERSION}|prompt={PROMPT_VERSION}|validation={VALIDATION_VERSION}"
+                        f"|resolution={RESOLUTION_VERSION}")
     )
 
 
@@ -684,6 +687,13 @@ CREATE TABLE IF NOT EXISTS edges (
     target_id INTEGER NOT NULL REFERENCES nodes(id),
     UNIQUE (source_id, relation, target_id)
 );
+CREATE TABLE IF NOT EXISTS merges (       -- entity resolution (v3T02): one row per merge
+    id INTEGER PRIMARY KEY,
+    node_id INTEGER NOT NULL REFERENCES nodes(id),  -- the surviving node
+    merged_names TEXT NOT NULL,                     -- JSON list: names of the nodes it absorbed
+    method TEXT NOT NULL,                           -- identifier | normalised | alias
+    evidence_chunk_ids TEXT NOT NULL                -- JSON list: chunks where the absorbed names appear
+);
 CREATE TABLE IF NOT EXISTS evidence (
     kind TEXT NOT NULL,                 -- node | edge
     owner_id INTEGER NOT NULL, doc TEXT NOT NULL, chunk_id TEXT NOT NULL, quote TEXT NOT NULL,
@@ -741,48 +751,96 @@ def _save_chunk_result(con, build_id: str, record, result: ChunkResult):
     con.commit()  # per chunk: a crash or Ctrl+C loses at most the current chunk
 
 
-def _rebuild_graph(con, records, extractions: dict[str, ChunkExtraction], meta: dict[str, str]) -> int:
-    """Replace nodes/aliases/edges/evidence with what the current chunks say.
-    Returns the number of raw triples (before identical ones are merged)."""
-    con.execute("DELETE FROM evidence")
-    con.execute("DELETE FROM aliases")
-    con.execute("DELETE FROM edges")
-    con.execute("DELETE FROM nodes")
-    con.execute("DELETE FROM meta")
+def _rebuild_graph(con, records, extractions: dict[str, ChunkExtraction], meta: dict[str, str],
+                   rules: tuple[str, ...] = graph_resolve.RULES) -> dict[str, Any]:
+    """Replace nodes/aliases/edges/evidence/merges with what the current chunks say.
 
-    def node_id(entity: Entity) -> int:
-        key = norm_key(entity.name)
-        con.execute("INSERT OR IGNORE INTO nodes (name, type, key) VALUES (?,?,?)", (entity.name, entity.type, key))
-        return con.execute("SELECT id FROM nodes WHERE type=? AND key=?", (entity.type, key)).fetchone()[0]
+    1. T1 nodes: one per (type, name), case and spacing ignored.
+    2. Entity resolution (graph_resolve) clusters them with the rules switched on.
+    3. One node per cluster, named by the name most chunks use; every other name it
+       was written as becomes an alias (searchable by T3); every merge is a row in
+       `merges`. rules=() gives the T1 graph back.
+    """
+    for table in ("evidence", "aliases", "edges", "merges", "nodes", "meta"):
+        con.execute(f"DELETE FROM {table}")
 
-    def evidence(kind, owner, record, quote):
-        con.execute("INSERT OR IGNORE INTO evidence VALUES (?,?,?,?,?)",
-                    (kind, owner, record["document"], record["id"], quote))
+    surfaces: dict[tuple[str, str], graph_resolve.Surface] = {}
+    mentions = []     # (ref, record, entity)
+    alias_links = []  # (ref, alias, chunk id)
+    triples = []      # (source ref, relation, target ref, record, quote)
 
-    raw_triples = 0
+    def ref_of(entity: Entity) -> tuple[str, str]:
+        return (entity.type, norm_key(entity.name))
+
     for record in records:
         ex = extractions.get(record["id"])
         if ex is None:
             continue
         for e in ex.entities:
-            nid = node_id(e)
-            evidence("node", nid, record, mention_line(record["text"], e.names()))
-            for alias in e.aliases:
-                if norm_key(alias) != norm_key(e.name):
-                    con.execute("INSERT OR IGNORE INTO aliases VALUES (?,?,?)", (nid, alias, record["id"]))
+            ref = ref_of(e)
+            surface = surfaces.setdefault(ref, graph_resolve.Surface(*ref))
+            surface.names[e.name] = surface.names.get(e.name, 0) + 1
+            surface.chunks.add(record["id"])
+            mentions.append((ref, record, e))
+            alias_links += [(ref, a, record["id"]) for a in e.aliases if norm_key(a) != ref[1]]
         table = _by_key(ex.entities)
         for r in ex.relations:
-            s, t = resolve_endpoints(r, table)
-            con.execute("INSERT OR IGNORE INTO edges (source_id, relation, target_id) VALUES (?,?,?)",
-                        (node_id(s), r.relation, node_id(t)))
-            eid = con.execute("SELECT id FROM edges WHERE source_id=? AND relation=? AND target_id=?",
-                              (node_id(s), r.relation, node_id(t))).fetchone()[0]
-            evidence("edge", eid, record, r.quote)
-            raw_triples += 1
+            src, dst = resolve_endpoints(r, table)
+            triples.append((ref_of(src), r.relation, ref_of(dst), record, r.quote))
 
-    con.executemany("INSERT INTO meta VALUES (?,?)", list(meta.items()))
+    res = graph_resolve.resolve(
+        surfaces, alias_links, rules,
+        never_merge=graph_resolve.replaces_pairs([(a, rel, b) for a, rel, b, _, _ in triples]),
+    )
+
+    node_id: dict[tuple[str, str], int] = {}
+    node_name: dict[int, str] = {}
+    for rep in res.clusters:
+        name = res.canonical_name(rep, surfaces)
+        nid = con.execute("INSERT INTO nodes (name, type, key) VALUES (?,?,?)",
+                          (name, rep[0], norm_key(name))).lastrowid
+        node_name[nid] = name
+        for ref in res.clusters[rep]:
+            node_id[ref] = nid
+
+    def evidence(kind, owner, record, quote):
+        con.execute("INSERT OR IGNORE INTO evidence VALUES (?,?,?,?,?)",
+                    (kind, owner, record["document"], record["id"], quote))
+
+    for ref, record, e in mentions:
+        nid = node_id[ref]
+        evidence("node", nid, record, mention_line(record["text"], e.names()))
+        for written in e.names():  # every other way it was written stays searchable
+            if norm_key(written) != norm_key(node_name[nid]):
+                con.execute("INSERT OR IGNORE INTO aliases VALUES (?,?,?)", (nid, written, record["id"]))
+
+    for src, relation, dst, record, quote in triples:
+        con.execute("INSERT OR IGNORE INTO edges (source_id, relation, target_id) VALUES (?,?,?)",
+                    (node_id[src], relation, node_id[dst]))
+        eid = con.execute("SELECT id FROM edges WHERE source_id=? AND relation=? AND target_id=?",
+                          (node_id[src], relation, node_id[dst])).fetchone()[0]
+        evidence("edge", eid, record, quote)
+
+    for m in res.merges:
+        con.execute(
+            "INSERT INTO merges (node_id, merged_names, method, evidence_chunk_ids) VALUES (?,?,?,?)",
+            (node_id[m["into"]], json.dumps(graph_resolve._names(m["absorbed"], surfaces), ensure_ascii=False),
+             m["method"], json.dumps(m["chunks"])),
+        )
+
+    con.executemany("INSERT INTO meta VALUES (?,?)", [*meta.items(), ("rules", ",".join(rules) or "none")])
     con.commit()
-    return raw_triples
+
+    by_method: dict[str, int] = {}
+    for m in res.merges:
+        by_method[m["method"]] = by_method.get(m["method"], 0) + 1
+    return {
+        "raw_triples": len(triples),
+        "resolution": {
+            "rules": list(rules), "entities_before": len(surfaces), "entities_after": len(res.clusters),
+            "merges": len(res.merges), "by_method": by_method, "refused": res.refused,
+        },
+    }
 
 
 def check_integrity(con, records) -> dict[str, Any]:
@@ -797,9 +855,16 @@ def check_integrity(con, records) -> dict[str, Any]:
         "SELECT COUNT(*) FROM edges g WHERE g.source_id NOT IN (SELECT id FROM nodes) "
         "OR g.target_id NOT IN (SELECT id FROM nodes)").fetchone()[0]
     unknown = sorted({row[0] for row in con.execute("SELECT DISTINCT chunk_id FROM evidence")} - ids)
-    ok = nodes_wo == 0 and edges_wo == 0 and dangling == 0 and not unknown
+    bad_merges = 0
+    for method, chunks in con.execute("SELECT method, evidence_chunk_ids FROM merges"):
+        listed = json.loads(chunks or "[]")
+        if method not in graph_resolve.RULES or not listed:
+            bad_merges += 1
+        unknown = sorted(set(unknown) | (set(listed) - ids))
+    ok = nodes_wo == 0 and edges_wo == 0 and dangling == 0 and not unknown and bad_merges == 0
     return {"ok": ok, "nodes_without_evidence": nodes_wo, "edges_without_evidence": edges_wo,
-            "dangling_edges": dangling, "unknown_chunk_ids": unknown}
+            "dangling_edges": dangling, "unknown_chunk_ids": unknown,
+            "merges_without_method_or_evidence": bad_merges}
 
 
 def graph_status(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE,
@@ -838,7 +903,8 @@ def _cost(con, where: str, params=()) -> dict[str, Any]:
 def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP,
           llm: LLM | None = None, records: list[dict[str, Any]] | None = None,
           retry_skipped: bool = False, limit: int | None = None,
-          delay_s: float | None = None, log=None, strict: bool = False) -> dict[str, Any]:
+          delay_s: float | None = None, log=None, strict: bool = False,
+          rules: tuple[str, ...] = graph_resolve.RULES) -> dict[str, Any]:
     """Extract (or reuse) every chunk, rebuild the graph, check it, export the logs."""
     if corpus not in GRAPH_CORPORA:
         raise ValueError(f"The concept graph is only built for: {', '.join(GRAPH_CORPORA)}.")
@@ -935,7 +1001,8 @@ def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap
             "prompt_version": PROMPT_VERSION, "built_at": _now(), "build_id": build_id,
             "chunks": str(len(records)), "chunks_missing": str(missing),
         }
-        raw_triples = _rebuild_graph(con, records, extractions, meta)
+        rebuilt = _rebuild_graph(con, records, extractions, meta, rules)
+        raw_triples = rebuilt["raw_triples"]
         integrity = check_integrity(con, records)
 
         hashes = [chunk_hash(r["text"]) for r in records]
@@ -957,6 +1024,7 @@ def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap
             "relations": con.execute("SELECT COUNT(*) FROM edges").fetchone()[0],
             "aliases": con.execute("SELECT COUNT(*) FROM aliases").fetchone()[0],
             "raw_triples": raw_triples,
+            "resolution": rebuilt["resolution"],
             "run": run_cost, "graph_total": graph_cost, "llm_options": llm_options,
             "wall_time_s": round(time.perf_counter() - started, 2),
             "integrity": integrity,
@@ -997,9 +1065,20 @@ def _export(con, summary: dict[str, Any]):
     with open(RESULTS_DIR / "llm_calls.jsonl", "w", encoding="utf-8") as f:
         for row in con.execute("SELECT * FROM llm_calls ORDER BY id"):
             f.write(json.dumps(dict(row), ensure_ascii=False) + "\n")
+    with open(RESULTS_DIR / "merges.jsonl", "w", encoding="utf-8") as f:
+        for row in con.execute("SELECT m.id, n.name AS node, n.type, m.merged_names, m.method, m.evidence_chunk_ids "
+                               "FROM merges m JOIN nodes n ON n.id = m.node_id ORDER BY m.id"):
+            f.write(json.dumps({**dict(row), "merged_names": json.loads(row["merged_names"]),
+                                "evidence_chunk_ids": json.loads(row["evidence_chunk_ids"])}, ensure_ascii=False) + "\n")
     with open(RESULTS_DIR / "graph_errors.jsonl", "w", encoding="utf-8") as f:
         for row in con.execute("SELECT * FROM graph_errors ORDER BY id"):
             f.write(json.dumps(dict(row), ensure_ascii=False) + "\n")
+
+
+def _resolution_line(r: dict[str, Any]) -> str:
+    methods = ", ".join(f"{k} {v}" for k, v in sorted(r["by_method"].items())) or "none"
+    return (f"  resolution         {r['entities_before']} -> {r['entities_after']} entities, {r['merges']} merge(s) "
+            f"({methods}), {len(r['refused'])} refused; rules: {','.join(r['rules']) or 'none'}")
 
 
 def format_summary(s: dict[str, Any]) -> str:
@@ -1017,6 +1096,7 @@ def format_summary(s: dict[str, Any]) -> str:
            f"no longer pass the current rules: dropped (0 calls, details in build-<corpus>.json)"]
           if s.get("rechecked", {}).get("chunks") else []),
         f"  entities           {s['entities']}  (aliases {s['aliases']})",
+        *([_resolution_line(s["resolution"])] if s.get("resolution") else []),
         f"  relations          {s['relations']}  (raw triples {s['raw_triples']})",
         f"  LLM calls (run)    {run['llm_calls']}  tokens: prompt {run['prompt_tokens']}, "
         f"completion {run['completion_tokens']}  models: {', '.join(run['models']) or '-'}"
@@ -1026,10 +1106,11 @@ def format_summary(s: dict[str, Any]) -> str:
         f"  wall time          {s['wall_time_s']} s",
         f"  integrity          {integ_text}: {integ['nodes_without_evidence']} nodes / {integ['edges_without_evidence']} "
         f"edges without evidence, {integ['dangling_edges']} dangling edges, "
-        f"{len(integ['unknown_chunk_ids'])} unknown chunk ids",
+        f"{len(integ['unknown_chunk_ids'])} unknown chunk ids, "
+        f"{integ.get('merges_without_method_or_evidence', 0)} merges without method or evidence",
         *( [f"  STOPPED EARLY      {s['aborted'][:200]}"] if s.get("aborted") else [] ),
         f"  logs               {RESULTS_DIR.relative_to(core.ROOT) if RESULTS_DIR.is_relative_to(core.ROOT) else RESULTS_DIR}"
-        "/ (build-<corpus>.json, llm_calls.jsonl, graph_errors.jsonl)",
+        "/ (build-<corpus>.json, llm_calls.jsonl, graph_errors.jsonl, merges.jsonl)",
     ]
     return "\n".join(lines)
 
