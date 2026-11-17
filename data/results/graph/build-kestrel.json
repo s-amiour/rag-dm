@@ -1,0 +1,132 @@
+{
+  "build_id": "20261117-160445-692987",
+  "corpus": "kestrel",
+  "chunk_size": 800,
+  "overlap": 10,
+  "schema_version": "1",
+  "prompt_version": "2",
+  "chunks": 43,
+  "extracted": 0,
+  "retried": 0,
+  "partial": 34,
+  "salvaged_from_cache": 0,
+  "cached": 43,
+  "skipped": 1,
+  "errors": 0,
+  "not_attempted": 0,
+  "entities": 171,
+  "relations": 49,
+  "aliases": 1,
+  "raw_triples": 50,
+  "run": {
+    "llm_calls": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "llm_time_s": 0,
+    "models": []
+  },
+  "graph_total": {
+    "llm_calls": 82,
+    "prompt_tokens": 135390,
+    "completion_tokens": 33797,
+    "llm_time_s": 286.03,
+    "models": [
+      "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ]
+  },
+  "llm_options": {},
+  "wall_time_s": 0.1,
+  "integrity": {
+    "ok": true,
+    "nodes_without_evidence": 0,
+    "edges_without_evidence": 0,
+    "dangling_edges": 0,
+    "unknown_chunk_ids": []
+  },
+  "state": "complete, 1 chunk(s) skipped (invalid output twice, see graph_errors)",
+  "mode": "keep valid part (D-26)",
+  "aborted": "",
+  "validation_version": "2",
+  "rechecked": {
+    "chunks": 7,
+    "items_dropped": 62,
+    "details": {
+      "product-guide_md:0": [
+        "relations[2] (Kestrel Analytics -has_feature-> connectors): the quote names neither 'Kestrel Analytics' nor 'connectors': quote the sentence or table row that mentions them"
+      ],
+      "product-guide_md:1": [
+        "relations[0] (data connectors -included_in-> Free): the quote names neither 'data connectors' nor 'Free': quote the sentence or table row that mentions them",
+        "relations[1] (data connectors -included_in-> Starter): the quote names neither 'data connectors' nor 'Starter': quote the sentence or table row that mentions them",
+        "relations[2] (data connectors -included_in-> Team): the quote names neither 'data connectors' nor 'Team': quote the sentence or table row that mentions them",
+        "relations[3] (data connectors -included_in-> Business): the quote names neither 'data connectors' nor 'Business': quote the sentence or table row that mentions them",
+        "relations[4] (data connectors -included_in-> Enterprise): the quote names neither 'data connectors' nor 'Enterprise': quote the sentence or table row that mentions them",
+        "relations[5] (Dashboards -included_in-> Free): the quote names neither 'Dashboards' nor 'Free': quote the sentence or table row that mentions them",
+        "relations[6] (Dashboards -included_in-> Starter): the quote names neither 'Dashboards' nor 'Starter': quote the sentence or table row that mentions them",
+        "relations[7] (Dashboards -included_in-> Team): the quote names neither 'Dashboards' nor 'Team': quote the sentence or table row that mentions them",
+        "relations[8] (Dashboards -included_in-> Business): the quote names neither 'Dashboards' nor 'Business': quote the sentence or table row that mentions them",
+        "relations[9] (Dashboards -included_in-> Enterprise): the quote names neither 'Dashboards' nor 'Enterprise': quote the sentence or table row that mentions them",
+        "relations[10] (History kept -included_in-> Free): the quote names neither 'History kept' nor 'Free': quote the sentence or table row that mentions them",
+        "relations[11] (History kept -included_in-> Starter): the quote names neither 'History kept' nor 'Starter': quote the sentence or table row that mentions them",
+        "relations[12] (History kept -included_in-> Team): the quote names neither 'History kept' nor 'Team': quote the sentence or table row that mentions them",
+        "relations[13] (History kept -included_in-> Business): the quote names neither 'History kept' nor 'Business': quote the sentence or table row that mentions them",
+        "relations[14] (History kept -included_in-> Enterprise): the quote names neither 'History kept' nor 'Enterprise': quote the sentence or table row that mentions them",
+        "relations[15] (Fastest refresh -included_in-> Free): the quote names neither 'Fastest refresh' nor 'Free': quote the sentence or table row that mentions them",
+        "relations[16] (Fastest refresh -included_in-> Starter): the quote names neither 'Fastest refresh' nor 'Starter': quote the sentence or table row that mentions them",
+        "relations[17] (Fastest refresh -included_in-> Team): the quote names neither 'Fastest refresh' nor 'Team': quote the sentence or table row that mentions them",
+        "relations[18] (Fastest refresh -included_in-> Business): the quote names neither 'Fastest refresh' nor 'Business': quote the sentence or table row that mentions them",
+        "relations[19] (Fastest refresh -included_in-> Enterprise): the quote names neither 'Fastest refresh' nor 'Enterprise': quote the sentence or table row that mentions them",
+        "relations[20] (Seats included -included_in-> Free): the quote names neither 'Seats included' nor 'Free': quote the sentence or table row that mentions them",
+        "relations[21] (Seats included -included_in-> Starter): the quote names neither 'Seats included' nor 'Starter': quote the sentence or table row that mentions them",
+        "relations[22] (Seats included -included_in-> Team): the quote names neither 'Seats included' nor 'Team': quote the sentence or table row that mentions them",
+        "relations[23] (Seats included -included_in-> Business): the quote names neither 'Seats included' nor 'Business': quote the sentence or table row that mentions them",
+        "relations[24] (Seats included -included_in-> Enterprise): the quote names neither 'Seats included' nor 'Enterprise': quote the sentence or table row that mentions them",
+        "relations[25] (Business -has_feature-> data connectors): the quote names neither 'Business' nor 'data connectors': quote the sentence or table row that mentions them",
+        "relations[26] (Business -has_feature-> Dashboards): the quote names neither 'Business' nor 'Dashboards': quote the sentence or table row that mentions them",
+        "relations[27] (Business -has_feature-> History kept): the quote names neither 'Business' nor 'History kept': quote the sentence or table row that mentions them",
+        "relations[28] (Business -has_feature-> Fastest refresh): the quote names neither 'Business' nor 'Fastest refresh': quote the sentence or table row that mentions them",
+        "relations[29] (Business -has_feature-> Single sign-on (SAML)): the quote names neither 'Business' nor 'Single sign-on (SAML)': quote the sentence or table row that mentions them",
+        "relations[30] (Business -has_feature-> SCIM user provisioning): the quote names neither 'Business' nor 'SCIM user provisioning': quote the sentence or table row that mentions them",
+        "relations[31] (Business -has_feature-> Audit log): the quote names neither 'Business' nor 'Audit log': quote the sentence or table row that mentions them",
+        "relations[32] (Business -has_feature-> Seats included): the quote names neither 'Business' nor 'Seats included': quote the sentence or table row that mentions them",
+        "relations[33] (Enterprise -has_feature-> data connectors): the quote names neither 'Enterprise' nor 'data connectors': quote the sentence or table row that mentions them",
+        "relations[34] (Enterprise -has_feature-> Dashboards): the quote names neither 'Enterprise' nor 'Dashboards': quote the sentence or table row that mentions them",
+        "relations[35] (Enterprise -has_feature-> History kept): the quote names neither 'Enterprise' nor 'History kept': quote the sentence or table row that mentions them",
+        "relations[36] (Enterprise -has_feature-> Fastest refresh): the quote names neither 'Enterprise' nor 'Fastest refresh': quote the sentence or table row that mentions them",
+        "relations[37] (Enterprise -has_feature-> Single sign-on (SAML)): the quote names neither 'Enterprise' nor 'Single sign-on (SAML)': quote the sentence or table row that mentions them",
+        "relations[38] (Enterprise -has_feature-> SCIM user provisioning): the quote names neither 'Enterprise' nor 'SCIM user provisioning': quote the sentence or table row that mentions them",
+        "relations[39] (Enterprise -has_feature-> Audit log): the quote names neither 'Enterprise' nor 'Audit log': quote the sentence or table row that mentions them",
+        "relations[40] (Enterprise -has_feature-> Seats included): the quote names neither 'Enterprise' nor 'Seats included': quote the sentence or table row that mentions them",
+        "relations[41] (Free -has_feature-> data connectors): the quote names neither 'Free' nor 'data connectors': quote the sentence or table row that mentions them",
+        "relations[42] (Free -has_feature-> Dashboards): the quote names neither 'Free' nor 'Dashboards': quote the sentence or table row that mentions them",
+        "relations[43] (Free -has_feature-> History kept): the quote names neither 'Free' nor 'History kept': quote the sentence or table row that mentions them",
+        "relations[44] (Free -has_feature-> Fastest refresh): the quote names neither 'Free' nor 'Fastest refresh': quote the sentence or table row that mentions them",
+        "relations[45] (Free -has_feature-> Seats included): the quote names neither 'Free' nor 'Seats included': quote the sentence or table row that mentions them",
+        "relations[46] (Starter -has_feature-> data connectors): the quote names neither 'Starter' nor 'data connectors': quote the sentence or table row that mentions them",
+        "relations[47] (Starter -has_feature-> Dashboards): the quote names neither 'Starter' nor 'Dashboards': quote the sentence or table row that mentions them",
+        "relations[48] (Starter -has_feature-> History kept): the quote names neither 'Starter' nor 'History kept': quote the sentence or table row that mentions them",
+        "relations[49] (Starter -has_feature-> Fastest refresh): the quote names neither 'Starter' nor 'Fastest refresh': quote the sentence or table row that mentions them",
+        "relations[50] (Starter -has_feature-> Seats included): the quote names neither 'Starter' nor 'Seats included': quote the sentence or table row that mentions them",
+        "relations[51] (Team -has_feature-> data connectors): the quote names neither 'Team' nor 'data connectors': quote the sentence or table row that mentions them",
+        "relations[52] (Team -has_feature-> Dashboards): the quote names neither 'Team' nor 'Dashboards': quote the sentence or table row that mentions them",
+        "relations[53] (Team -has_feature-> History kept): the quote names neither 'Team' nor 'History kept': quote the sentence or table row that mentions them",
+        "relations[54] (Team -has_feature-> Fastest refresh): the quote names neither 'Team' nor 'Fastest refresh': quote the sentence or table row that mentions them",
+        "relations[55] (Team -has_feature-> Seats included): the quote names neither 'Team' nor 'Seats included': quote the sentence or table row that mentions them"
+      ],
+      "service-catalog_md:1": [
+        "relations[0] (connector-hub -has_feature-> e sign-on (SAML)): the quote names neither 'connector-hub' nor 'e sign-on (SAML)': quote the sentence or table row that mentions them"
+      ],
+      "support-runbook-errors_md:1": [
+        "relations[1] (KST-1001 -escalates_to-> on-call): the quote names neither 'KST-1001' nor 'on-call': quote the sentence or table row that mentions them"
+      ],
+      "support-runbook-errors_md:5": [
+        "relations[1] (KST-2051 -escalates_to-> Analytics Eng): the quote names neither 'KST-2051' nor 'Analytics Eng': quote the sentence or table row that mentions them"
+      ],
+      "support-runbook-errors_md:6": [
+        "relations[0] (KST-3020 -raised_by-> Analytics Engine): the quote names neither 'KST-3020' nor 'Analytics Engine': quote the sentence or table row that mentions them"
+      ],
+      "support-runbook-errors_md:10": [
+        "relations[1] (Duplicate charge detected -causes-> KST-6010): the quote names neither 'Duplicate charge detected' nor 'KST-6010': quote the sentence or table row that mentions them"
+      ]
+    }
+  }
+}
