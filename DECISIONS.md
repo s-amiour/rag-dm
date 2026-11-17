@@ -1,7 +1,8 @@
 # Decision log (V3)
 
 Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented in V3;
-D-20 to D-27 record its extraction step (ticket v3T01), D-28 entity resolution (v3T02), D-29 graph retrieval (v3T03). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
+D-20 to D-27 record its extraction step (ticket v3T01), D-28 entity resolution (v3T02), D-29 graph retrieval (v3T03), D-30 the graph path in the UI (v3T04);
+D-31 to D-33 record answer validation (v3T12), the shared tokenizer (v3T11) and own-corpus storage (v3T10, v3T19). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
 V2 decisions (chunk size, overlap, top-k, embedding model) are in `docs/REPORT_V2.md`.
 
 ## Fusion
@@ -297,6 +298,55 @@ and it adds a weight to tune on 10 questions. **Path as context** (give the LLM 
 answer, not on retrieval; it is the optional teams-of-3 piece, out of this ticket. **LLM entity extraction at query time**: would
 catch paraphrases ("the e-mail service" for postroom) at one call per question; out of scope (ticket) and measurable later.
 
+**D-30. Showing the graph path in the answer view (v3T04).** The Ask tab already had a "Graph path" panel from V3, written before
+the retriever existed, so it guessed the path's shape and printed raw names. With the real path from `graph_search.search_graph`, it now
+shows: (1) the **entities found in the question**, each with its type and the words of the question that matched it ("KST-5031 ·
+ErrorCode · matched kst-5031"), so a wrong match is visible; (2) the **edges followed, grouped by hop**, each with the chunk(s) it was
+extracted from; (3) the **chunks they came from**, each marked "in the final list at rank N" or "not in the final list after fusion",
+and "cited in the answer". (3) answers the V3 question "did the graph's chunks reach the top k?" for one question, without running an
+evaluation. Nodes not expanded because of the hub cap are listed when there are any. When the question names no entity of the graph
+(5 of the 12 Kestrel questions, known failure 18), the panel says so in one sentence instead of showing three empty lists. When the
+graph is off, `graph_path` is `null` and the panel is not shown. Options not chosen: drawing the path as a picture (a graph library, more
+code, and the path is usually 1 to 3 edges, which a list shows as well); showing every reached node (a walk reaches many nodes whose
+chunks never get near the answer, which hides the edges that matter). Not tested automatically: the panel is HTML built in the page's
+script; we checked it by hand on q08 and on a question without entities (T16 adds a browser test).
+
+## Generation
+
+**D-31. Validating the LLM answer (v3T12).** Before, the reply was checked by hand: if it was not JSON, the raw text was shown as if it
+were a real answer (with no citations and no warning), and if it was a JSON list the code crashed with `AttributeError` and the user got a
+503. Options: (a) keep the hand-written check and fix the two cases, (b) show the raw text with a warning, (c) validate the reply with a
+Pydantic model and flag it when it does not fit. **Chosen: (c).** `LLMAnswer` (`answer: str`, `citations: list[str]`) is checked with
+`model_validate_json`, which rejects non-JSON, lists, missing keys and wrong types in one place. An invalid reply comes back as
+`valid: false` and the user sees "The model returned an answer we could not read. Please try again." instead of the raw text; citations
+the model invented (ids that were not in the retrieved chunks) are dropped and counted. Two kinds of failure are now kept apart: not
+reaching the LLM (missing key, network, timeout) is still a 503; reaching it and getting garbage is a normal response with the flag. The
+parsing is its own function (`parse_llm_answer`) so it can be tested without an LLM or a key (`tests/test_answer_validation.py`). In the
+evaluation, an invalid answer is recorded as a `generation_error`. Not done: retrying once on an invalid reply (one more LLM call per
+failure), as the graph extraction does (D-21).
+
+## Words tab
+
+**D-32. One tokenizer for the Words tab and BM25 (v3T11).** The Words tab had its own regex: no accent folding ("Inès" became "in" and
+"s"; also Léa Fontaine and Tomasz Wójcik in Kestrel), no hyphenated identifiers kept whole, no stop words. So when we used it to diagnose a
+BM25 miss, it showed different words from the ones BM25 actually scores. Options: (a) fix the regex in `core.py`, (b) make the Words tab
+call the BM25 tokenizer. **Chosen: (b)**, because two tokenizers will drift apart again. `bm25.analyse()` returns the tokens BM25 indexes
+plus the stop words it dropped; `tokenize()` is now just `analyse()[0]`, so the two cannot disagree. Question mode also lists the stop
+words BM25 ignores. `fold` stays in `bm25.py` (entity resolution imports it from there, D-28). BM25 itself did not change (same tokens,
+existing tests pass), so no evaluation number moved. Known behaviour, kept on purpose: the curly apostrophe splits "can’t" into "can" and
+"t", in BM25 and therefore in the Words tab; fixing it changes the BM25 index and would need a rerun of the matrix.
+
+## Documents
+
+**D-33. Own corpus storage and upload selection (v3T10, v3T19).** The own corpus had no folder: `read_corpus` fell back to
+`docs/vellora-duo-espresso-machine.txt` when `data/corpora/own` was empty. The first upload to "own" created the folder, and from then on
+the corpus was only the uploaded file: the Vellora manual disappeared and the own question set was silently invalid. Separately, an upload
+into a corpus that has a `selection.json` (Kestrel) was not added to it, so the new document was silently left out of retrieval.
+**Chosen:** the manual is stored in `data/corpora/own/` like any other document and the fallback is removed; uploads are added to
+`selection.json` and deletes are removed from it (no `selection.json` still means "everything is selected"). The copy in `docs/` is kept
+because the course exercises in `bm25/` read it. Unsupported file types now return 415 (Unsupported Media Type) instead of 400. Tests:
+`tests/test_documents.py` (works on a temporary copy of `data/corpora`, so it never touches the real corpus).
+
 ## Process
 
 **D-17. Hidden instructions.** The V2 materials contained an instruction invisible on the slide (text in an unreadable colour) that
@@ -350,3 +400,5 @@ are not visible on the slide, unless confirmed by the teacher.
     Messaging, whose only evidence is `service-catalog_md:2` (known failure 13). Recall@k counts it as found.
 18. The graph adds nothing when the question names no entity of the graph: 5 of the 12 Kestrel questions (q03, q05, q06, q07, q09) give
     0 graph hits; and it adds noise to an unanswerable question that names one (q10, "Business": 5 hits).
+19. "can’t" is split into "can" and "t" by the BM25 tokenizer, and the Words tab shows it that way (D-32).
+20. An invalid LLM answer is flagged but not retried (D-31).
