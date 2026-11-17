@@ -147,7 +147,7 @@ Recall@10 = 0.72 for dense and for dense+bm25. Open design decisions are listed 
 
 ## 7. The graph in numbers
 
-*V4 update (ticket v3T01, extraction).* Built with `python -m app.graph build --corpus kestrel` on Kestrel 800/10.
+*Ticket v3T01 (concept graph extraction).* Built with `python -m app.graph build --corpus kestrel` on Kestrel 800/10.
 Numbers below are copied from `data/results/graph/build-kestrel.json`; every call is in `data/results/graph/llm_calls.jsonl`.
 
 Model: `nvidia/nemotron-3.5-lightning-30b-a3b` on NVIDIA's endpoint, thinking off (D-24); prompt v2 (D-25); invalid items of a

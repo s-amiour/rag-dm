@@ -1,7 +1,7 @@
 # Decision log (V3)
 
 Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented in V3;
-D-20 to D-27 record its extraction step (V4, ticket v3T01). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
+D-20 to D-27 record its extraction step (ticket v3T01). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
 V2 decisions (chunk size, overlap, top-k, embedding model) are in `docs/REPORT_V2.md`.
 
 ## Fusion
@@ -97,7 +97,7 @@ unmeasured graph. The decisions that remain open, for whoever continues: fixed o
 that fails validation, how to merge aliases (q12: mailman → postroom), and how to turn a question into ranked chunks
 (entity-neighbourhood expansion, path search, GraphRAG community summaries, LightRAG-style dual-level retrieval).
 
-*Update (V4, ticket v3T01):* extraction, schema, validation, provenance and build cost are now done (D-20 to D-27).
+*Update (ticket v3T01):* extraction, schema, validation, provenance and build cost are now done (D-20 to D-27).
 Entity resolution (T2), the graph retriever (T3) and the UI (T4) are still open; until T3, selecting the graph returns 503.
 
 **D-20. Schema: fixed types, plus two relations.** File `app/graph_schema.py` (versioned: `SCHEMA_VERSION`). Options: (a) an

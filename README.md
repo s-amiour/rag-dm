@@ -50,7 +50,7 @@ the path: entities found in the question, edges followed, and the chunks they ca
 
 ## Concept graph (Kestrel)
 
-> **Status (V4, in progress):** extraction is done (ticket v3T01); entity resolution, the graph retriever and the UI are not yet.
+> **Status:** extraction is done (ticket v3T01); entity resolution, the graph retriever and the UI are not yet.
 > Until `app/graph_retriever.py` exists, ticking the graph returns *503 Graph retriever not available* and the checkbox stays disabled.
 
 ### Build the graph
