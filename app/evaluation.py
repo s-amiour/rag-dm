@@ -24,7 +24,7 @@ from typing import Any, Callable
 
 from . import bm25 as bm25_module
 from . import core
-from .retrieval import retrieve
+from .retrieval import get_dense, retrieve
 
 CUTOFFS = (1, 3, 5, 10)
 
@@ -125,7 +125,7 @@ def _warm(
     info: dict[str, Any] = {}
 
     if "dense" in names:
-        dense = core.get_dense(corpus, size, overlap, records=records, strict=strict_dense)
+        dense = get_dense(corpus, size, overlap, records=records, strict=strict_dense)
         info["dense"] = {
             "backend": dense.backend,
             "build_seconds": dense.build_seconds,
@@ -297,6 +297,7 @@ def evaluate_corpus(
             "candidates": max(candidates, depth),
             "weights": weights,
             "dense_backend": (index_info.get("dense") or {}).get("backend"),
+            "allow_tfidf_fallback": not strict_dense,
             "bm25_stopwords": bm25_module.stopwords_enabled() if "bm25" in retrievers else None,
             "generate_answers": generate_answers
         },
