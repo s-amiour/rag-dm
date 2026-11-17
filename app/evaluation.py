@@ -297,6 +297,7 @@ def evaluate_corpus(
             "candidates": max(candidates, depth),
             "weights": weights,
             "dense_backend": (index_info.get("dense") or {}).get("backend"),
+            "allow_tfidf_fallback": not strict_dense,
             "bm25_stopwords": bm25_module.stopwords_enabled() if "bm25" in retrievers else None,
             "generate_answers": generate_answers
         },
