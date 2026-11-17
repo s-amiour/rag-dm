@@ -45,3 +45,29 @@ class LoadTests(SearchFixture):
         with self.assertRaises(RetrieverUnavailable) as ctx:
             graph_search.load("kestrel", 800, 10)
         self.assertIn("missing", str(ctx.exception))
+
+
+class MatchTests(SearchFixture):
+    def names(self, question):
+        return [(e["name"], e["matched_text"]) for e in graph_search.match_entities(
+            graph_search.load("kestrel", 800, 10), question)]
+
+    def test_identifier_and_alias(self):
+        self.assertEqual(self.names("Error KST-5031 happened twice. Which team should I contact?"),
+                         [("KST-5031", "kst-5031")])
+        self.assertEqual(self.names("Who owns the Messaging team?"), [("Messaging", "messaging team")])
+
+    def test_kst_5031_never_matches_kst_5038(self):
+        self.assertEqual(self.names("What is KST-5038?"), [])
+
+    def test_generic_and_stop_words_alone_match_nothing(self):
+        self.assertEqual(self.names("Which team or service should support contact, and where?"), [])
+
+    def test_one_node_once_longest_match_first(self):
+        self.assertEqual(self.names("The mailman service and mailman are failing"), [("mailman", "mailman service")])
+
+    def test_alias_used_only_when_no_node_has_the_name(self):
+        g = graph_search.load("kestrel", 800, 10)
+        postroom = next(i for i, (n, _) in g.names.items() if n == "postroom")
+        g.alias_keys.setdefault("letterbox", set()).add(postroom)          # an alias no node is named
+        self.assertEqual(self.names("Is letterbox down?"), [("postroom", "letterbox")])
