@@ -1233,6 +1233,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="seconds between LLM calls (default: GRAPH_CALL_DELAY_S or 1.0)")
     common(sub.add_parser("status", help="missing / stale / fresh"))
     common(sub.add_parser("check", help="integrity check of the stored graph"))
+    se = sub.add_parser("search", help="what the graph retriever returns for a question (v3T03)")
+    common(se)
+    se.add_argument("question")
+    se.add_argument("--k", type=int, default=10)
     sp = sub.add_parser("sample", help="draw n triples at random from the graph, to grade by hand (v3T06)")
     common(sp)
     sp.add_argument("--n", type=int, default=10)
@@ -1277,6 +1281,26 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "status":
         print(json.dumps(status, indent=2))
+        return 0
+
+    if args.cmd == "search":
+        from . import graph_search
+        from .retrieval import RetrieverUnavailable
+        try:
+            g = graph_search.load(args.corpus, args.chunk_size, args.overlap, records=records)
+        except RetrieverUnavailable as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        out = graph_search.search_graph(g, args.question, args.k, {r["id"] for r in records})
+        path = out["path"]
+        print("entities: " + (", ".join(f"{e['name']} ({e['type']}) <- '{e['matched_text']}'"
+                                       for e in path["entities"]) or "none (the graph adds nothing)"))
+        for e in path["edges"]:
+            print(f"  hop {e['hop']}: {e['source']} -{e['relation']}-> {e['target']}   [{', '.join(e['chunk_ids'])}]")
+        if path["capped"]:
+            print(f"  not expanded (more than {graph_search.HUB_CAP} edges): {', '.join(path['capped'])}")
+        for i, h in enumerate(out["hits"], start=1):
+            print(f"{i:>3}. {h['id']:<32} score {h['score']:.3f}")
         return 0
 
     if args.cmd == "sample":

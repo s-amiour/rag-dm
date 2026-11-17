@@ -30,7 +30,7 @@ Open http://127.0.0.1:8000. The first dense query downloads `all-MiniLM-L6-v2` (
 
 | Where | How |
 |---|---|
-| **UI** | *Ask* and *Evaluation* tabs: tick `dense`, `BM25`, `concept graph`. Graph is disabled on the own corpus (Kestrel only) and until `app/graph_retriever.py` exists. |
+| **UI** | *Ask* and *Evaluation* tabs: tick `dense`, `BM25`, `concept graph`. Graph is disabled on the own corpus (Kestrel only). |
 | **API** | `POST /api/ask` and `POST /api/evaluate` accept `"retrievers": ["dense","bm25","graph"]` (any subset), plus `rrf_k` (default 60) and `candidates` (default 10: how many results each retriever gives to the fusion, see DECISIONS D-18). `GET /api/config` lists what is available. |
 | **Command line** | `--retrievers dense,bm25,graph` (see below) |
 
@@ -50,8 +50,21 @@ the path: entities found in the question, edges followed, and the chunks they ca
 
 ## Concept graph (Kestrel)
 
-> **Status:** extraction is done (ticket v3T01); entity resolution, the graph retriever and the UI are not yet.
-> Until `app/graph_retriever.py` exists, ticking the graph returns *503 Graph retriever not available* and the checkbox stays disabled.
+> **Status:** extraction (v3T01), entity resolution (v3T02) and the graph retriever (v3T03) are done; the UI path display is T4.
+> The graph has to be built once (below). If it is missing, or was built for other chunks, ticking the graph returns a 503 that says
+> which build command to run.
+
+### Graph retrieval
+
+The graph retriever (`app/graph_retriever.py`, DECISIONS D-29) finds the entities named in the question (n-grams matched on node
+names and aliases, error codes exact, generic words such as "team" or "support" ignored), walks 2 hops in both directions, and ranks
+the evidence chunks of what it reached by hop: 1 / (1 + hop). No LLM call at query time. It is switched on like the other retrievers
+(`"retrievers": ["dense","bm25","graph"]`, `--retrievers dense,bm25,graph`, the UI checkbox) and fused with RRF. To see what it does
+for one question:
+
+```bash
+python -m app.graph search "Error KST-5031 happened on the last two scheduled reports. Which team should support contact?"
+```
 
 ### Build the graph
 

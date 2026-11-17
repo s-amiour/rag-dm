@@ -13,8 +13,9 @@
 
 - V3 adds **BM25** (both corpora, persistent index), **RRF fusion** with every retriever switchable from the UI, the API and the
   evaluation command, and **Recall@k per hop** next to V2's HitRate@k.
-- **Concept graph: extraction and entity resolution done (tickets v3T01, v3T02; section 7); retrieval and UI pending** (section 6). The third
-  required configuration (`dense+bm25+graph`) has not been run yet.
+- **Concept graph: extraction, entity resolution and graph retrieval done (tickets v3T01 to v3T03; sections 6 and 7); UI path pending
+  (T4).** Graph alone puts both hop chunks of q08 and q11 in its top 10 (section 6). The third required configuration
+  (`dense+bm25+graph`) now runs; its measurement is T5.
 - **BM25 helps, but only once fusion is configured carefully.** On Kestrel, plain RRF with 30 candidates per retriever left Hit@k unchanged
   (0.50 / 0.80 / 0.90 / 1.00 at k = 1, 3, 5, 10) and lowered Recall@3 from 0.72 to 0.54. Limiting each retriever to its 10 best candidates
   (D-18) gives Hit@3 **0.90**, Hit@5 **1.00** and Recall@5 **0.79**, the best of all configurations at k = 3 and 5. It fixes
@@ -132,13 +133,42 @@ The measured costs of generation (1 LLM call per question) are the same in every
 
 ## 6. Concept graph
 
-**Status: extraction and entity resolution done (v3T01, v3T02); retrieval and UI pending.** The V3 submission had no graph. Since then:
+**Status: extraction, entity resolution and graph retrieval done (v3T01 to v3T03); UI path pending (T4).** The V3 submission had
+no graph. Since then:
 
 - done: schema, LLM extraction, validation, provenance, storage, build cost (section 7, DECISIONS D-20 to D-27); entity resolution
-  with recorded merges (D-28) and a walk over the resolved graph;
-- pending: graph retrieval, extraction-quality grades, the UI path;
-- so the required third configuration (`dense+bm25+graph`) has not been run, and the "graph's chunks after fusion" question cannot
-  be answered yet.
+  with recorded merges (D-28); graph retrieval (D-29, below);
+- pending: the path display in the UI (T4); the `dense+bm25+graph` measurement and the "graph's chunks after fusion" analysis (T5).
+
+### Graph retrieval (ticket v3T03)
+
+`app/graph_retriever.py` walks 2 hops from the entities named in the question and ranks the evidence chunks it reaches by hop
+(D-29). No LLM call at query time. Graph alone on Kestrel (resolved graph of section 7, top 10; `@n` = rank of the hop's gold chunk,
+`-` = not in the top 10; reproduce with `python -m app.graph search "<question>"`):
+
+| Question | Entities found | Hits | Hop chunks |
+|---|---|---:|---|
+| q01 exact_identifier | KST-2044 | 2 | runbook:4 @1 (both quotes) |
+| q02 exact_identifier | KST-4012 | 1 | runbook:6 @1, runbook:7 - |
+| q04 split_answer | single sign-on | 10 | guide:1 @4, guide:5 @2 |
+| **q08 two_hop** | KST-5031 | 6 | **runbook:8 @1, catalog:3 @5** |
+| **q11 two_hop** | KST-6010 | 3 | **runbook:10 @1, catalog:4 @3** |
+| **q12 two_hop** | mailman | 6 | catalog:2 @1 (two quotes), catalog:3 @4 |
+| q10 not_in_corpus | Business | 5 | (none to find) |
+| q03, q05, q06, q07, q09 | none | 0 | the graph adds nothing |
+
+**q08 and q11: both hop chunks in the top 10.** The chains followed: `KST-5031 -raised_by/escalates_to-> postroom -owned_by->
+Messaging` (hop 2) and `KST-6010 -escalates_to-> Payments Core` (hop 1, whose node evidence includes the team-table row with
+`#oncall-payments`). **But q08's last hop is found for the wrong reason:** the team-table chunk `service-catalog_md:3` comes from the
+node **Identity**, reached through the wrong edge `postroom owned_by Identity` (known failure 11); Messaging's own evidence is only
+`service-catalog_md:2`, because its table row was never extracted (known failure 13). The same holds for q12's third hop. Recall@k
+counts both as found; an answer built on that path could still name Identity.
+**Why node evidence counts.** The ticket's literal ranking (start entities and followed edges only) finds the first hop of q08, q11 and
+q12 and none of their last hops; counting the evidence of every node reached finds all of them (D-29).
+**Hub cap** (15 edges) never fires: the highest degree in our graph is 5. **No entity, no graph:** 5 of the 12 questions name no
+entity of the graph and get no graph hit; the unanswerable q10 gets 5 (known failure 18).
+With RRF k = 60 a chunk found only by the graph scores about 1/61 and can be pushed out of the top 5 by chunks that dense and BM25 both
+rank; measuring that is T5.
 
 What exists and works toward it: the retriever contract (`app/retrieval.py`, README), the switches in the UI, the API and the evaluation
 command (`--retrievers dense,bm25,graph` is accepted and fails with a clear message while `app/graph_retriever.py` is absent), the graph-path
@@ -278,11 +308,12 @@ own OWN-02 rank 2 → 3. The full automatic list is in `data/results/v3/summary.
 
 ## 10. Decision log and known failures
 
-`DECISIONS.md`, D-01 to D-18 (V3), D-20 to D-27 (concept graph extraction) and D-28 (entity resolution), and its "Known failures" section. In short: BM25 returns nothing for vocabulary-mismatch questions;
+`DECISIONS.md`, D-01 to D-18 (V3), D-20 to D-27 (concept graph extraction), D-28 (entity resolution) and D-29 (graph retrieval), and its "Known failures" section. In short: BM25 returns nothing for vocabulary-mismatch questions;
 rank-only fusion lets double votes displace a correct single-retriever hit (q05); `split_answer` Recall@3 drops with BM25; `two_hop`
 Recall@5 and @10 are unchanged by BM25 (0.56, 0.72); the English-only stop-word list; no incremental BM25 update; gold chunks are found by quote matching
 (a quote cut by a chunk boundary yields no gold chunk; none occurs in our question files, checked by `tests/test_questions.py`);
-the graph is extracted but not yet used for retrieval (known failures 8 to 15 for the graph).
+graph retrieval can reach the right chunk through a wrong edge, and adds nothing to a question that names no entity (known failures
+8 to 18 for the graph).
 
 ## 11. How to reproduce
 
