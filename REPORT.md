@@ -13,7 +13,9 @@
 
 - V3 adds **BM25** (both corpora, persistent index), **RRF fusion** with every retriever switchable from the UI, the API and the
   evaluation command, and **Recall@k per hop** next to V2's HitRate@k.
-- **The concept graph is not part of this submission** (section 6). The third required configuration (`dense+bm25+graph`) was not run.
+- **Concept graph: extraction, entity resolution and graph retrieval done (tickets v3T01 to v3T03; sections 6 and 7); UI path pending
+  (T4).** Graph alone puts both hop chunks of q08 and q11 in its top 10 (section 6). The third required configuration
+  (`dense+bm25+graph`) now runs; its measurement is T5.
 - **BM25 helps, but only once fusion is configured carefully.** On Kestrel, plain RRF with 30 candidates per retriever left Hit@k unchanged
   (0.50 / 0.80 / 0.90 / 1.00 at k = 1, 3, 5, 10) and lowered Recall@3 from 0.72 to 0.54. Limiting each retriever to its 10 best candidates
   (D-18) gives Hit@3 **0.90**, Hit@5 **1.00** and Recall@5 **0.79**, the best of all configurations at k = 3 and 5. It fixes
@@ -131,11 +133,42 @@ The measured costs of generation (1 LLM call per question) are the same in every
 
 ## 6. Concept graph
 
-**The concept graph is not implemented in this submission.** It was not finished in the time we had. Consequences, stated plainly:
+**Status: extraction, entity resolution and graph retrieval done (v3T01 to v3T03); UI path pending (T4).** The V3 submission had
+no graph. Since then:
 
-- no graph build, no schema, validation, entity resolution, graph retrieval or extraction-quality grades;
-- the required third configuration (`dense+bm25+graph`) was not run; there is no graph cost, merge or triple analysis;
-- the "graph's chunks after fusion" question cannot be answered.
+- done: schema, LLM extraction, validation, provenance, storage, build cost (section 7, DECISIONS D-20 to D-27); entity resolution
+  with recorded merges (D-28); graph retrieval (D-29, below);
+- pending: the path display in the UI (T4); the `dense+bm25+graph` measurement and the "graph's chunks after fusion" analysis (T5).
+
+### Graph retrieval (ticket v3T03)
+
+`app/graph_retriever.py` walks 2 hops from the entities named in the question and ranks the evidence chunks it reaches by hop
+(D-29). No LLM call at query time. Graph alone on Kestrel (resolved graph of section 7, top 10; `@n` = rank of the hop's gold chunk,
+`-` = not in the top 10; reproduce with `python -m app.graph search "<question>"`):
+
+| Question | Entities found | Hits | Hop chunks |
+|---|---|---:|---|
+| q01 exact_identifier | KST-2044 | 2 | runbook:4 @1 (both quotes) |
+| q02 exact_identifier | KST-4012 | 1 | runbook:6 @1, runbook:7 - |
+| q04 split_answer | single sign-on | 10 | guide:1 @4, guide:5 @2 |
+| **q08 two_hop** | KST-5031 | 6 | **runbook:8 @1, catalog:3 @5** |
+| **q11 two_hop** | KST-6010 | 3 | **runbook:10 @1, catalog:4 @3** |
+| **q12 two_hop** | mailman | 6 | catalog:2 @1 (two quotes), catalog:3 @4 |
+| q10 not_in_corpus | Business | 5 | (none to find) |
+| q03, q05, q06, q07, q09 | none | 0 | the graph adds nothing |
+
+**q08 and q11: both hop chunks in the top 10.** The chains followed: `KST-5031 -raised_by/escalates_to-> postroom -owned_by->
+Messaging` (hop 2) and `KST-6010 -escalates_to-> Payments Core` (hop 1, whose node evidence includes the team-table row with
+`#oncall-payments`). **But q08's last hop is found for the wrong reason:** the team-table chunk `service-catalog_md:3` comes from the
+node **Identity**, reached through the wrong edge `postroom owned_by Identity` (known failure 11); Messaging's own evidence is only
+`service-catalog_md:2`, because its table row was never extracted (known failure 13). The same holds for q12's third hop. Recall@k
+counts both as found; an answer built on that path could still name Identity.
+**Why node evidence counts.** The ticket's literal ranking (start entities and followed edges only) finds the first hop of q08, q11 and
+q12 and none of their last hops; counting the evidence of every node reached finds all of them (D-29).
+**Hub cap** (15 edges) never fires: the highest degree in our graph is 5. **No entity, no graph:** 5 of the 12 questions name no
+entity of the graph and get no graph hit; the unanswerable q10 gets 5 (known failure 18).
+With RRF k = 60 a chunk found only by the graph scores about 1/61 and can be pushed out of the top 5 by chunks that dense and BM25 both
+rank; measuring that is T5.
 
 What exists and works toward it: the retriever contract (`app/retrieval.py`, README), the switches in the UI, the API and the evaluation
 command (`--retrievers dense,bm25,graph` is accepted and fails with a clear message while `app/graph_retriever.py` is absent), the graph-path
@@ -145,7 +178,93 @@ Recall@10 = 0.72 for dense and for dense+bm25. Open design decisions are listed 
 
 ## 7. The graph in numbers
 
-Not applicable (section 6).
+*Ticket v3T01 (concept graph extraction).* Built with `python -m app.graph build --corpus kestrel` on Kestrel 800/10.
+Numbers below are copied from `data/results/graph/build-kestrel.json`; every call is in `data/results/graph/llm_calls.jsonl`.
+
+Model: `nvidia/nemotron-3.5-lightning-30b-a3b` on NVIDIA's endpoint, thinking off (D-24); prompt v2 (D-25); invalid items of a
+twice-invalid reply dropped, the rest kept (D-26); a quote must name an end of its relation (D-27, validation v2).
+
+| | Value |
+|---|---:|
+| Chunks | 43 |
+| Fully valid: at first try / after one retry | 3 / 5 |
+| Kept in part (invalid items dropped, D-26 and D-27) | 34 |
+| Skipped (nothing valid, in `graph_errors.jsonl`) | 1 (`product-guide_md:11`) |
+| Entities / relations / aliases | 166 / 49 / 7 (171 entities before resolution, below) |
+| Raw triples (before identical ones are merged) | 50 |
+| Relations dropped by the D-27 re-check (0 calls) | 62 (57 from the plans table) |
+| LLM calls behind this graph | 82 |
+| Prompt + completion tokens | 135,390 + 33,797 |
+| Time in LLM calls | 286.0 s (about 3.3 s per call) |
+| Rerun with unchanged documents | 0 LLM calls, 0.03 s |
+| Integrity: nodes / edges without evidence, unknown chunk ids | 0 / 0 / 0 |
+| Whole experiment (prompt v1 + v2, all runs) | 164 calls, 243,380 + 65,138 tokens, 504.6 s |
+
+Chain edges (q08, q11, q12): `KST-5031 raised_by postroom`, `KST-5031 escalates_to postroom`, `postroom owned_by Messaging`,
+`postroom replaces mailman` and `KST-6010 escalates_to Payments Core` are in the graph (unchanged by D-27); `ledger owned_by Payments Core` is not
+(section cut by a chunk boundary). The last hop of q08 / q12 (the Messaging row of the team table, with its channel) is missing, and one
+wrong edge, `postroom owned_by Identity`, competes with the right one. The plans table gives no edge since D-27. Details: DECISIONS known failures 10 to 15.
+Relations by type: has_feature 18, owned_by 11, escalates_to 7, causes 5, raised_by 4, included_in 2, replaces 1, governed_by 1
+(before D-27: 111 relations, of which has_feature 51 and included_in 27).
+
+Schema, validation, storage, model choice: DECISIONS D-20 to D-24. Prompt v1 → v2 (v1 skipped 22 of 43 chunks): D-25. Keeping the
+valid part of a failed reply: D-26. Retrieval and extraction-quality grades: not done yet (next tickets).
+
+### Entity resolution (ticket v3T02)
+
+Rules identifier → normalised → alias, never across types, identifiers or `replaces` edges (DECISIONS D-28). Run from the cache with
+`python -m app.graph build --rules none` and with the default rules: 0 LLM calls each. Every merge is in
+`data/results/graph/merges.jsonl`.
+
+| | `--rules none` | default rules |
+|---|---:|---:|
+| Entities | 171 | **166** |
+| Merges (identifier / normalised / alias) | 0 | 5 (3 / 2 / 0) |
+| Refused merges | 0 | 0 |
+| Aliases | 1 | 7 |
+| Relations | 49 | 49 |
+| Integrity (incl. every merge has a method and evidence) | OK | OK |
+
+The five merges: `Enterprise plan` and `Enterprise plans` → `Enterprise`, `Free plan` → `Free` (identifier: plan names);
+`Single sign-on (SAML)` → `single sign-on`, `Platform team` → `Platform` (normalised). No rule merged two different things that we could
+find. The alias rule found nothing to merge on this graph and the mailman trap did not occur (the LLM did not list mailman as an alias of
+postroom); both are covered by unit tests, and a `replaces` edge blocks that merge if it ever happens.
+
+**A correct merge, across documents.** "Platform team" (runbook, `support-runbook-errors_md:0`) and "Platform" (service catalog) are one
+`Team` node (method `normalised`). Its evidence now spans both documents: the catalog's header ("Owner: Platform team"), the `Owner:
+**Platform**.` lines of gateway, auth and embed-svc (`service-catalog_md:2`), and the team-table row `| Platform | Samuel Okafor |
+#oncall-platform | 24/7 rotation |` (`service-catalog_md:3`). Without the merge the runbook's "Platform team" is an isolated node with
+no edge.
+
+**A missed merge, and what it cost.** "Analytics Engine" is three nodes (DECISIONS known failure 16):
+
+| Node | Edge | Why not merged |
+|---|---|---|
+| Analytics Engine (Team) | query-engine, scheduler `owned_by` it | the right node |
+| Analytics Engine (Service) | KST-3020 `escalates_to` it | the LLM typed the team as a Service; resolution never crosses types |
+| Analytics Eng (Team) | KST-3012 `escalates_to` it | the 800-character chunk boundary cuts the name in `support-runbook-errors_md:5` |
+
+Cost: `python -m app.graph walk KST-3012` and `walk KST-3020` stop after one hop, at a node with no other edge, so a graph path for
+either error never reaches the team that owns the query engine or its channel. The type constraint that causes the second miss is the one
+that keeps the role "Owner" apart from "Owner: Messaging"; we keep it and accept this miss.
+
+**The q08 chain after resolution** (`python -m app.graph walk KST-5031 --hops 2`, abridged):
+
+```
+KST-5031 (ErrorCode)   chunks: support-runbook-errors_md:7, support-runbook-errors_md:8
+    [1] KST-5031 -escalates_to-> postroom   (edge from support-runbook-errors_md:8)
+        postroom (Service)   chunks: service-catalog_md:1, service-catalog_md:2, support-runbook-errors_md:8
+        [2] postroom -owned_by-> Identity   (edge from service-catalog_md:1)
+            Identity (Team)   chunks: service-catalog_md:1, service-catalog_md:3, support-runbook-errors_md:3
+        [2] postroom -owned_by-> Messaging   (edge from service-catalog_md:2)
+            Messaging (Team)   chunks: service-catalog_md:2
+        [2] postroom -replaces-> mailman   (edge from service-catalog_md:2)
+```
+
+The walk crosses from the runbook to the service catalog and reaches the Messaging team's evidence chunk there (`service-catalog_md:2`,
+"Owner: **Messaging**."), the acceptance criterion of v3T02. It does not reach the Messaging row of the team table (with
+`#oncall-messaging`): that row was never extracted (known failure 13), so there is nothing to merge it with. The walk does reach the team
+table chunk, but through the wrong edge `postroom owned_by Identity` (known failure 11): a retriever must not trust a single path.
 
 ## 8. Fusion: what happened to chunks after RRF
 
@@ -189,18 +308,20 @@ own OWN-02 rank 2 → 3. The full automatic list is in `data/results/v3/summary.
 
 ## 10. Decision log and known failures
 
-`DECISIONS.md`, D-01 to D-18, and its "Known failures" section. In short: BM25 returns nothing for vocabulary-mismatch questions;
+`DECISIONS.md`, D-01 to D-18 (V3), D-20 to D-27 (concept graph extraction), D-28 (entity resolution) and D-29 (graph retrieval), and its "Known failures" section. In short: BM25 returns nothing for vocabulary-mismatch questions;
 rank-only fusion lets double votes displace a correct single-retriever hit (q05); `split_answer` Recall@3 drops with BM25; `two_hop`
 Recall@5 and @10 are unchanged by BM25 (0.56, 0.72); the English-only stop-word list; no incremental BM25 update; gold chunks are found by quote matching
 (a quote cut by a chunk boundary yields no gold chunk; none occurs in our question files, checked by `tests/test_questions.py`);
-the graph is missing.
+graph retrieval can reach the right chunk through a wrong edge, and adds nothing to a question that names no entity (known failures
+8 to 18 for the graph).
 
 ## 11. How to reproduce
 
 ```bash
 pip install -r requirements.txt
 cp .env.example .env                                  # LLM_* only needed to generate answers
-python -m unittest discover -s tests -t .             # 54 tests, no model download
+python -m unittest discover -s tests -t .             # all tests; no model download, no API key
+python -m app.graph build --corpus kestrel            # concept graph extraction (LLM_* in .env), section 7
 python -m app.evaluate matrix --required-only         # data/results/v3/ (summary.md = every table above)
 python -m app.evaluate run --corpus kestrel --retrievers dense --ids q01,q02,q03,q04,q05,q06,q07,q08,q09,q10   # V2 check
 # ablations with 30 candidates:

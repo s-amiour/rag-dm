@@ -1,6 +1,7 @@
 # Decision log (V3)
 
-Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented.
+Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented in V3;
+D-20 to D-27 record its extraction step (ticket v3T01), D-28 entity resolution (v3T02), D-29 graph retrieval (v3T03). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
 V2 decisions (chunk size, overlap, top-k, embedding model) are in `docs/REPORT_V2.md`.
 
 ## Fusion
@@ -96,6 +97,206 @@ unmeasured graph. The decisions that remain open, for whoever continues: fixed o
 that fails validation, how to merge aliases (q12: mailman → postroom), and how to turn a question into ranked chunks
 (entity-neighbourhood expansion, path search, GraphRAG community summaries, LightRAG-style dual-level retrieval).
 
+*Update (ticket v3T01):* extraction, schema, validation, provenance and build cost are now done (D-20 to D-27).
+Entity resolution (T2), the graph retriever (T3) and the UI (T4) are still open; until T3, selecting the graph returns 503.
+
+**D-20. Schema: fixed types, plus two relations.** File `app/graph_schema.py` (versioned: `SCHEMA_VERSION`). Options: (a) an
+**open** schema, where the LLM names whatever types it finds (as in GraphRAG's default prompt); (b) a **fixed** schema, where the LLM may
+only use our lists. **Chosen: fixed.** Our corpus is small and known (5 documents, 43 chunks), so we can list its types in advance. A
+fixed list can be checked by Pydantic, so an invented type is caught instead of stored. With an open schema the same thing comes back
+under several names (`Team`, `Department`, `Squad`), and T2 would have to merge types as well as entities. Cost: anything outside the
+lists is dropped, e.g. people, chat channels, prices (known failure 9).
+Entity types: `Product, Feature, Plan, Service, ErrorCode, Policy, Procedure, Team`. Relation types: the PRD's
+`has_feature, included_in, depends_on, causes, resolved_by, governed_by, owned_by, replaces`, **plus `raised_by`
+(ErrorCode → Service) and `escalates_to` (ErrorCode → Team | Service)**. Why we added two: the chains of q08, q11 and q12 start at
+an error code. With the PRD list, "KST-5031 is raised by postroom" and "escalate KST-6010 to Payments Core" fit no relation (the closest,
+`causes`, points the wrong way: a service does not *cause* its error code, it reports it). Each relation declares its allowed
+source and target types (`owned_by`: Service → Team; `replaces`: both ends of the same type), and Pydantic checks them.
+
+**D-21. Extraction and validation.** One LLM call per chunk, temperature 0, same client and `.env` as answer generation
+(`GRAPH_LLM_MODEL` can override the model for the build only). The prompt holds the schema, the chunk (marked as data, not
+instructions) and a JSON shape. Pydantic models `Entity`, `Relation`, `ChunkExtraction` check: known entity and relation types;
+each entity's name or an alias appears in the chunk; both ends of a relation are in the chunk's entity list; their types are allowed for
+the relation; **the relation's quote is in the chunk**. This is a cheap check against invented triples. Quote matching ignores whitespace
+and markdown emphasis (`*`, backticks) and nothing else, so `Owner: Messaging.` matches `Owner: **Messaging**.` but a paraphrase does
+not. A `` ```json `` fence around the reply is accepted; any other text around the JSON is an error.
+On failure: one retry, with the previous reply and the list of errors appended. A second failure means the chunk is skipped and
+`{chunk_id, error, raw_reply}` is written to `graph_errors`. The skip is cached: at temperature 0 asking again would most likely
+return the same reply, so a rerun does not pay for it again (`--retry-skipped` forces it). Transport errors (429, timeout, 5xx) are
+*not* cached. They are retried with back-off and, if they persist, the chunk is reported as missing and the next run tries again.
+A wrong key or model stops the LLM calls at once (every call would fail the same way); the graph is still rebuilt from what was done.
+Options rejected: provider "JSON mode" or function calling (not available on every OpenAI-compatible endpoint we use, and it checks the
+shape, not the content against the chunk); asking for several chunks per call (fewer calls, but provenance becomes the LLM's guess).
+
+**D-22. Provenance and storage.** SQLite (`data/index/graph-kestrel.sqlite`, git-ignored, derived data like the BM25 and dense
+indexes; option used by the PRD, chosen over JSON because T2/T3 need joins). Tables `nodes`, `aliases`, `edges`, `evidence`. Every
+node and edge has at least one evidence row `{doc, chunk_id, quote}`, and a node or edge seen in several chunks keeps all of them. Node
+evidence is the line of the chunk that mentions it; edge evidence is the LLM's quote, checked in D-21. In this step two mentions are
+the same node only if type and name are equal, ignoring case and spacing. Real merges (aliases, `mailman` → `postroom`) are T2's job.
+`meta` stores a fingerprint of the chunk list + schema version + prompt version (`core.records_fingerprint`). If a document, the
+selection, the chunking, the schema or the prompt changes, `graph_status()` says `stale`. The graph tables are rebuilt from scratch at
+every build (cheap: no LLM call, see the cache below), so they cannot drift from the documents. Same choice as D-04.
+Cache: each chunk's validated extraction is stored under a hash of (chunk text, schema version, prompt version). It survives
+rebuilds, so a changed document re-extracts only its own chunks, and a rerun after a crash or a rate limit pays only for what is missing.
+The integrity check (`python -m app.graph check`, also run by every build) counts nodes and edges without evidence, edges whose
+ends are missing, and evidence chunk ids that do not exist in the current chunking; all must be 0.
+
+**D-23. Cost logging and rate limits.** Every call, including a rate-limited try, is a row in `llm_calls`: model, prompt and completion
+tokens, latency, attempt, outcome (`ok`, `invalid` then `retried` or `skipped`, `rate_limited`, `error`). The SDK's own retries are
+switched off so none is hidden. A build exports `data/results/graph/llm_calls.jsonl`, `graph_errors.jsonl` and `build-kestrel.json`
+(committed; no key, no whole document). The *graph build cost* in the summary and in REPORT §7 is the sum of the calls behind the
+current cached extractions, so it stays correct when a rerun costs 0. Rate limits: `GRAPH_CALL_DELAY_S` (default 1 s) between
+calls; on 429 the build waits for `Retry-After` or 2, 4, 8… s (max 60 s, 6 tries). If one model or key runs out, change
+`GRAPH_LLM_MODEL` / the key and rerun: the cache keeps finished chunks, and the call log records which model did which chunk.
+Personal data: the extraction prompt sends chunk text to the LLM provider, as answer generation already does. The Kestrel team table
+holds (fictional) names of engineering leads. `Person` is not in the schema, so they do not become nodes, but a table-row quote can
+contain one.
+
+**D-24. Extraction model and hidden reasoning.** Measured on the NVIDIA endpoint (`integrate.api.nvidia.com`) with one short
+extraction request (a 3-line chunk, same JSON shape as the build), 17 November 2026:
+
+| Model, setting | Result |
+|---|---|
+| `mistralai/mistral-large-4-1t-a52b` (our `LLM_MODEL`) | no reply after 2 minutes on a real chunk (stopped by hand) |
+| `meta/llama-3.3-70b-instruct` | 410 Gone: retired by the provider |
+| `z-ai/glm-5.3-flash` | timeout after 90 s |
+| `nvidia/nemotron-3.5-lightning-30b-a3b`, 400-token budget | 3 s, **empty answer**: the whole budget went into hidden reasoning (`finish_reason: length`) |
+| same, `/no_think` in the system prompt | ignored, same empty answer |
+| same, 4096-token budget | 10.1 s, 1,543 completion tokens, correct JSON after 5,452 characters of hidden reasoning |
+| **same, thinking switched off** (`chat_template_kwargs`) | **1.1 s, 95 completion tokens, correct JSON** |
+
+**Chosen: `nemotron-3.5-lightning-30b-a3b` with thinking off** (`GRAPH_LLM_MODEL`, `GRAPH_DISABLE_THINKING=1`) for the build only;
+answers keep `LLM_MODEL`. Extraction is copying facts that are written in the chunk into a fixed format, which needs no long reasoning,
+and the build makes about 43 calls: thinking on would cost about 16 times the completion tokens and 9 times the time for the same JSON.
+Our validation (D-21) is the safety net, not the model's reasoning: a wrong type or an invented quote is caught either way.
+Risk: with thinking off, the model may make more mistakes on hard chunks (tables, several relations); this shows up as `retried` /
+`skipped` in the call log and in the extraction-quality grading. An empty reply cut by the token limit is logged with an explicit message
+so the cause is visible. The choice is recorded per call (`model`) and per build (`llm_options` in `build-kestrel.json`).
+
+**D-25. Prompt v1 → v2, after the first real build.** Prompt v1 (rules only, no example) on the full Kestrel build with the D-24 model:
+43 chunks, **3 valid at the first try, 18 after one retry, 22 skipped (51%)**; 82 calls, 107,990 prompt + 31,341 completion tokens,
+218.6 s in LLM calls; 49 entities, 34 relations; integrity OK; rerun 0 calls. Lost chunks included the team table
+(`service-catalog_md:4`), which q08, q11 and q12 need. First validation error per failed reply (61 replies):
+
+| Error | Replies | Cause |
+|---|---:|---|
+| entity "Kestrel Analytics" not in the chunk | 23 | our prompt said "Kestrel Analytics documentation" and gave it as the `Product` example: the model copied it |
+| another name not written in the chunk ("Business plan" for "Business") | 10 | model rewrites names |
+| `causes` / `governed_by` backwards (`KST-1001 causes single sign-on`) | 8 | the runbook's "**Cause:**" lines; v1 never said which way a relation reads |
+| relation end missing from the entity list | 4 | rule stated, no example |
+| other disallowed types (`raised_by` → a Team) | 4 | model error, correctly rejected |
+| unknown relation | 1 | model error |
+
+Validation did what it is for (no invented entity or backwards edge entered the graph), but the price was half the corpus. Options:
+(a) keep v1 and accept the loss; (b) **fix the prompt (v2)**; (c) keep the valid part of a reply that fails twice (drop only the bad
+entities and relations) instead of skipping the chunk; (d) a bigger model. **Chosen: (b) first**, because most errors came from our prompt:
+v2 removes every mention of the product name, says to copy names exactly and never add the product, company or file, explains
+direction with four examples ("an error code is never the source of `causes`"), adds one *invented* worked example (a fictional
+error code and service, so it cannot leak answers about the real corpus; a test checks it passes our own validation), and makes the retry
+message say what to delete. (c) is kept in reserve: it changes the ticket's "retry once, then skip" rule, so we only consider it if v2
+still loses chunks the chain questions need. Bumping `PROMPT_VERSION` changes every cache key, so v2 re-extracts all chunks
+(v1's calls stay in `llm_calls.jsonl`; `build-kestrel-prompt-v1.json` keeps v1's summary). The v2 strict run was stopped
+before it finished and wrote no summary: its column below is counted per chunk from `llm_calls.jsonl` (builds `20261117-151844-…`
+and `20261117-152437-…`, outcome of each chunk's last call).
+Result of v2, and of v1 replayed with D-26 on its stored replies (no new call), same 43 chunks:
+
+| | v1 strict | v2 strict | v1 + keep valid part | **v2 + keep valid part (built)** |
+|---|---:|---:|---:|---:|
+| valid at first try / after retry | 4 / 17 | 4 / 9 | 4 / 17 | **4 / 9** |
+| kept in part / skipped | 0 / 22 | 0 / 30 | 21 / 1 | **29 / 1** |
+| relations kept | 34 | n/a | 59 | **111** (112 before merging identical ones) |
+| chain edges present (of 6 checked) | n/a | n/a | 4 | **5** |
+
+Errors in failed replies (all of them, not only the first), v1 → v2: invented "Kestrel Analytics" 26 → 2; relation end missing from
+the entities 17 → 26; other disallowed types 4 → 25; other name not in chunk 9 → 8; `causes` backwards 4 → 5; bad JSON 0 → 2.
+So **v2 alone is worse under the strict rule** (30 chunks skipped instead of 22): it removed the invented product name, but the
+example (three relations) made the model write *more* relations, so more replies contain at least one bad one. **Combined with D-26 it
+is clearly better**: twice as many valid relations as v1 and one more chain edge. The direction examples did not fix `causes`.
+We keep v2 + D-26. Total cost of the whole experiment (v1, v2, both partial runs): 164 calls, 243,380 prompt + 65,138 completion tokens,
+504.6 s in LLM calls (`llm_calls.jsonl`).
+
+**D-26. Keep the valid part of a reply that fails twice (changes the ticket's "then skip" rule).** With prompt v2, the first 13 chunks
+(both billing policies) were all skipped. Their text (retries, grace periods, refunds) barely fits the schema, the model still
+produces relations, gets one wrong, and gets one wrong again on the retry, so the chunk's *valid* entities and relations were thrown
+away with the bad one. Options: (a) skip the whole chunk (ticket rule); (b) more retries (more cost, same behaviour at
+temperature 0); (c) a third, stricter prompt; (d) **keep the valid part**. **Chosen: (d), with (a) still available** (`--strict`).
+After the retry, each entity and relation of the second reply is checked on its own with exactly the same rules (`salvage()` reuses
+the validator's checks); invalid ones are dropped, a relation whose end was dropped goes too, and the result is validated again in full,
+so **nothing that fails validation is ever stored**: the guarantee is the same as in (a), only the unit of rejection is smaller.
+The chunk counts as `partial`; every dropped item is listed in `graph_errors` (kind `partial`) and the call log says `partial`. A
+reply that is not JSON, or with no valid entity left, is still `skipped`. Chunks skipped by an earlier build are recovered from their
+stored second reply **without an LLM call**. Risk: a reply that was wrong in one place may be wrong elsewhere in ways the rules cannot
+see (a true quote read the wrong way, known failure 11); the extraction-quality grading must sample partial chunks too.
+Measured result: D-25's table (skipped chunks 30 → 1, relations kept 111). This changes the v3T01 acceptance criterion "bad output → one retry, then a logged skip"; under `--strict` it holds exactly
+(`tests/test_graph.py` checks both modes). To agree with the team before merging.
+
+**D-27. A quote must name one end of its relation (validation v2).** Checking the plans table (ticket N.B. "check that table rows
+produce triples") showed that it gave 57 edges whose quotes were single cells: `Business has_feature SCIM user provisioning`, quote
+"Yes". "Yes" is in the chunk, so D-21's check passed, but it comes from another cell, and the edge is **false** (SCIM is Enterprise only).
+A one-word quote is in every table, so it defeats the "quote is in the chunk" check that is meant to catch invented triples. Options:
+(a) a minimum quote length (arbitrary: "Owner: **Identity**." is short and valid); (b) **the quote must contain the name or an alias of the
+source or the target**; (c) both ends (too strict: "This error is raised by postroom" does not repeat the error code, which is in the
+heading). **Chosen: (b).** A table row like `| SCIM user provisioning | — | — | — | — | Yes |` still passes, a bare "Yes" does not.
+The rules have a version (`VALIDATION_VERSION`, part of the graph fingerprint, not of the cache key): after a change, the next build
+re-checks every cached extraction with the new rules and drops what no longer passes, **without any LLM call**; under `--strict` such a
+chunk is skipped. Result on our graph (0 calls): 62 relations dropped in 7 chunks, all for this reason: 57 from the plans table (all
+of them, the true ones with the false ones), plus 5 elsewhere, every one unsupported (`connector-hub has_feature e sign-on (SAML)`,
+`KST-1001 escalates_to on-call`, a "Kestrel Analytics" edge…). Relations 111 → 49; the 5 chain edges of q08, q11, q12 are unchanged.
+Cost: the plans table now gives no edge (known failure 15). The prompt does not state the new rule yet (that would be prompt v3 and
+re-extract all 43 chunks); the retry message explains it when it fires.
+
+**D-28. Entity resolution: rules, constraints, alternatives (v3T02).** T1 makes one node per (type, name) as written, case and spacing
+ignored. Resolution (`app/graph_resolve.py`) then clusters those nodes when the graph is rebuilt from the cache (0 LLM calls).
+*Rules, in this order:* (1) **identifier**: error codes (`KST-\d{4}`), IP addresses and plan names (Free, Starter, Team, Business,
+Enterprise, with or without "plan") match exactly or not at all; (2) **normalised** name, same type only: lowercase, accents folded
+(`bm25.fold`), text in brackets, punctuation, leading articles and the suffixes team/service removed, so "the Messaging team" and
+"Messaging (owner of postroom)" become `messaging`; a word is never removed when it is the last one (otherwise the plan "Team" and the
+node "Plan" both became "" and merged); (3) **alias**: a name the extraction listed as an alias in the same chunk.
+*Constraints that always hold:* never across types (keeps the workspace role "Owner" apart from "Owner: Messaging"); never two clusters
+with different identifiers (KST-5031 / KST-5038); **never the two ends of a `replaces` edge** (postroom replaced mailman: two
+entities with a history, which q12 tests; refused even if the LLM lists mailman as an alias, and the refusal is recorded).
+*Recorded and reversible:* every union is a row of `merges` {node_id, merged_names, method, evidence_chunk_ids}, exported to
+`data/results/graph/merges.jsonl`; merged names stay as aliases on the surviving node (searchable by T3); the surviving name is the one
+most chunks use. `--rules none` (or any subset) rebuilds without them, from the cache.
+*Alternatives not chosen:* **embedding similarity** (merge when cosine > a threshold) would catch "Analytics Eng" / "Analytics
+Engine", but its false merges are the dangerous kind: close vectors for different identifiers (KST-5031 / KST-5038 differ by one
+character), for siblings (Identity / Platform, both teams) and for old / new (mailman / postroom: same job, same vocabulary); a
+threshold tuned on 171 nodes has no held-out set, and a false merge silently sends a chain to the wrong team. **An LLM judge** (ask
+"are A and B the same?") understands context (it could say "Analytics Eng is cut") but costs a call per candidate pair, is not
+deterministic, needs its own validation and logging, and can invent equivalences, the risk T1's quote check exists for. Both would
+lower missed merges and raise false merges; our rules accept more missed merges (known failure 16) for zero false ones we know of,
+and each merge can be explained in one line.
+*Fix found on the way (T1 code):* a relation's ends are now looked up by entity name before alias: with mailman listed as an alias of
+postroom, "postroom replaces mailman" had resolved to "postroom replaces postroom", losing the edge the constraint above relies on.
+*On our graph* (`python -m app.graph build`, 0 calls): 171 → 166 entities, 5 merges (identifier 3, normalised 2, alias 0), 0 refused.
+The alias rule found nothing to merge (the one alias, SSO, has no node of its own) and the mailman trap did not occur (the LLM did not
+list mailman as an alias); both are covered by tests.
+
+**D-29. Graph retrieval: a local walk from the question's entities (v3T03).** `app/graph_retriever.py` (contract of
+`retrieval.py`) on top of `app/graph_search.py`. No LLM call at query time (usage 0).
+*Steps.* (1) Load the resolved graph, cached per build; missing or stale for the current chunking → `RetrieverUnavailable`
+(503 with the rebuild command), never an empty result that would look like a retrieval miss. (2) Entities: 1- to 4-word n-grams of the
+folded question, each normalised with T2's `normalise_name`, matched on node names, then aliases only if no node has that name
+("mailman" is the mailman node, not postroom); longest match first; identifiers exact (KST-5031 ≠ KST-5038); stop words and
+**generic words** (team, service, support, admin, owner, plan, kestrel, workspace, user, customer, error, feature) never match alone.
+The list is measured: on the 12 Kestrel questions, "support", "team", "admin", "plan", "service" and "kestrel" matched nodes in 7
+questions and would have started walks from a Service called "support" or the plan "Team". (3) Walk 2 hops, edges in both
+directions; start entities always expanded; an intermediate node with more than 15 edges is kept but not expanded (hub cap). (4)
+Candidates: the evidence chunks of every node reached and every edge followed, at their best hop; score 1/(1 + hop); ties: more
+followed edges supported, then chunk id.
+*Interpretation of the ticket.* Its §5 lists the evidence of the start entities and of the edges followed, but its N.B. on q12 relies
+on "the evidence chunk of the Messaging node". We count the evidence of every reached node. Measured on our graph, graph alone, top 10:
+the literal §5 rule finds the first hop of q08, q11 and q12 and **none of their last hops**; with node evidence, all of them
+(REPORT §7). The cost is more candidates per question, ranked below the edges' chunks of the same hop only by the tie rule.
+*Hub cap.* Never fires on our graph: the highest degree is 5 (postroom). Kept, and tested on a fixture, for a larger graph.
+*Alternatives not chosen.* **Expansion from hybrid results** (take the entities of the dense/BM25 top chunks and walk from them):
+finds chains whose first hop the other retrievers already found, but makes the graph depend on them, so its own contribution
+cannot be measured in the configuration table, and a wrong first chunk starts a wrong walk. **Fusion by graph distance** (re-score
+dense/BM25 hits by their distance to the question's entities): no new chunk can enter the list, which is exactly what two_hop needs,
+and it adds a weight to tune on 10 questions. **Path as context** (give the LLM the triples of the path with the chunks): acts on the
+answer, not on retrieval; it is the optional teams-of-3 piece, out of this ticket. **LLM entity extraction at query time**: would
+catch paraphrases ("the e-mail service" for postroom) at one call per question; out of scope (ticket) and measurable later.
+
 ## Process
 
 **D-17. Hidden instructions.** The V2 materials contained an instruction invisible on the slide (text in an unreadable colour) that
@@ -116,4 +317,36 @@ are not visible on the slide, unless confirmed by the teacher.
    rank 2 (D-18), still not rank 1. `split_answer` Recall@3 stays at 0.38 with BM25 on (q03 loses a hop to chunks BM25 promotes).
 7. `two_hop` Recall stays at 0.56 at k = 5 and 0.72 at k = 10 with dense, with or without BM25: finding every hop of a chain needs
    something that follows relations between chunks (the missing graph).
-8. The concept graph is not implemented (D-12).
+8. The concept graph is not queried yet: extraction is done (D-20 to D-23); resolution, retrieval and UI are not (D-12 update).
+9. The fixed schema drops what fits no type: people, chat channels (`#oncall-messaging`), prices, IP addresses. A chain that ends at a
+   channel stops at the `Team` node; the channel is only in that node's evidence chunk (the team table row).
+10. Cross-chunk relations are not extracted. Extraction sees one chunk at a time, so a relation whose two ends sit in different
+    chunks is missed: e.g. "escalate to the team that owns postroom" gives `KST-5031 escalates_to postroom`, not `escalates_to Messaging`.
+    T2 is expected to join such pieces through shared nodes (postroom); what it cannot join will be listed here.
+11. Quote checking catches invented quotes, not wrong readings of a true quote: a triple whose quote is in the chunk but whose direction
+    or relation is wrong passes validation (to be measured by the 10-triple extraction-quality grading).
+    **Seen in the built graph: `postroom owned_by Identity`** (quote "Owner: **Identity**.", `service-catalog_md:1`). That chunk ends
+    with the heading "### postroom"; the "Owner" line above it belongs to `auth`. The graph now gives postroom two owners, Identity
+    (wrong) and Messaging (right), so a graph path for q08 / q12 can lead support to `#oncall-identity`. A service has one owner: T2 can
+    flag services with several `owned_by` edges.
+12. Wrong entity types pass when the name is in the chunk: the "Team" nodes include `Jonas Berg` (a person), `#oncall-payments` (a
+    channel), roles (`Owner`, `Admin`, `Editor`) and the plan `Team`. The schema check sees the type name, not its meaning.
+13. The team table is only partly extracted: `service-catalog_md:3` gave the Team nodes Payments Core, Identity and Platform, not
+    Messaging, Data Integrations or Analytics Engine, although their rows are in the chunk. The `Messaging` node's only evidence is
+    `service-catalog_md:2` ("Owner: **Messaging**."), so the graph reaches Messaging but not the row with `#oncall-messaging`, which is
+    q08's and q12's last hop. q11's last hop is present (Payments Core has evidence in the table chunks 3 and 4).
+14. A section cut by a chunk boundary loses its subject: `### ledger` is in `service-catalog_md:2` and its "Owner: **Payments Core**."
+    line in `:3`, so `ledger owned_by Payments Core` is missing and the model invented a `Payments Core` *Service* owned by the team.
+15. Tables give few or no triples. Plans table: its 57 edges quoted single cells ("Yes", "1") and were all dropped by D-27, so the graph
+    does not know which plan has which feature. Team table: rows give Team nodes only (no relation in the schema links a team to its
+    channel) and the Messaging row is missing (13). A deterministic parser of markdown tables (one edge or node per row, the row as quote,
+    no LLM) would fix both; not done in this ticket.
+16. Missed merges split one team into three nodes: "Analytics Engine" (Team) owns query-engine and scheduler; "Analytics Engine"
+    typed **Service** by the LLM (KST-3020 escalates to it) cannot merge with it, because resolution never crosses types; "Analytics Eng"
+    (KST-3012 escalates to it) is the name cut by the chunk boundary at 800 characters, which no rule can safely complete. Walks from
+    KST-3012 and KST-3020 stop after one hop and never reach the team or its channel.
+17. Graph retrieval can return the right chunk for the wrong reason: for q08 and q12 the team-table chunk (`service-catalog_md:3`)
+    reaches the top 10 through the wrong edge `postroom owned_by Identity` (Identity's node has evidence in the team table), not through
+    Messaging, whose only evidence is `service-catalog_md:2` (known failure 13). Recall@k counts it as found.
+18. The graph adds nothing when the question names no entity of the graph: 5 of the 12 Kestrel questions (q03, q05, q06, q07, q09) give
+    0 graph hits; and it adds noise to an unanswerable question that names one (q10, "Business": 5 hits).

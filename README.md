@@ -22,12 +22,15 @@ Open http://127.0.0.1:8000. The first dense query downloads `all-MiniLM-L6-v2` (
 | `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` | answer generation, no-context baseline, graph extraction |
 | `DEFAULT_RETRIEVERS` | retrievers ticked by default, e.g. `dense,bm25` (our chosen default, see REPORT.md) |
 | `BM25_STOPWORDS` | `1` (default) or `0`: English stop-word list in BM25 tokenization |
+| `GRAPH_LLM_MODEL` | optional: model used for graph extraction only (default: `LLM_MODEL`) |
+| `GRAPH_CALL_DELAY_S` | optional: seconds between extraction calls, for free-tier rate limits (default `1.0`) |
+| `GRAPH_DISABLE_THINKING` | optional: `1` asks the server to switch a reasoning model's hidden thinking off during the graph build (DECISIONS D-24) |
 
 ## Switching retrievers on and off
 
 | Where | How |
 |---|---|
-| **UI** | *Ask* and *Evaluation* tabs: tick `dense`, `BM25`, `concept graph`. Graph is disabled on the own corpus (Kestrel only) and until `app/graph_retriever.py` exists. |
+| **UI** | *Ask* and *Evaluation* tabs: tick `dense`, `BM25`, `concept graph`. Graph is disabled on the own corpus (Kestrel only). |
 | **API** | `POST /api/ask` and `POST /api/evaluate` accept `"retrievers": ["dense","bm25","graph"]` (any subset), plus `rrf_k` (default 60) and `candidates` (default 10: how many results each retriever gives to the fusion, see DECISIONS D-18). `GET /api/config` lists what is available. |
 | **Command line** | `--retrievers dense,bm25,graph` (see below) |
 
@@ -47,11 +50,89 @@ the path: entities found in the question, edges followed, and the chunks they ca
 
 ## Concept graph (Kestrel)
 
-> **Status: the concept graph is not implemented in this submission** (see `REPORT.md` section 6). There is no graph build command,
-> the third required configuration (`dense+bm25+graph`) was not run, and the graph checkbox stays disabled in the UI.
-> What is in place for it: the retriever contract below, the switches in the UI/API/evaluation command (`--retrievers ...,graph`),
-> the graph-path panel in the UI, and the Kestrel `two_hop` questions with one evidence quote per hop. Dropping an
-> `app/graph_retriever.py` that follows the contract enables everything else without further changes.
+> **Status:** extraction (v3T01), entity resolution (v3T02) and the graph retriever (v3T03) are done; the UI path display is T4.
+> The graph has to be built once (below). If it is missing, or was built for other chunks, ticking the graph returns a 503 that says
+> which build command to run.
+
+### Graph retrieval
+
+The graph retriever (`app/graph_retriever.py`, DECISIONS D-29) finds the entities named in the question (n-grams matched on node
+names and aliases, error codes exact, generic words such as "team" or "support" ignored), walks 2 hops in both directions, and ranks
+the evidence chunks of what it reached by hop: 1 / (1 + hop). No LLM call at query time. It is switched on like the other retrievers
+(`"retrievers": ["dense","bm25","graph"]`, `--retrievers dense,bm25,graph`, the UI checkbox) and fused with RRF. To see what it does
+for one question:
+
+```bash
+python -m app.graph search "Error KST-5031 happened on the last two scheduled reports. Which team should support contact?"
+```
+
+### Build the graph
+
+```bash
+python -m app.graph build --corpus kestrel --limit 3   # first 3 chunks only: cheap check (again: 0 calls)
+python -m app.graph build --corpus kestrel             # every chunk (43 at 800/10), needs LLM_* in .env
+python -m app.graph status                             # missing / stale / fresh
+python -m app.graph check                              # integrity: every node and edge has evidence
+python -m app.graph walk KST-5031 --hops 3             # follow the edges from an entity, with evidence chunks
+```
+
+The extraction cache lives in `data/index/` (git-ignored), so a fresh checkout pays for extraction once: about 82 calls and 5 minutes.
+To reproduce REPORT §7, use the same endpoint and model as DECISIONS D-24 in `.env` (`GRAPH_LLM_MODEL` overrides only the model, not
+the URL or the key):
+
+```
+LLM_BASE_URL=https://integrate.api.nvidia.com/v1
+LLM_API_KEY=<your NVIDIA key>
+GRAPH_LLM_MODEL=nvidia/nemotron-3.5-lightning-30b-a3b
+GRAPH_DISABLE_THINKING=1
+```
+
+For each chunk (same chunking as the other retrievers, Kestrel 800/10), one LLM call returns entities and
+`(source, relation, target, quote)` triples. These are validated against the fixed schema in `app/graph_schema.py` (types,
+allowed source/target types, and the quote must be copied from the chunk and name one end of the relation). An invalid reply gets one retry; if the second reply
+is still invalid, its valid entities and relations are kept and the invalid ones are dropped and logged (`partial`, DECISIONS D-26);
+with `--strict` the whole chunk is skipped instead. A reply with nothing valid is skipped and logged. The build never stops on a bad reply. It prints chunks processed / skipped, entities, relations, LLM calls,
+tokens and wall time.
+
+- **Stored in** `data/index/graph-kestrel.sqlite` (git-ignored): tables `nodes`, `aliases`, `edges`, `evidence`, `merges`. Every node
+  and edge points to `{doc, chunk_id, quote}`.
+- **Rerun = free:** each chunk's extraction is cached by the hash of its text, so a rerun with unchanged documents makes **0 LLM
+  calls**, and a rerun after a crash or rate limit only pays for the missing chunks. A changed document, chunking, schema or prompt
+  makes the graph `stale` and re-extracts only the chunks that changed. A change of the validation rules (`VALIDATION_VERSION`)
+  re-checks the cached extractions without any call. `--retry-skipped` asks again for chunks that failed twice.
+- **Cost log** (committed): `data/results/graph/llm_calls.jsonl` (one row per call: model, tokens, latency, outcome),
+  `graph_errors.jsonl` (skipped chunks with the raw reply) and `build-kestrel.json` (the summary). Numbers in REPORT §7 come from there.
+- **Rate limits:** a 429 is retried with back-off. If a free tier runs out, set another key or `GRAPH_LLM_MODEL` and run the
+  command again; finished chunks are not paid again.
+
+### Entity resolution
+
+After extraction, the build merges nodes that are the same entity (0 LLM calls, from the cache), with three rules applied in order:
+**identifier** (error codes, IP addresses and plan names match exactly or never: KST-5031 is not KST-5038), **normalised** name
+of the same type ("the Messaging team" = "Messaging", "Inès" = "Ines"), and **alias** (a name the extraction listed as an alias). It
+never merges across types, nor the two ends of a `replaces` edge (postroom replaced mailman: two entities). Every merge is a row of the
+`merges` table and of `data/results/graph/merges.jsonl` (method + evidence chunks); merged names stay as aliases. Merges are
+reversible:
+
+```bash
+python -m app.graph build --rules none                 # the unmerged graph
+python -m app.graph build --rules identifier,normalised # any subset; default: identifier,normalised,alias
+```
+
+### Grading a sample of triples
+
+```bash
+python -m app.graph sample --n 10 --seed 42     # 10 random edges of the resolved graph -> data/results/v3/graph_triples_graded.json
+python -m app.graph chunk service-catalog_md:2  # read an evidence chunk in full while grading
+python -m app.graph grades                      # check the grades, write graph_triples_graded.md with the counts
+```
+
+A person grades each triple **correct**, **wrong** or **unsupported** against its evidence chunk, following
+`data/results/v3/graph_triples_grading_rules.md`, and fills `grade`, `graded_chunk`, `note` (and `graded_by`, `reviewed_by`) in the
+JSON file; a second person reviews. The same graph and seed always give the same sample; the file records the seed and a hash of the
+graph, and `grades` warns if the graph has been rebuilt since.
+
+Design choices: `DECISIONS.md` D-20 (schema) to D-24 (model choice, hidden reasoning), D-28 (entity resolution).
 
 Integration contract, so the graph plugs into fusion, UI and evaluation: `app/graph_retriever.py` must expose
 
@@ -112,7 +193,9 @@ python -m unittest discover -s tests -t .     # or: python -m pytest -q
 ```
 
 Covers the tokenizer, BM25 ranking and index persistence/invalidation, RRF, retriever orchestration, dense caching, and the
-metrics (per-hop recall, type mapping, regression detection). They use a fake embedding model, so no download is needed.
+metrics (per-hop recall, type mapping, regression detection), and graph extraction (`tests/test_graph.py`: schema, every
+validation failure, retry then skip, rerun with 0 calls, staleness, 429 back-off, integrity). They use a fake embedding model and a
+fake LLM, so no download and no API key are needed.
 
 ## Repository map
 
@@ -122,8 +205,10 @@ metrics (per-hop recall, type mapping, regression detection). They use a fake em
 | `app/bm25.py` | BM25 index, tokenizer, persistence |
 | `app/fusion.py` | RRF |
 | `app/retrieval.py` | retriever switches, fusion, timings, graph contract |
+| `app/graph_schema.py`, `app/graph.py` | concept graph: schema; extraction, validation, storage, build / walk commands |
+| `app/graph_resolve.py` | entity resolution: normalisation, identifiers, merge rules |
 | `app/evaluation.py`, `app/evaluate.py` | metrics, CLI |
 | `app/main.py`, `app/static/index.html` | API and UI |
-| `data/` | corpora, questions, results (`results/v3/` = V3), derived indexes (`index/`, git-ignored) |
+| `data/` | corpora, questions, results (`results/v3/` = V3, `results/graph/` = graph build logs), derived indexes (`index/`, git-ignored) |
 | `REPORT.md`, `DECISIONS.md`, `docs/REPORT_V2.md` | V3 report, decision log, previous report |
 | `bm25/`, `concepts/`, `ask_*.py` | course exercises (standalone scripts, not used by the app) |
