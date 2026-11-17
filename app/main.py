@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -13,12 +12,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
-# Load environment variables before importing core.
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
 from .core import (
     DATA,
+    INVALID_ANSWER_MESSAGE,
     build_chunks,
     read_corpus,
     load_questions,
@@ -58,7 +57,6 @@ class AskRequest(BaseModel):
     chunk_size: int = Field(default=800, ge=100, le=10000)
     overlap: int = Field(default=10, ge=0, le=89)
     top_k: int = Field(default=5, ge=1, le=20)
-    # Which retrievers are switched on. Several on => RRF fusion.
     retrievers: list[RetrieverName] = Field(default_factory=default_retrievers)
     rrf_k: int = Field(default=60, ge=1, le=1000)
     candidates: int = Field(default=10, ge=1, le=200)
@@ -73,7 +71,6 @@ class EvalRequest(BaseModel):
     retrievers: list[RetrieverName] = Field(default_factory=default_retrievers)
     rrf_k: int = Field(default=60, ge=1, le=1000)
     candidates: int = Field(default=10, ge=1, le=200)
-    # True: fail instead of silently measuring TF-IDF when MiniLM cannot load.
     strict_dense: bool = False
 
 
@@ -290,12 +287,16 @@ def ask(req: AskRequest):
 
     hits = out["hits"]
 
+    # Errors here are about reaching the LLM (missing config, network,
+    # timeout). A reply that arrives but is malformed is not an error:
+    # parse_llm_answer flags it with valid=False.
     try:
         raw, gen_usage = generate_answer_with_usage(req.question, hits)
-        answer = json.loads(raw)
-
     except Exception as e:
         raise HTTPException(503, str(e))
+
+    answer = json.loads(raw)
+    valid = answer["valid"]
 
     usage = {
         "llm_calls": out["usage"]["llm_calls"] + gen_usage["llm_calls"],
@@ -309,7 +310,9 @@ def ask(req: AskRequest):
     }
 
     return {
-        "answer": answer["answer"],
+        "answer": answer["answer"] if valid else INVALID_ANSWER_MESSAGE,
+        "valid": valid,
+        "validation_error": answer.get("error"),
         "citations": [
             {**hit, "citation": hit["id"]}
             for hit in hits

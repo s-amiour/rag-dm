@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+from pydantic import BaseModel, ValidationError
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
@@ -388,6 +389,56 @@ def save_json(path: Path, obj: Any):
     )
 
 
+class LLMAnswer(BaseModel):
+    """The only answer shape we accept from the LLM."""
+    answer: str
+    citations: list[str]
+
+
+INVALID_ANSWER_MESSAGE = (
+    "The model returned an answer we could not read. Please try again."
+)
+
+
+def strip_code_fence(content: str) -> str:
+    """Some models wrap their JSON in a ```json ... ``` fence: remove it."""
+    content = content.strip()
+    if content.startswith("```"):
+        content = content.split("\n", 1)[1] if "\n" in content else ""
+        content = content.rsplit("```", 1)[0].strip()
+    return content
+
+
+def parse_llm_answer(content: str, allowed_ids: set[str]) -> dict[str, Any]:
+    """Validate the raw LLM reply against LLMAnswer.
+
+    Valid reply: {"answer", "citations", "valid": True}, with citations
+    filtered to the chunk ids that were actually given to the model.
+    Anything else (not JSON, a list, missing or wrong-typed keys):
+    {"answer": "", "citations": [], "valid": False, "error": <reason>}.
+    The raw text is never shown to the user as if it were an answer.
+    """
+    try:
+        parsed = LLMAnswer.model_validate_json(strip_code_fence(content))
+    except ValidationError as exc:
+        return {
+            "answer": "",
+            "citations": [],
+            "valid": False,
+            "error": f"{exc.error_count()} validation error(s): "
+                     f"{exc.errors()[0]['msg']}"
+        }
+
+    kept = [c for c in parsed.citations if c in allowed_ids]
+
+    return {
+        "answer": parsed.answer,
+        "citations": kept,
+        "valid": True,
+        "dropped_citations": len(parsed.citations) - len(kept)
+    }
+
+
 def generate_answer(
     question: str,
     retrieved: list[dict[str, Any]]
@@ -462,34 +513,8 @@ def generate_answer_with_usage(
         "latency_s": time.perf_counter() - started
     }
 
-    content = (response.choices[0].message.content or "{}").strip()
+    content = response.choices[0].message.content or ""
+    allowed = {r["id"] for r in retrieved}
+    result = parse_llm_answer(content, allowed)
 
-    # Some models wrap their JSON in a ```json ... ``` fence: remove it.
-    if content.startswith("```"):
-        content = content.split("\n", 1)[1] if "\n" in content else ""
-        content = content.rsplit("```", 1)[0].strip()
-
-    try:
-        data = json.loads(content)
-
-        if (
-            not isinstance(data.get("answer"), str)
-            or not isinstance(data.get("citations"), list)
-        ):
-            raise ValueError("Invalid LLM response structure")
-
-        allowed = {r["id"] for r in retrieved}
-
-        data["citations"] = [
-            citation
-            for citation in data["citations"]
-            if isinstance(citation, str) and citation in allowed
-        ]
-
-        return json.dumps(data, ensure_ascii=False), usage
-
-    except (json.JSONDecodeError, ValueError):
-        return json.dumps({
-            "answer": content,
-            "citations": []
-        }, ensure_ascii=False), usage
+    return json.dumps(result, ensure_ascii=False), usage

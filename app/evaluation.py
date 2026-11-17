@@ -248,6 +248,8 @@ def evaluate_corpus(
                 try:
                     raw, gen = core.generate_answer_with_usage(q["question"], hits)
                     row["generated_answer"] = json.loads(raw)
+                    if not row["generated_answer"]["valid"]:
+                        row["generation_error"] = "invalid LLM answer: " + row["generated_answer"]["error"]
                     usage["llm_calls"] += gen["llm_calls"]
                     usage["prompt_tokens"] += gen["prompt_tokens"]
                     usage["completion_tokens"] += gen["completion_tokens"]
