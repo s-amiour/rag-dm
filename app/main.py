@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import time
@@ -62,6 +63,8 @@ class AskRequest(BaseModel):
     retrievers: list[RetrieverName] = Field(default_factory=default_retrievers)
     rrf_k: int = Field(default=60, ge=1, le=1000)
     candidates: int = Field(default=10, ge=1, le=200)
+    # False (default): dense refuses the TF-IDF fallback, as the CLI does (503 if MiniLM cannot load).
+    allow_tfidf_fallback: bool = False
 
 
 class EvalRequest(BaseModel):
@@ -73,6 +76,7 @@ class EvalRequest(BaseModel):
     retrievers: list[RetrieverName] = Field(default_factory=default_retrievers)
     rrf_k: int = Field(default=60, ge=1, le=1000)
     candidates: int = Field(default=10, ge=1, le=200)
+    allow_tfidf_fallback: bool = False  # same meaning as the CLI's --allow-tfidf-fallback
     # True: fail instead of silently measuring TF-IDF when MiniLM cannot load.
     strict_dense: bool = False
 
@@ -263,7 +267,7 @@ def config():
     return {
         "retrievers": list(RETRIEVERS),
         "available": {
-            "dense": True,
+            "dense": importlib.util.find_spec("sentence_transformers") is not None,
             "bm25": True,
             "graph": graph_available()
         },
@@ -309,6 +313,7 @@ def ask(req: AskRequest):
             depth=req.top_k,
             candidates=req.candidates,
             rrf_k=req.rrf_k,
+            strict_dense=not req.allow_tfidf_fallback,
             records=records
         )
     except ValueError as e:
@@ -355,6 +360,7 @@ def ask(req: AskRequest):
             f"{name}={detail if isinstance(detail, str) else detail.get('index')}"
             for name, detail in out["backend"].items()
         ),
+        "dense_backend": out["backend"].get("dense"),  # "sentence-transformers", "tfidf", or None if dense is off
         "graph_path": out["graph_path"],
         "timings": out["timings"],
         "usage": usage
@@ -409,7 +415,7 @@ def evaluate(req: EvalRequest):
             generate_answers=req.generate_answers,
             rrf_k=req.rrf_k,
             candidates=req.candidates,
-            strict_dense=req.strict_dense
+            strict_dense=not req.allow_tfidf_fallback
         )
     except ValueError as e:
         raise HTTPException(400, str(e))

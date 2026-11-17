@@ -79,6 +79,22 @@ def _run_graph(corpus: str, question: str, n: int, size: int, overlap: int) -> d
     )
 
 
+DENSE_UNAVAILABLE = (
+    "Dense retriever unavailable: sentence-transformers could not load. "
+    "Fix the install, or allow the TF-IDF fallback explicitly."
+)
+
+
+def get_dense(corpus: str, size: int, overlap: int, records=None, strict: bool = True):
+    """core.get_dense, with a strict-mode failure raised as RetrieverUnavailable (503 in the API)."""
+    try:
+        return core.get_dense(corpus, size, overlap, records=records, strict=strict)
+    except RuntimeError as exc:
+        if strict:
+            raise RetrieverUnavailable(f"{DENSE_UNAVAILABLE} ({exc})") from exc
+        raise
+
+
 def retrieve(
     corpus: str,
     question: str,
@@ -116,7 +132,7 @@ def retrieve(
         t0 = time.perf_counter()
 
         if name == "dense":
-            dense = core.get_dense(corpus, size, overlap, records=records, strict=strict_dense)
+            dense = get_dense(corpus, size, overlap, records=records, strict=strict_dense)
             lists["dense"] = dense.search(question, n)
             backend["dense"] = dense.backend
 
