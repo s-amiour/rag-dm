@@ -119,6 +119,19 @@ python -m app.graph build --rules none                 # the unmerged graph
 python -m app.graph build --rules identifier,normalised # any subset; default: identifier,normalised,alias
 ```
 
+### Grading a sample of triples
+
+```bash
+python -m app.graph sample --n 10 --seed 42     # 10 random edges of the resolved graph -> data/results/v3/graph_triples_graded.json
+python -m app.graph chunk service-catalog_md:2  # read an evidence chunk in full while grading
+python -m app.graph grades                      # check the grades, write graph_triples_graded.md with the counts
+```
+
+A person grades each triple **correct**, **wrong** or **unsupported** against its evidence chunk, following
+`data/results/v3/graph_triples_grading_rules.md`, and fills `grade`, `graded_chunk`, `note` (and `graded_by`, `reviewed_by`) in the
+JSON file; a second person reviews. The same graph and seed always give the same sample; the file records the seed and a hash of the
+graph, and `grades` warns if the graph has been rebuilt since.
+
 Design choices: `DECISIONS.md` D-20 (schema) to D-24 (model choice, hidden reasoning), D-28 (entity resolution).
 
 Integration contract, so the graph plugs into fusion, UI and evaluation: `app/graph_retriever.py` must expose
