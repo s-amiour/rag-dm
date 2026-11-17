@@ -58,6 +58,7 @@ from .graph_schema import (
     schema_prompt,
 )
 
+VALIDATION_VERSION = "2"      # bump when the validation rules change: the graph is re-checked from the cache, 0 calls (D-27)
 PROMPT_VERSION = "2"          # bump when the prompt below changes (invalidates the cache). v1 -> v2: DECISIONS D-25
 GRAPH_CORPORA = ("kestrel",)
 DEFAULT_CHUNK_SIZE = 800      # V2 final chunking for Kestrel (DECISIONS D-08)
@@ -96,7 +97,7 @@ def chunk_hash(text: str) -> str:
 
 def graph_fingerprint(records: list[dict[str, Any]]) -> str:
     return core.records_fingerprint(
-        records, extra=f"graph|schema={SCHEMA_VERSION}|prompt={PROMPT_VERSION}"
+        records, extra=f"graph|schema={SCHEMA_VERSION}|prompt={PROMPT_VERSION}|validation={VALIDATION_VERSION}"
     )
 
 
@@ -203,6 +204,12 @@ def relation_problems(r: Relation, table: dict[str, list[Entity]], chunk_norm: s
         )
     if norm_text(r.quote) not in chunk_norm:
         problems.append("the quote is not copied verbatim from the chunk")
+    elif s is not None and t is not None:
+        # D-27: a quote must name one end of the relation; "Yes" or "1" is in every table and proves nothing
+        quote_key = norm_key(r.quote)
+        if not any(norm_key(n) in quote_key for n in (*s.names(), *t.names())):
+            problems.append(f"the quote names neither {r.source!r} nor {r.target!r}: quote the sentence or table row "
+                            "that mentions them")
     return problems
 
 
@@ -844,6 +851,7 @@ def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap
     attempted = 0
     consecutive_errors = 0
     aborted = ""
+    rechecked: dict[str, list[str]] = {}
 
     try:
         for i, record in enumerate(records, start=1):
@@ -866,8 +874,14 @@ def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap
             if row and (row["status"] in usable or not retry_skipped):
                 counts["cached"] += 1
                 if row["status"] in usable:
-                    extractions[record["id"]] = ChunkExtraction.model_validate_json(row["extraction"])
-                    counts["partial"] += row["status"] == "partial"
+                    ex, status, dropped = _recheck(row["extraction"], row["status"], record["text"], strict)
+                    if dropped:
+                        rechecked[record["id"]] = dropped
+                    if ex is None:
+                        counts["skipped"] += 1
+                    else:
+                        extractions[record["id"]] = ex
+                        counts["partial"] += status == "partial"
                 else:
                     counts["skipped"] += 1
                 continue
@@ -941,12 +955,28 @@ def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap
                       if counts["skipped"] else "complete"),
             "mode": "strict (skip the whole chunk)" if strict else "keep valid part (D-26)",
             "aborted": aborted,
+            "validation_version": VALIDATION_VERSION,
+            "rechecked": {"chunks": len(rechecked), "items_dropped": sum(len(v) for v in rechecked.values()),
+                          "details": rechecked},
         }
         _export(con, summary)
     finally:
         con.close()
 
     return summary
+
+
+def _recheck(extraction_json: str, status: str, chunk_text: str, strict: bool):
+    """A cached extraction was valid under the rules of its time; check it again with today's rules (no LLM call).
+    Returns (extraction or None, status, dropped items)."""
+    try:
+        return parse_reply(extraction_json, chunk_text), status, []
+    except ValidationError:
+        pass
+    kept, dropped = salvage(extraction_json, chunk_text)
+    if strict or kept is None:
+        return None, "skipped", dropped
+    return kept, "partial", dropped
 
 
 def _export(con, summary: dict[str, Any]):
@@ -967,11 +997,15 @@ def format_summary(s: dict[str, Any]) -> str:
     integ_text = "OK" if integ["ok"] else "FAILED"
     lines = [
         f"Graph build {s['build_id']} - {s['corpus']} {s['chunk_size']}/{s['overlap']} "
-        f"(schema v{s['schema_version']}, prompt v{s['prompt_version']}, {s['mode']}) - {s['state']}",
+        f"(schema v{s['schema_version']}, prompt v{s['prompt_version']}, validation v{s['validation_version']}, "
+        f"{s['mode']}) - {s['state']}",
         f"  chunks processed   {s['chunks']}  (extracted now {s['extracted']}, of which retried {s['retried']}; "
         f"from cache {s['cached']}; kept in part {s['partial']}; skipped {s['skipped']}; transport errors {s['errors']}"
         + (f"; recovered from stored replies {s['salvaged_from_cache']}" if s.get("salvaged_from_cache") else "")
         + (f"; not attempted {s['not_attempted']}" if s["not_attempted"] else "") + ")",
+        *([f"  re-checked         {s['rechecked']['items_dropped']} cached item(s) in {s['rechecked']['chunks']} chunk(s) "
+           f"no longer pass the current rules: dropped (0 calls, details in build-<corpus>.json)"]
+          if s.get("rechecked", {}).get("chunks") else []),
         f"  entities           {s['entities']}  (aliases {s['aliases']})",
         f"  relations          {s['relations']}  (raw triples {s['raw_triples']})",
         f"  LLM calls (run)    {run['llm_calls']}  tokens: prompt {run['prompt_tokens']}, "

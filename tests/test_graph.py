@@ -160,6 +160,18 @@ class ValidationTests(unittest.TestCase):
                                   [("Messaging", "owned_by", "postroom", "Owner: Messaging")]),
                             CATALOG, "cannot go from Team to Service")
 
+    def test_quote_must_name_an_end_of_the_relation(self):
+        plans = ("| | Free | Business | Enterprise |\n|---|---|---|---|\n"
+                 "| SCIM user provisioning | — | — | Yes |\n| Single sign-on (SAML) | — | Yes | Yes |")
+        ents = [("Business", "Plan"), ("SCIM user provisioning", "Feature")]
+        # the false edge of the real build: "Yes" is in the chunk, but it comes from another cell
+        self.assertRejected(reply(ents, [("Business", "has_feature", "SCIM user provisioning", "Yes")]),
+                            plans, "names neither")
+        # a quote that is the table row naming the feature is accepted
+        ok = reply(ents, [("Business", "has_feature", "SCIM user provisioning",
+                           "| SCIM user provisioning | — | — | Yes |")])
+        self.assertEqual(len(graph.parse_reply(ok, plans).relations), 1)
+
     def test_entity_not_mentioned_in_chunk(self):
         self.assertRejected(reply([("ledger", "Service")], []), CATALOG, "appears in the chunk")
 
@@ -258,6 +270,35 @@ class BuildTests(GraphTestCase):
         self.assertTrue(s["integrity"]["ok"])
         s = self.run_build(NoCalls(), strict=True)                       # strict ignores kept parts
         self.assertEqual((s["partial"], s["skipped"]), (0, 1))
+
+    def test_cached_extractions_are_rechecked_with_current_rules_without_calls(self):
+        self.run_build(FakeLLM())
+        # simulate an extraction cached under older, looser rules: a one-word quote
+        old = json.loads(GOOD["service-catalog_md:0"])
+        old["relations"].append({"source": "mailman", "relation": "replaces", "target": "postroom", "quote": "older"})
+        con = graph.connect("kestrel")
+        con.execute("UPDATE extraction_cache SET extraction=? WHERE chunk_hash=?",
+                    (json.dumps({"entities": [{**e, "aliases": []} for e in old["entities"]],
+                                 "relations": old["relations"]}), graph.chunk_hash(CATALOG)))
+        con.commit(); con.close()
+
+        class NoCalls(FakeLLM):
+            def complete(self, messages):
+                raise AssertionError("the LLM must not be called")
+
+        s = self.run_build(NoCalls())
+        self.assertEqual((s["run"]["llm_calls"], s["rechecked"]["chunks"], s["rechecked"]["items_dropped"]), (0, 1, 1))
+        self.assertEqual((s["partial"], s["relations"]), (1, 4))          # the loose edge is gone, the rest kept
+        self.assertIn("names neither", s["rechecked"]["details"]["service-catalog_md:0"][0])
+        self.assertIn("re-checked", graph.format_summary(s))
+        s = self.run_build(NoCalls(), strict=True)
+        self.assertEqual(s["skipped"], 1)
+
+    def test_validation_version_is_part_of_the_graph_fingerprint(self):
+        before = graph.graph_fingerprint(RECORDS)
+        with mock.patch.object(graph, "VALIDATION_VERSION", "999"):
+            self.assertNotEqual(graph.graph_fingerprint(RECORDS), before)
+        self.assertEqual(graph.chunk_hash("x"), graph.chunk_hash("x"))   # cache keys do not depend on it
 
     def test_salvaged_part_always_passes_full_validation(self):
         raw = reply([("postroom", "Service"), ("Ghost", "Team")],
