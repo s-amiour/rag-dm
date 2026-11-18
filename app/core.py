@@ -438,6 +438,11 @@ INVALID_ANSWER_MESSAGE = (
 )
 
 
+TRUNCATED_ANSWER_MESSAGE = (
+    "The model ran out of space before it finished its answer. Please try again."
+)
+
+
 def strip_code_fence(content: str) -> str:
     """Some models wrap their JSON in a ```json ... ``` fence: remove it."""
     content = content.strip()
@@ -543,13 +548,25 @@ def generate_answer_with_usage(
 
     started = time.perf_counter()
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=2048
-    )
+    # Reasoning models (e.g. NVIDIA's nemotron) spend completion tokens on hidden
+    # thinking before the JSON. With thinking on, 2048 tokens were often used up
+    # before the answer started, so the reply was cut off. Same switch as the graph
+    # build (graph.OpenAICompatibleLLM, DECISIONS D-24); servers that do not know
+    # chat_template_kwargs ignore it. DECISIONS D-35.
+    disable_thinking = os.getenv("LLM_DISABLE_THINKING", "0").strip().lower() in ("1", "true", "yes")
+    max_tokens = int(os.getenv("LLM_MAX_TOKENS", "2048"))
+
+    request = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens
+    }
+    if disable_thinking:
+        request["extra_body"] = {
+            "chat_template_kwargs": {"enable_thinking": False, "thinking": False}
+        }
+
+    response = client.chat.completions.create(**request)
 
     usage_obj = getattr(response, "usage", None)
 
@@ -562,8 +579,21 @@ def generate_answer_with_usage(
         "latency_s": time.perf_counter() - started
     }
 
-    content = response.choices[0].message.content or ""
+    choice = response.choices[0]
+    finish_reason = getattr(choice, "finish_reason", None)
+    usage["finish_reason"] = finish_reason
+    usage["thinking"] = "off" if disable_thinking else "default"
+
+    content = choice.message.content or ""
     allowed = {r["id"] for r in retrieved}
     result = parse_llm_answer(content, allowed)
+
+    if not result["valid"] and finish_reason == "length":
+        result["error"] = (
+            f"reply cut off by the token limit ({max_tokens} completion tokens, "
+            "finish_reason=length). If the model is a reasoning model, set "
+            "LLM_DISABLE_THINKING=1; otherwise raise LLM_MAX_TOKENS."
+        )
+        result["user_message"] = TRUNCATED_ANSWER_MESSAGE
 
     return json.dumps(result, ensure_ascii=False), usage

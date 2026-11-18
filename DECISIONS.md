@@ -3,7 +3,7 @@
 Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented in V3;
 D-20 to D-27 record its extraction step (ticket v3T01), D-28 entity resolution (v3T02), D-29 graph retrieval (v3T03), D-30 the graph path in the UI (v3T04);
 D-31 to D-33 record answer validation (v3T12), the shared tokenizer (v3T11) and own-corpus storage (v3T10, v3T19);
-D-34 the own question labels (v3T13). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
+D-34 the own question labels (v3T13), D-35 answers with a reasoning model. D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
 V2 decisions (chunk size, overlap, top-k, embedding model) are in `docs/REPORT_V2.md`.
 
 ## Fusion
@@ -343,6 +343,19 @@ reaching the LLM (missing key, network, timeout) is still a 503; reaching it and
 parsing is its own function (`parse_llm_answer`) so it can be tested without an LLM or a key (`tests/test_answer_validation.py`). In the
 evaluation, an invalid answer is recorded as a `generation_error`. Not done: retrying once on an invalid reply (one more LLM call per
 failure), as the graph extraction does (D-21).
+
+**D-35. Answers with a reasoning model: thinking off, and a clear message when the reply is cut off.** After D-31, answers with
+`nvidia/nemotron-3.5-lightning-30b-a3b` often came back as "could not read": both failed answers we checked had used exactly 2048
+completion tokens, our `max_tokens`. The model spends tokens on hidden reasoning before writing the JSON (as measured for the graph build,
+D-24), ran out, and the reply was cut off (`finish_reason: length`). D-31's validation caught it, but the user could not get an answer.
+Options: (a) raise `max_tokens` (works sometimes, costs more tokens and time per answer, and the limit can still be hit); (b) **switch
+hidden thinking off, as the graph build does**; (c) change model (D-24: the other models we tried were retired or too slow).
+**Chosen: (b), with (a) available.** `LLM_DISABLE_THINKING=1` sends the same `chat_template_kwargs` as `GRAPH_DISABLE_THINKING`;
+servers that do not know it ignore it, so it is opt-in and the default request is unchanged. `LLM_MAX_TOKENS` (default 2048) makes the
+limit configurable. If a reply is invalid **and** `finish_reason` is `length`, the error says the token limit was hit and which setting
+to change, and the user sees "The model ran out of space before it finished its answer" instead of the generic message. `finish_reason`
+and the thinking setting are returned with the usage of every answer. Risk: with thinking off, answers on hard questions (two_hop,
+versions) may be worse. Tests: `tests/test_answer_generation.py` (fake client).
 
 ## Words tab
 

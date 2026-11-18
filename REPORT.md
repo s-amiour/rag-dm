@@ -5,9 +5,9 @@
 - Team members:
   - **Sultan AMIOUR**
   - **Muhammad Saad JAVED**
-- Team of 2 (GitHub: `s-amiour`, `Msaadjaved`); the "teams of 3" extra piece does not apply.
-- Repository: https://github.com/Msaadjaved/rag-v2-document-qa · tag `v3`
-- Previous report: `docs/REPORT_V2.md` · decision log: `DECISIONS.md` · how to run: `README.md`
+  - **Jaimie MATHANGI**
+- Team of 3 (GitHub: `s-amiour`, `Msaadjaved`, `Chimaera-Emerald`); Jaimie joined for V4. The "teams of 3" extra piece applies:
+  weighted RRF compared with plain RRF (ticket B7).
 
 ## 2. Summary
 
