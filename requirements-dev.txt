@@ -1,0 +1,3 @@
+# Only needed to run the tests (not the app): pip install -r requirements-dev.txt
+pytest>=8
+playwright>=1.40   # then, once: python -m playwright install chromium
