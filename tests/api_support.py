@@ -111,7 +111,7 @@ class ApiTestCase(unittest.TestCase):
             return json.dumps(reply), {"llm_calls": 1, "prompt_tokens": 10, "completion_tokens": 5,
                                        "latency_s": 0.0, "finish_reason": "stop", "thinking": "off"}
 
-        def fake_get_dense(corpus, size, overlap, records=None, strict=True):
+        def fake_get_dense(corpus, size, overlap, records=None, strict=True, force=False):
             return FakeDense(corpus, records if records is not None else core.build_chunks(corpus, size, overlap))
 
         real_connect = socket.socket.connect
