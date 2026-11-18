@@ -316,11 +316,15 @@ def ask(req: AskRequest):
 
     # One trace per question (v4T02). An exception closes it with outcome "error" before the
     # HTTP error reaches the user. T09: pass the redacted question here.
+    question_for_trace, question_pii = (
+       redact.redact(req.question) if redact.enabled() else (req.question, {})
+       )
     with traces.trace(
         "request",
         kind="question",
         corpus=req.corpus,
-        question=req.question,
+        question=question_for_trace,
+        redactions=redact.counts(question_pii),
         retrievers=list(dict.fromkeys(req.retrievers)),
         top_k=req.top_k,
         candidates=req.candidates,
@@ -381,6 +385,7 @@ def ask(req: AskRequest):
                     "gen_ai.usage.output_tokens": gen_usage["completion_tokens"],
                     "gen_ai.response.finish_reasons": [gen_usage.get("finish_reason")],
                     "thinking": gen_usage.get("thinking"),
+                    "redactions": gen_usage.get("redactions", {}),
                     "cost_usd": cost_usd,
                     "price_known": price_known
                 })
