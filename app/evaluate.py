@@ -110,17 +110,13 @@ def run_and_save(
     out_dir = Path(out_dir or DEFAULT_OUT)
     name = run_name(retrievers, stopwords, weights, corpus, size, overlap, top_k, candidates, rrf_k)
     started = time.perf_counter()
-    previous = bm25_module.stopwords_enabled()
-    bm25_module.set_stopwords(stopwords)
-
-    try:
+    # the run's stop-word setting applies to this run only, success or failure (v3T17)
+    with bm25_module.stopwords_setting(stopwords):
         result = evaluate_corpus(
             corpus, size, overlap, top_k, retrievers, questions=questions,
             generate_answers=generate_answers, rrf_k=rrf_k, candidates=candidates, weights=weights,
             strict_dense=strict_dense, label=name, progress=progress
         )
-    finally:
-        bm25_module.set_stopwords(previous)  # a failed run must not change later runs
 
     result["summary"]["wall_seconds"] = time.perf_counter() - started
     result["summary"]["run_at"] = time.strftime("%Y-%m-%d %H:%M:%S")  # v3T09: shows mixed-age results in the summary
