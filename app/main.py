@@ -18,6 +18,8 @@ ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
 from . import evaluate as cli_eval  # the CLI's run-and-save path, shared with /api/evaluate (v3T08)
+from . import bm25 as bm25_module
+from . import retrieval as retrieval_module
 from . import traces
 from .core import (
     DATA,
@@ -25,6 +27,8 @@ from .core import (
     DEFAULT_CHUNKING,
     DEFAULT_RRF_K,
     DEFAULT_TOP_K,
+    DENSE_MODEL_NAME,
+    records_fingerprint,
     resolve_chunking,
     INVALID_ANSWER_MESSAGE,
     build_chunks,
@@ -45,6 +49,7 @@ from .core import (
 
 from .bm25 import get_bm25
 from . import redact
+from . import injection
 from .retrieval import (
     RETRIEVERS,
     RetrieverUnavailable,
@@ -232,12 +237,40 @@ async def upload_document(
             "Document must be UTF-8 encoded."
         )
 
+    # Injection scanner (v4T08, DECISIONS D-36): a suspicious document goes to
+    # data/quarantine/<corpus>/ instead of the corpus folder, so it is never chunked,
+    # embedded or indexed until someone approves it.
+    scan = injection.report(text)
+    if scan["suspicious"]:
+        qfolder = QUARANTINE / corpus
+        qfolder.mkdir(parents=True, exist_ok=True)
+        (qfolder / name).write_text(text, encoding="utf-8")
+        save_json(qfolder / (name + ".scan.json"), {
+            **scan,
+            "corpus": corpus,
+            "name": name,
+            "characters": len(text),
+            "uploaded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        })
+        return {
+            "uploaded": name,
+            "characters": len(text),
+            "quarantined": True,
+            "findings": scan["findings"],
+            "message": (
+                f"{name} looks like it contains instructions aimed at the model "
+                f"({len(scan['findings'])} finding(s)). It is in quarantine and will not be "
+                "searched until you review it in the Documents tab."
+            ),
+        }
+
     (folder / name).write_text(text, encoding="utf-8")
     _update_selection_file(folder, add=name)
 
     return {
         "uploaded": name,
-        "characters": len(text)
+        "characters": len(text),
+        "quarantined": False
     }
 
 
@@ -268,6 +301,93 @@ def delete_document(
     return {"deleted": path.name}
 
 
+QUARANTINE = DATA / "quarantine"
+
+
+def _quarantined(corpus: str, name: str) -> tuple[Path, Path]:
+    original = Path(name)
+    if original.suffix.lower() not in {".txt", ".md"}:
+        raise HTTPException(415, "Only .txt and .md documents can be in quarantine.")
+    path = QUARANTINE / corpus / (safe_name(original.stem) + original.suffix.lower())
+    if not path.exists():
+        raise HTTPException(404, "This document is not in quarantine.")
+    return path, path.with_name(path.name + ".scan.json")
+
+
+def _log_review(corpus: str, name: str, decision: str, scan: dict):
+    QUARANTINE.mkdir(parents=True, exist_ok=True)
+    with (QUARANTINE / "review-log.jsonl").open("a", encoding="utf-8") as log:
+        log.write(json.dumps({
+            "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "corpus": corpus,
+            "name": name,
+            "decision": decision,
+            "findings": len(scan.get("findings", [])),
+            "rules": sorted({f["rule"] for f in scan.get("findings", [])}),
+            "rules_version": scan.get("rules_version"),
+        }, ensure_ascii=False) + "\n")
+
+
+def _review_attributes(scan: dict) -> dict:
+    """What a review trace keeps about the scan: counts and rule names only. No excerpts,
+    because excerpts are document text."""
+    findings = scan.get("findings", [])
+    return {
+        "findings": len(findings),
+        "rules": sorted({f["rule"] for f in findings}),
+        "rules_version": scan.get("rules_version"),
+    }
+
+
+@app.get("/api/quarantine")
+def quarantine_list(corpus: Literal["kestrel", "own"] | None = None):
+    """Documents held back by the injection scanner, with what it found."""
+    corpora = [corpus] if corpus else ["kestrel", "own"]
+    items = []
+    for c in corpora:
+        folder = QUARANTINE / c
+        for scan_file in sorted(folder.glob("*.scan.json")) if folder.exists() else []:
+            try:
+                items.append(json.loads(scan_file.read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                continue
+    return items
+
+
+@app.post("/api/quarantine/{corpus}/{name}/approve")
+def quarantine_approve(corpus: Literal["kestrel", "own"], name: str):
+    """A person read the findings and decided the document is safe: move it into the
+    corpus (it is indexed on the next query, like any upload)."""
+    path, scan_file = _quarantined(corpus, name)
+    target = DATA / "corpora" / corpus / path.name
+    if target.exists():
+        raise HTTPException(409, f"{path.name} already exists in the corpus. Delete or rename it first.")
+    scan = json.loads(scan_file.read_text(encoding="utf-8")) if scan_file.exists() else {}
+    with traces.trace("quarantine.approve", kind="quarantine.approve", corpus=corpus,
+                      document=path.name, **_review_attributes(scan)) as t:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(path, target)
+        scan_file.unlink(missing_ok=True)
+        _update_selection_file(target.parent, add=target.name)
+        _log_review(corpus, path.name, "approved", scan)
+        t.set_outcome("approved")
+    return {"approved": path.name, "trace_id": t.id}
+
+
+@app.delete("/api/quarantine/{corpus}/{name}")
+def quarantine_reject(corpus: Literal["kestrel", "own"], name: str):
+    """A person decided the document is an attack (or not wanted): delete it."""
+    path, scan_file = _quarantined(corpus, name)
+    scan = json.loads(scan_file.read_text(encoding="utf-8")) if scan_file.exists() else {}
+    with traces.trace("quarantine.reject", kind="quarantine.reject", corpus=corpus,
+                      document=path.name, **_review_attributes(scan)) as t:
+        path.unlink()
+        scan_file.unlink(missing_ok=True)
+        _log_review(corpus, path.name, "rejected", scan)
+        t.set_outcome("rejected")
+    return {"rejected": path.name, "trace_id": t.id}
+
+
 @app.get("/api/config")
 def config():
     return {
@@ -291,14 +411,66 @@ def config():
 @app.post("/api/index/{corpus}/rebuild")
 def rebuild_index(
     corpus: Literal["kestrel", "own"],
-    chunk_size: int = 800,
-    overlap: int = 10
+    chunk_size: int | None = None,
+    overlap: int | None = None
 ):
-    """Force a BM25 rebuild (it is normally rebuilt automatically when the
-    documents, their selection, or the chunking change)."""
-    retriever = get_bm25(corpus, chunk_size, overlap, force=True)
+    """Force a rebuild of the dense embeddings and the BM25 index (both are normally rebuilt
+    automatically when the documents, their selection, or the chunking change). No chunking given:
+    the corpus default (core.DEFAULT_CHUNKING), as in /api/ask. One `index` trace (v4T03)."""
+    size, overlap = resolve_chunking(corpus, chunk_size, overlap)
 
-    return retriever.info
+    with traces.trace("index", kind="index", corpus=corpus,
+                      chunk_size=size, overlap=overlap, trigger="rebuild") as trace:
+        with trace.span("load+chunk") as span:
+            records = build_chunks(corpus, size, overlap)
+            span.set(documents=len({r["document"] for r in records}), chunks=len(records),
+                     corpus_hash=records_fingerprint(records))
+
+        if not records:
+            raise HTTPException(400, f"No documents found for {corpus}. Upload the corpus documents first.")
+
+        # the fingerprint of the default pipeline over these chunks, so an index trace can be matched
+        # with the questions and evaluation runs that used it
+        trace.set(fingerprint=config_fingerprint(pipeline_config(
+            corpus, records, chunk_size=size, overlap=overlap, top_k=DEFAULT_TOP_K,
+            candidates=DEFAULT_CANDIDATES, retrievers=default_retrievers(), rrf_k=DEFAULT_RRF_K
+        )))
+
+        try:
+            with trace.span("embed") as span:
+                dense = retrieval_module.get_dense(corpus, size, overlap, records=records, strict=True, force=True)
+                dense_info = {
+                    "backend": dense.backend,
+                    "model": DENSE_MODEL_NAME,
+                    "chunks": len(records),
+                    "cache_hit": False,
+                    "build_seconds": round(float(dense.build_seconds), 3)
+                }
+                span.set(**dense_info)
+        except RetrieverUnavailable as e:
+            raise HTTPException(503, str(e))
+
+        with trace.span("bm25.build") as span:
+            retriever = get_bm25(corpus, size, overlap, records=records, force=True)
+            span.set(
+                chunks=retriever.info.get("chunks"),
+                vocabulary=retriever.info.get("terms"),
+                stopwords=bm25_module.stopwords_enabled(),
+                tokenizer_version=bm25_module.TOKENIZER_VERSION,
+                source=retriever.info.get("source"),
+                build_seconds=round(float(retriever.info.get("seconds") or 0.0), 4)
+            )
+
+        trace.set_outcome("ok")
+
+        # today's response (the BM25 info) is kept at the top level; the rest is added
+        return {
+            **retriever.info,
+            "trace_id": trace.id,
+            "chunks": len(records),
+            "dense": dense_info,
+            "bm25": retriever.info
+        }
 
 
 def question_outcome(valid: bool, cited_ids: list[str]) -> str:
@@ -317,7 +489,7 @@ def ask(req: AskRequest):
     # One trace per question (v4T02). An exception closes it with outcome "error" before the
     # HTTP error reaches the user. T09: pass the redacted question here.
     question_for_trace, question_pii = (
-       redact.redact(req.question) if redact.enabled() else (req.question, {})
+        redact.redact(req.question) if redact.enabled() else (req.question, {})
        )
     with traces.trace(
         "request",

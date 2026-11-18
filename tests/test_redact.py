@@ -59,6 +59,14 @@ class RedactRulesTest(unittest.TestCase):
         # D-37: names are only found after a cue ("my name is", Mr, Dr...)
         self.assertEqual(redact.redact("Jonas Berg leads Platform.")[0], "Jonas Berg leads Platform.")
 
+    def test_role_and_plan_words_are_not_names(self):
+        for q in ("I am Owner of the workspace, how do I transfer it?",
+                  "I'm Admin and can't add a connector",
+                  "I am Enterprise customer, what is the SLA?"):
+            self.assertEqual(redact.redact(q), (q, {}), q)
+        out, mapping = redact.redact("I am Lea Martin, Owner of the workspace")
+        self.assertEqual(out, "I am [NAME_1], Owner of the workspace")
+
     def test_switch_off(self):
         with mock.patch.dict(os.environ, {"PII_REDACTION": "0"}):
             self.assertFalse(redact.enabled())

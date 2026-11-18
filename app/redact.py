@@ -44,6 +44,17 @@ _NAME = re.compile(
     r"([A-ZÀ-Ý][a-zà-ÿ'-]+(?:[ -][A-ZÀ-Ý][a-zà-ÿ'-]+){0,2})"
 )
 
+# Capitalised words that follow "I am" in support questions but are roles or plans, not
+# names. Without this, "I am Owner of the workspace" loses the role the question is about.
+NOT_NAMES = {
+    "owner", "admin", "admins", "administrator", "editor", "viewer", "member", "members",
+    "guest", "free", "starter", "team", "business", "enterprise", "pro", "kestrel",
+}
+
+
+def _not_a_role(value: str) -> bool:
+    return value.split()[0].lower() not in NOT_NAMES
+
 
 def _luhn(number: str) -> bool:
     digits = [int(d) for d in number if d.isdigit()]
@@ -109,7 +120,7 @@ def redact(text: str, mapping: dict[str, str] | None = None) -> tuple[str, dict[
     sub("IBAN", _IBAN, _iban_ok)
     sub("CARD", _CARD, _luhn)
     sub("PHONE", _PHONE)
-    sub("NAME", _NAME, group=1)
+    sub("NAME", _NAME, _not_a_role, group=1)
     return text, mapping
 
 

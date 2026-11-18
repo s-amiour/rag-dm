@@ -205,7 +205,8 @@ class FingerprintUnitTest(unittest.TestCase):
         self.assertEqual(set(self.config()), {
             "answer_prompt_version", "graph_prompt_version", "llm_model", "embedding_model", "chunk_size",
             "overlap", "top_k", "candidates", "retrievers", "rrf_k", "weights", "stopwords", "reranker",
-            "corpus_hash"})
+            "corpus_hash","rrf_k", "weights", "stopwords", "reranker",
+            "corpus_hash", "redaction"})
 
     def test_same_config_same_fingerprint_and_order_does_not_matter(self):
         a = core.config_fingerprint(self.config())
@@ -222,9 +223,11 @@ class FingerprintUnitTest(unittest.TestCase):
             self.config(weights={"dense": 2.0}),
             self.config(records=[{"id": "doc_md:0", "text": "one, edited"}, {"id": "doc_md:1", "text": "two"}]),
         ]
-        with mock.patch.object(core, "ANSWER_PROMPT_VERSION", "2"):
+        with mock.patch.object(core, "ANSWER_PROMPT_VERSION", "test-other"):
             changed.append(self.config())
         with mock.patch.dict(os.environ, {"LLM_MODEL": "another/model"}):
+            changed.append(self.config())
+        with mock.patch.dict(os.environ, {"PII_REDACTION": "0"}):
             changed.append(self.config())
         for cfg in changed:
             self.assertNotEqual(core.config_fingerprint(cfg), base, cfg)
