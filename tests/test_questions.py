@@ -40,8 +40,6 @@ class QuestionFileTests(unittest.TestCase):
                 self.assertTrue(gold_chunks(records, hop), q["id"])
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 CANONICAL_TYPES = {"exact_identifier", "split_answer", "vocabulary", "not_in_corpus", "versions", "two_hop", "other"}
@@ -75,3 +73,20 @@ class OwnQuestionLabelTests(unittest.TestCase):
         for q in self.own:
             if q["type"] == "two_hop":
                 self.assertGreaterEqual(len(question_hops(q)), 2, q["id"])
+
+    def test_question_ids_are_unique(self):
+        for corpus in ("kestrel", "own"):
+            ids = [q["id"] for q in core.load_questions(corpus)]
+            self.assertEqual(len(ids), len(set(ids)), corpus)
+
+    def test_own_two_hop_hops_are_in_different_chunks(self):
+        records = core.build_chunks("own", 500, 20)
+        for q in self.own:
+            if q["type"] == "two_hop":
+                chunk_sets = [set(gold_chunks(records, hop)) for hop in question_hops(q)]
+                self.assertTrue(all(chunk_sets), q["id"])
+                self.assertFalse(set.intersection(*chunk_sets), f"{q['id']}: all hops share a chunk")
+
+
+if __name__ == "__main__":
+    unittest.main()

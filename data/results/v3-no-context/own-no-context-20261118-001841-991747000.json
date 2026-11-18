@@ -1,0 +1,113 @@
+{
+  "corpus": "own",
+  "mode": "no-context",
+  "provider_base_url": "https://integrate.api.nvidia.com/v1",
+  "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "results": [
+    {
+      "id": "OWN-01",
+      "question": "What is the capacity of the Vellora Duo water tank?",
+      "type": "exact_identifier",
+      "answer": "The capacity of the Vellora Duo water tank is 120 liters.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-02",
+      "question": "How long should the water filter be soaked before installation, and how long does it last?",
+      "type": "split_answer",
+      "answer": "I do not have enough information to answer this question accurately, as the soaking and lifespan of water filters vary significantly depending on the **type of filter**, the **brand**, and the **model**.\n\nTo provide you with the correct answer, please check the manual or packaging for the specific filter model you have purchased.\n\nGenerally, however, here are common guidelines for different types of filters:\n\n*   **Refrigerator Water Filters:** These typically **do not require soaking**; installation is usually immediate. Their lifespan is typically **every 6 months** or after filtering approximately 200–300 gallons of water.\n*   **Pitcher or Faucet-Mounted Filters:** Some may require a brief soak (usually 5–10 minutes) to saturate the carbon. Lifespan is often based on a filter change indicator or roughly every 2 months.\n*   **Undersink or Whole-House Filters:** These often have specific soaking requirements and lifespans measured in gallons (e.g., 6 months or 1,000 gallons) rather than time.\n\n**If you can provide the brand and model number, I can give you a more specific answer.**",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-03",
+      "question": "What should I do if coffee comes out drop by drop?",
+      "type": "vocabulary",
+      "answer": "If coffee comes out drop by drop, it usually indicates that your coffee maker or espresso machine is experiencing a blockage or requires maintenance. Here is how to troubleshoot the issue based on the type of brewer you are using:\n\n### 1. If using a Drip Coffee Maker (e.g., Mr. Coffee, Bonavita)\n*   **Clean the Needle/Exit Hole:** Mineral deposits or coffee grounds can clog the needle that punctures the coffee filter. Unplug the machine and use a paperclip or a thin needle to clear the hole where the water comes out.\n*   **Descale the Machine:** If it has been a while since you last descaled, scale buildup inside the tubes can restrict water flow. Run a cycle of equal parts white vinegar and water, followed by two to three cycles of fresh water to rinse.\n*   **Check the Filter:** Ensure you are using the correct size filter and that it is seated flat against the brew basket; a crumpled filter can block the flow.\n\n### 2. If using an Espresso Machine\n*   **Check the Grind Size:** If the coffee is coming out extremely slowly or like \"mouse tails\" (one thick stream, then dripping), your grind is likely too fine. Espresso requires a specific fineness; if it feels like powder, try adjusting the grinder to a coarser setting.\n*   **Tamp Pressure:** Ensure you are tamping the coffee grounds firmly and evenly. If the puck is loose or uneven, water will find the path of least resistance and drip slowly.\n*   **Backflushing:** For machines with a portafilter, a blocked screen can cause this. Remove the shower screen and group head, rinse them thoroughly, and reassemble.\n\n### 3. If using a French Press or Pour-Over\n*   **Coarsen the Grind:** If you are brewing manually and it is dripping slowly, the coffee grounds are likely too fine. For a French Press, the grind should resemble sea salt; for Pour-Over, it should look like coarse sea salt or breadcrumbs.\n*   **Stir the Grounds:** Ensure all the grounds are saturated. Sometimes \"dry pockets\" form, which slows down the extraction.\n\n**Summary:** The most common fix is descaling the machine or adjusting the grind size to be coarser. If these steps do not resolve the issue and the machine is very old, it may be time to descale or check for internal mechanical failure.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-04",
+      "question": "Can I use vinegar to descale the machine?",
+      "type": "other",
+      "answer": "Yes, white distilled vinegar is a common and effective household item for descaling coffee machines and other similar appliances.\n\nHere are a few general guidelines for using it:\n\n*   **Dilution:** It is generally recommended to dilute the vinegar with water (often a 1:1 ratio or following the manufacturer's instructions) rather than using it straight, as the acidity can be quite strong.\n*   **Rinsing:** Because vinegar has a strong smell and taste, it is crucial to run several cycles of fresh water through the machine afterward to ensure no vinegar residue remains. This prevents your next cup of coffee from tasting like vinegar.\n*   **Check the Manual:** While vinegar is widely used, some manufacturers specifically recommend descaling solutions or warn against using vinegar because it can potentially damage certain internal seals or components over time. If you have the manual, checking it is the safest route.\n\nIf you are unsure about your specific machine model, it is best to consult the manufacturer's instructions.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-05",
+      "question": "What are the two phases of the descaling programme?",
+      "type": "other",
+      "answer": "I do not have specific knowledge of a descaling programme with two named phases in my training data, and without access to external documents or tools, I cannot provide a definitive answer.\n\nIf you are referring to a specific context—such as industrial equipment maintenance, software cleanup, or a particular company's initiative—please provide additional details so I can attempt to assist further.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-06",
+      "question": "What is error E47 and how should it be fixed?",
+      "type": "exact_identifier",
+      "answer": "Based on general knowledge of common electronic and industrial systems, \"Error E47\" is most frequently associated with **CCTV/Video Security Systems** (specifically brands like Hikvision, Dahua, or generic DVRs), but it can also appear in other contexts like CNC machines, industrial PLCs, or audio equipment.\n\nWithout specific documentation for your exact device, here is the most common meaning and how to address it:\n\n### 1. Most Likely Meaning: Video Loss or Signal Issue (CCTV/DVRs)\nIn many CCTV systems, **E47** often indicates **Video Loss** or a failure in the video signal path for a specific camera channel.\n\n*   **What it means:** The Digital Video Recorder (DVR) or Network Video Recorder (NVR) has detected that camera #X (or the system in general) has lost its video signal.\n*   **How to fix it:**\n    *   **Check Connections:** Ensure the coaxial cable (or Ethernet cable for IP systems) is firmly connected to both the camera and the DVR.\n    *   **Check Power:** Ensure the camera is powered on. A common cause of E47 is a failed power supply or a loose power adapter.\n    *   **Replace the Cable:** Coaxial cables degrade over time; replacing the cable running to the camera often resolves the error.\n    *   **Camera Failure:** If the cable and power are good, the camera itself may have failed.\n\n### 2. Other Possible Meanings\nBecause error codes are specific to the manufacturer, E47 could mean something entirely different depending on your device:\n\n*   **Industrial PLCs (Programmable Logic Controllers):** It might refer to a specific hardware fault, a communication error with a module, or a watchdog timer expiry.\n*   **Audio/Amplification Equipment:** It could indicate a protection mode trigger or a specific hardware fault code.\n*   **3D Printers/CNC:** It might relate to an axis error or a firmware communication issue.\n\n### Recommendation\nTo get the correct fix, you should identify the **brand and model number** of the device displaying the error. Searching for \"[Brand] E47 error\" or consulting the device's official manual will provide the specific diagnostic meaning for that hardware.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-07",
+      "question": "How often should the brewing unit be rinsed?",
+      "type": "vocabulary",
+      "answer": "The brewing unit should be rinsed every time coffee residues accumulate or after each use if you are using the machine daily. Regular rinsing prevents coffee oils from building up and affecting the taste of future brews.\n\nHowever, if the machine is used heavily or if the coffee appears to taste off, it may need more frequent cleaning. Always refer to the manufacturer's instructions for your specific model, as requirements can vary.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-08",
+      "question": "How much coffee grounds are used at strength level 5?",
+      "type": "split_answer",
+      "answer": "The amount of coffee grounds used for a strength level 5 depends entirely on the brewing method being used, as \"strength\" typically refers to the concentration (ratio of coffee to water) rather than a universal scoop count.\n\nHere is the breakdown for common methods:\n\n*   **Espresso:** A standard double shot uses approximately **18 to 20 grams** of coffee grounds.\n*   **Drip Coffee (Standard 8 oz cup):** Typically uses **10 to 15 grams** (about 1.5 to 2 tablespoons) of grounds.\n*   **French Press:** Uses roughly **55 to 65 grams per liter** of water. For a standard 3-cup (approx. 500ml) press, this equates to roughly **27 to 32 grams** of grounds.\n*   **Pour Over (V60/Chemex):** Usually uses **15 to 20 grams** for a single serving.\n\nWithout knowing your specific brewing device, it is impossible to give an exact measurement, as strength level 5 can be achieved with different quantities of coffee depending on the water volume and grind size used. If you provide the brewing method, I can give a more precise answer.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-09",
+      "question": "What temperature should the milk be for the best foam?",
+      "type": "exact_identifier",
+      "answer": "The ideal temperature for milk to produce the best foam is generally between **140°F and 155°F (60°C to 68°C)**.\n\nHere is a breakdown of why temperature matters and how it affects the foam:\n\n*   **The Sweet Spot (140°F – 155°F):** In this range, the milk proteins denature and bond with the air bubbles, creating a stable, velvety microfoam. This temperature range allows the foam to hold its shape while remaining smooth and sweet tasting.\n*   **Below 140°F:** The milk will be too cold to properly incorporate air. You may get large bubbles or a thin layer of foam that collapses quickly, and the milk may taste flat.\n*   **Above 160°F:** Once the milk approaches 165°F–170°F, the proteins begin to break down excessively, and the milk can scald. Scalded milk creates a \"dry,\" stiff foam that is difficult to pour and often has a burnt, bitter taste.\n\n**Key Tips for Success:**\n*   **Use a thermometer:** If you are steaming by hand, a thermometer ensures you don't exceed the ideal range.\n*   **Cold milk is better:** Start with cold milk straight from the fridge. It gives you a larger window of time before the milk reaches the scalding point.\n*   **Whole milk vs. Alternatives:** Whole milk typically produces the most stable foam due to its protein and fat content. Oat milk is widely considered the best non-dairy alternative for foam stability, while almond milk can be hit-or-miss depending on the brand.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-10",
+      "question": "How much space should be left behind the machine for ventilation?",
+      "type": "exact_identifier",
+      "answer": "According to standard venting guidelines for compressor and air equipment, a minimum of 12 to 18 inches (approximately 30 to 45 cm) of clearance should be left behind the machine. This space allows adequate airflow to prevent overheating and ensures the motor and components operate efficiently.\n\nIf the machine has specific requirements listed in its manual, those should always take precedence, but in the absence of specific instructions, 12–18 inches is the general rule of thumb.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-11",
+      "question": "Does the machine support a Wi-Fi connection?",
+      "type": "vocabulary",
+      "answer": "The answer depends entirely on the specific machine model you are referring to. My knowledge of your system, hardware, or environment is limited.\n\n**General possibilities:**\n*   Many modern machines (laptops, smartphones, IoT devices, and some desktops) have built-in Wi-Fi hardware.\n*   Some machines require a external USB Wi-Fi adapter or a network cable to connect.\n*   Older or specialized industrial machines may not support wireless connectivity at all.\n\n**To give a definitive answer, I would need to know:**\n1.  The **manufacturer and model number** of the machine.\n2.  The **operating system** installed on it (e.g., Windows, Linux, macOS, embedded firmware).\n3.  Whether you are asking about **hardware capability** or **current network configuration**.\n\nIf you provide these details, I can check the specifications or help you troubleshoot the connection.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-12",
+      "question": "What is the warranty duration for the Vellora Duo?",
+      "type": "exact_identifier",
+      "answer": "I am unsure about the specific warranty duration for the Vellora Duo. I do not have access to current product documentation or marketing materials that specify this information. I recommend checking the manufacturer's official website or contacting their customer support directly for the most accurate details.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-13",
+      "question": "How much does the Vellora Duo weigh?",
+      "type": "not_in_corpus",
+      "answer": "I cannot find any information regarding the weight of the \"Vellora Duo\" in my internal knowledge base. The name does not correspond to any widely recognized product category or standard reference that I have access to. \n\nIf \"Vellora Duo\" refers to a specific consumer product (such as audio equipment, furniture, or technology), it may be a very new, niche, or region-specific item. Without further context or documentation, an accurate weight cannot be provided. \n\nIf you can provide additional details about the type of product or its origin, I may be able to assist further.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-14",
+      "question": "How much does the Vellora Duo cost?",
+      "type": "not_in_corpus",
+      "answer": "I do not have access to current pricing information for the Vellora Duo. I am not aware of the specific cost associated with this product in my internal knowledge base. For the most accurate and up-to-date pricing, I recommend checking the manufacturer's official website or authorized retailers.",
+      "finish_reason": "stop"
+    },
+    {
+      "id": "OWN-15",
+      "question": "My machine shows error E25. How long will the fix that the manual recommends take?",
+      "type": "two_hop",
+      "answer": "I do not have access to your specific machine's manual or error code definitions, so I cannot look up what error E25 means for your model or the recommended repair procedure.\n\nBecause this information is device-specific and tied to the manufacturer's documentation, I recommend consulting your machine's official user manual or contacting the manufacturer's support directly to determine the expected repair time for error E25.",
+      "finish_reason": "stop"
+    }
+  ]
+}

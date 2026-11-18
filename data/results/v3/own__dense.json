@@ -13,25 +13,26 @@
       "candidates": 10,
       "weights": null,
       "dense_backend": "sentence-transformers",
+      "allow_tfidf_fallback": false,
       "bm25_stopwords": null,
       "generate_answers": false
     },
-    "total_questions": 12,
-    "answerable_questions": 12,
+    "total_questions": 15,
+    "answerable_questions": 13,
     "hit_rates": {
-      "hit_rate_at_1": 0.6666666666666666,
-      "hit_rate_at_3": 0.9166666666666666,
-      "hit_rate_at_5": 1.0,
-      "hit_rate_at_10": 1.0
+      "hit_rate_at_1": 0.6153846153846154,
+      "hit_rate_at_3": 0.8461538461538461,
+      "hit_rate_at_5": 0.9230769230769231,
+      "hit_rate_at_10": 0.9230769230769231
     },
     "recall": {
-      "recall_at_1": 0.6666666666666666,
-      "recall_at_3": 0.9166666666666666,
-      "recall_at_5": 1.0,
-      "recall_at_10": 1.0
+      "recall_at_1": 0.6153846153846154,
+      "recall_at_3": 0.8461538461538461,
+      "recall_at_5": 0.9230769230769231,
+      "recall_at_10": 0.9230769230769231
     },
-    "hit_rate_at_k": 1.0,
-    "recall_at_k": 1.0,
+    "hit_rate_at_k": 0.9230769230769231,
+    "recall_at_k": 0.9230769230769231,
     "by_type": {
       "exact_identifier": {
         "count": 5,
@@ -69,20 +70,32 @@
         "recall_at_10": 1.0,
         "total": 3
       },
+      "not_in_corpus": {
+        "count": 0,
+        "hit_rate_at_1": null,
+        "hit_rate_at_3": null,
+        "hit_rate_at_5": null,
+        "hit_rate_at_10": null,
+        "recall_at_1": null,
+        "recall_at_3": null,
+        "recall_at_5": null,
+        "recall_at_10": null,
+        "total": 2
+      },
       "two_hop": {
         "count": 1,
-        "hit_rate_at_1": 1.0,
-        "hit_rate_at_3": 1.0,
-        "hit_rate_at_5": 1.0,
-        "hit_rate_at_10": 1.0,
-        "recall_at_1": 1.0,
-        "recall_at_3": 1.0,
-        "recall_at_5": 1.0,
-        "recall_at_10": 1.0,
+        "hit_rate_at_1": 0.0,
+        "hit_rate_at_3": 0.0,
+        "hit_rate_at_5": 0.0,
+        "hit_rate_at_10": 0.0,
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.0,
+        "recall_at_5": 0.0,
+        "recall_at_10": 0.0,
         "total": 1
       },
-      "not_in_corpus_trap": {
-        "count": 1,
+      "other": {
+        "count": 2,
         "hit_rate_at_1": 1.0,
         "hit_rate_at_3": 1.0,
         "hit_rate_at_5": 1.0,
@@ -91,25 +104,26 @@
         "recall_at_3": 1.0,
         "recall_at_5": 1.0,
         "recall_at_10": 1.0,
-        "total": 1
+        "total": 2
       }
     },
     "questions_with_unmatched_hops": [],
     "index": {
       "dense": {
         "backend": "sentence-transformers",
-        "build_seconds": 0.01990509999450296,
+        "build_seconds": 0.01892220000445377,
         "embedding_cache_hit": true
       }
     },
     "cost_per_question": {
-      "retrieval_ms": 20.04343332373537,
-      "latency_ms": 20.04343332373537,
+      "retrieval_ms": 28.991686666267924,
+      "latency_ms": 28.991686666267924,
       "llm_calls": 0.0,
       "prompt_tokens": 0.0,
       "completion_tokens": 0.0
     },
-    "wall_seconds": 0.26749420003034174
+    "wall_seconds": 0.464438799986965,
+    "run_at": "2026-11-18 02:12:23"
   },
   "results": [
     {
@@ -280,13 +294,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.08549899992067367,
+        "retrieval_s": 0.016490699999849312,
         "per_retriever_s": {
-          "dense_s": 0.08546889992430806,
-          "fusion_s": 2.6999972760677338e-05
+          "dense_s": 0.016428700007963926,
+          "fusion_s": 5.499999679159373e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.08549899992067367,
+        "latency_s": 0.016490699999849312,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -460,13 +474,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.027127599925734103,
+        "retrieval_s": 0.018560399999842048,
         "per_retriever_s": {
-          "dense_s": 0.02710730000399053,
-          "fusion_s": 1.7999904230237007e-05
+          "dense_s": 0.018510299996705726,
+          "fusion_s": 4.610000178217888e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.027127599925734103,
+        "latency_s": 0.018560399999842048,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -476,7 +490,7 @@
       "id": "OWN-03",
       "question": "What should I do if coffee comes out drop by drop?",
       "type": "vocabulary",
-      "type_raw": "different_vocabulary",
+      "type_raw": "vocabulary",
       "answerable": true,
       "relevant_chunk_ids": [
         "vellora-duo-espresso-machine_txt:10",
@@ -644,13 +658,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.011284100008197129,
+        "retrieval_s": 0.01640600000973791,
         "per_retriever_s": {
-          "dense_s": 0.011256000027060509,
-          "fusion_s": 2.559996210038662e-05
+          "dense_s": 0.016359599991119467,
+          "fusion_s": 4.270000499673188e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.011284100008197129,
+        "latency_s": 0.01640600000973791,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -659,8 +673,8 @@
     {
       "id": "OWN-04",
       "question": "Can I use vinegar to descale the machine?",
-      "type": "not_in_corpus_trap",
-      "type_raw": "not_in_corpus_trap",
+      "type": "other",
+      "type_raw": "other",
       "answerable": true,
       "relevant_chunk_ids": [
         "vellora-duo-espresso-machine_txt:19"
@@ -824,13 +838,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.013353400048799813,
+        "retrieval_s": 0.01698299999407027,
         "per_retriever_s": {
-          "dense_s": 0.01333450002130121,
-          "fusion_s": 1.71000137925148e-05
+          "dense_s": 0.016954299993813038,
+          "fusion_s": 2.5699991965666413e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.013353400048799813,
+        "latency_s": 0.01698299999407027,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -839,8 +853,8 @@
     {
       "id": "OWN-05",
       "question": "What are the two phases of the descaling programme?",
-      "type": "two_hop",
-      "type_raw": "two_hops",
+      "type": "other",
+      "type_raw": "other",
       "answerable": true,
       "relevant_chunk_ids": [
         "vellora-duo-espresso-machine_txt:18",
@@ -1006,13 +1020,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.011951399967074394,
+        "retrieval_s": 0.019503199990140274,
         "per_retriever_s": {
-          "dense_s": 0.01191939995624125,
-          "fusion_s": 2.889998722821474e-05
+          "dense_s": 0.019463300006464124,
+          "fusion_s": 3.670000296551734e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.011951399967074394,
+        "latency_s": 0.019503199990140274,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1186,13 +1200,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.011400499963201582,
+        "retrieval_s": 0.020940299989888445,
         "per_retriever_s": {
-          "dense_s": 0.011381899937987328,
-          "fusion_s": 1.650000922381878e-05
+          "dense_s": 0.02091209999343846,
+          "fusion_s": 2.540000423323363e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.011400499963201582,
+        "latency_s": 0.020940299989888445,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1202,7 +1216,7 @@
       "id": "OWN-07",
       "question": "How often should the brewing unit be rinsed?",
       "type": "vocabulary",
-      "type_raw": "different_vocabulary",
+      "type_raw": "vocabulary",
       "answerable": true,
       "relevant_chunk_ids": [
         "vellora-duo-espresso-machine_txt:14"
@@ -1366,13 +1380,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.013903200044296682,
+        "retrieval_s": 0.022751199998310767,
         "per_retriever_s": {
-          "dense_s": 0.013882900006137788,
-          "fusion_s": 1.8000020645558834e-05
+          "dense_s": 0.022707900003297254,
+          "fusion_s": 3.940000897273421e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.013903200044296682,
+        "latency_s": 0.022751199998310767,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1546,13 +1560,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.011488399934023619,
+        "retrieval_s": 0.018551200002548285,
         "per_retriever_s": {
-          "dense_s": 0.011469499906525016,
-          "fusion_s": 1.6600009985268116e-05
+          "dense_s": 0.01848990000144113,
+          "fusion_s": 5.740000051446259e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.011488399934023619,
+        "latency_s": 0.018551200002548285,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1728,13 +1742,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.014709800016134977,
+        "retrieval_s": 0.019850600001518615,
         "per_retriever_s": {
-          "dense_s": 0.014681800035759807,
-          "fusion_s": 2.5499961338937283e-05
+          "dense_s": 0.019803800008958206,
+          "fusion_s": 4.3100008042529225e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.014709800016134977,
+        "latency_s": 0.019850600001518615,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1908,13 +1922,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.013647199957631528,
+        "retrieval_s": 0.018938799999887124,
         "per_retriever_s": {
-          "dense_s": 0.013618399971164763,
-          "fusion_s": 2.5999965146183968e-05
+          "dense_s": 0.018910800004960038,
+          "fusion_s": 2.4900000425986946e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.013647199957631528,
+        "latency_s": 0.018938799999887124,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1924,7 +1938,7 @@
       "id": "OWN-11",
       "question": "Does the machine support a Wi-Fi connection?",
       "type": "vocabulary",
-      "type_raw": "different_vocabulary",
+      "type_raw": "vocabulary",
       "answerable": true,
       "relevant_chunk_ids": [
         "vellora-duo-espresso-machine_txt:63"
@@ -2088,13 +2102,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.012513600056990981,
+        "retrieval_s": 0.12554379999346565,
         "per_retriever_s": {
-          "dense_s": 0.012464100029319525,
-          "fusion_s": 4.6900007873773575e-05
+          "dense_s": 0.12550049999845214,
+          "fusion_s": 3.929999365936965e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.012513600056990981,
+        "latency_s": 0.12554379999346565,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -2268,13 +2282,533 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.013643000042065978,
+        "retrieval_s": 0.036726100006490014,
         "per_retriever_s": {
-          "dense_s": 0.013624000013805926,
-          "fusion_s": 1.6900012269616127e-05
+          "dense_s": 0.036697000003186986,
+          "fusion_s": 2.5699991965666413e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.013643000042065978,
+        "latency_s": 0.036726100006490014,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-13",
+      "question": "How much does the Vellora Duo weigh?",
+      "type": "not_in_corpus",
+      "type_raw": "not_in_corpus",
+      "answerable": false,
+      "relevant_chunk_ids": [],
+      "first_gold_rank": null,
+      "hops": [],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:3",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 3,
+          "score": 0.3634416460990906,
+          "text": "e in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children must not play with the machine, and cleaning must not be done by children without supervision.\n\n2. PARTS OF THE MACHINE\n\nThe Vellora Duo is made of the following main parts: the bean hopper with its aroma-preserving lid, the grind adjuster, the pre-ground coffee chute, the water tank (1.8 litres) with its filter holder, the brewing unit behind the side door, the drip tray with its float indicator,",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.3634416460990906
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:74",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 74,
+          "score": 0.3619801104068756,
+          "text": "y loud, or if it sounds like grinding gravel, stop the machine immediately and check the error code on the display.\n\nWater leaks under the machine. The drip tray is full or badly inserted, or the water tank is not inserted correctly. Empty the drip tray and check the seal of the water tank.\n\n11. WARRANTY AND CUSTOMER SERVICE\n\nThe Vellora Duo is covered by a two-year warranty from the date of purchase, on presentation of the receipt. The warranty does not cover damage caused by limescale, by the ",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.3619801104068756
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:0",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 0,
+          "score": 0.2949811518192291,
+          "text": "VELLORA DUO - ESPRESSO MACHINE\nUSER MANUAL\n(Fictional product. Document written for the BM25 challenge of the RAG course.)\n\n1. BEFORE YOU START\n\nThank you for choosing the Vellora Duo, a bean-to-cup espresso machine with an integrated conical grinder, a thermoblock heater and an automatic milk system. Please read this manual carefully before using the machine for the first time, and keep it for future reference. Most problems can be solved in a few minutes by following the instructions in the tr",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.2949811518192291
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:22",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 22,
+          "score": 0.25120580196380615,
+          "text": " the list below: it tells you what the code means and what to do. If the code is still displayed after you have followed the instructions, switch the machine off, wait one minute and switch it on again. If the problem persists, write down the code and contact the Vellora customer service: the code helps the technician to diagnose the problem quickly, and often to solve it over the phone without sending the machine for repair.\n\nE01 - Water tank missing. Cause: The machine does not detect the wate",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.25120580196380615
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:64",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 64,
+          "score": 0.22518348693847656,
+          "text": "app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE83 - App version too old. Cause: The Vellora app on your phone is too old for this machine. What to do: Update the Vellora app from your app store.\n\nE84 - Recipe not supported. Cause: A recipe sent from the app is not supported by this machine. What to do: Update the software of the machine from the menu, then try again.\n\nE85 - Scheduled switch-on failed. Cause: The machine could not switch on at t",
+          "sources": {
+            "dense": {
+              "rank": 5,
+              "score": 0.22518348693847656
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:63",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 63,
+          "score": 0.18224743008613586,
+          "text": "-Fi module does not respond to the main board. What to do: Switch the machine off and on again. The machine can still be used without the app.\n\nE81 - Wi-Fi connection lost. Cause: The machine lost its connection to the home network. What to do: Check your router, then connect the machine again from the Vellora app.\n\nE82 - App pairing failed. Cause: The machine could not be paired with the Vellora app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE8",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.18224743008613586
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:68",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 68,
+          "score": 0.1698545217514038,
+          "text": "has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92 - Milk container lid open. Cause: The lid of the milk container accessory is not closed. What to do: Close the lid of the milk container until it clicks.\n\nE93 - Milk container too warm. Cause: The milk container accessory has been out of the refrigerator for too long. What to do: Put the milk container back in the refrigerator for at least one hour.\n\nE94 - Factory test mode. Cause: The machine st",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.1698545217514038
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:67",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 67,
+          "score": 0.13276252150535583,
+          "text": "r full. Cause: The water counter reached its maximum value. What to do: Run the descaling programme: the counter is reset at the end of the programme.\n\nE90 - Accessory not recognised. Cause: The milk container accessory is not recognised. What to do: Clean the contacts of the milk container and connect it again.\n\nE91 - Unknown accessory. Cause: An accessory that is not compatible with the machine has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92",
+          "sources": {
+            "dense": {
+              "rank": 8,
+              "score": 0.13276252150535583
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:20",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 20,
+          "score": 0.12053601443767548,
+          "text": ", set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half a tank of water. A filter lasts two months, or 50 litres of water. The machine counts the water used and asks for a replacement when the filter is exhausted. When a filter is installed and activated, the machine does not ask for descaling. Only use original Vellora filters: other filters may not fit the holder correctly, may let unfiltered water into the circuit, and are not covered by the warran",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.12053601443767548
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:9",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 9,
+          "score": 0.08988729864358902,
+          "text": "e two cups at once. You can stop the flow at any time by pressing the same button again.\n\nThe coffee strength can be set from 1 (mild) to 5 (very strong) in the menu. Strength changes the quantity of ground coffee used for each cup, between 7 and 14 grams. The grind adjuster on top of the bean hopper sets the fineness of the grind from 1 (finest) to 9 (coarsest). Turn the adjuster only while the grinder is running, one step at a time. A finer grind gives a stronger, more intense coffee and a slo",
+          "sources": {
+            "dense": {
+              "rank": 10,
+              "score": 0.08988729864358902
+            }
+          }
+        }
+      ],
+      "hit_at_k": null,
+      "recall_at_k": null,
+      "graph_path": null,
+      "hit_at_1": null,
+      "recall_at_1": null,
+      "hit_at_3": null,
+      "recall_at_3": null,
+      "hit_at_5": null,
+      "recall_at_5": null,
+      "hit_at_10": null,
+      "recall_at_10": null,
+      "cost": {
+        "retrieval_s": 0.041519000005791895,
+        "per_retriever_s": {
+          "dense_s": 0.041476099999272265,
+          "fusion_s": 3.890000516548753e-05
+        },
+        "generation_s": 0.0,
+        "latency_s": 0.041519000005791895,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-14",
+      "question": "How much does the Vellora Duo cost?",
+      "type": "not_in_corpus",
+      "type_raw": "not_in_corpus",
+      "answerable": false,
+      "relevant_chunk_ids": [],
+      "first_gold_rank": null,
+      "hops": [],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:3",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 3,
+          "score": 0.4567810297012329,
+          "text": "e in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children must not play with the machine, and cleaning must not be done by children without supervision.\n\n2. PARTS OF THE MACHINE\n\nThe Vellora Duo is made of the following main parts: the bean hopper with its aroma-preserving lid, the grind adjuster, the pre-ground coffee chute, the water tank (1.8 litres) with its filter holder, the brewing unit behind the side door, the drip tray with its float indicator,",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.4567810297012329
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:74",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 74,
+          "score": 0.3875594437122345,
+          "text": "y loud, or if it sounds like grinding gravel, stop the machine immediately and check the error code on the display.\n\nWater leaks under the machine. The drip tray is full or badly inserted, or the water tank is not inserted correctly. Empty the drip tray and check the seal of the water tank.\n\n11. WARRANTY AND CUSTOMER SERVICE\n\nThe Vellora Duo is covered by a two-year warranty from the date of purchase, on presentation of the receipt. The warranty does not cover damage caused by limescale, by the ",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.3875594437122345
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:0",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 0,
+          "score": 0.37553760409355164,
+          "text": "VELLORA DUO - ESPRESSO MACHINE\nUSER MANUAL\n(Fictional product. Document written for the BM25 challenge of the RAG course.)\n\n1. BEFORE YOU START\n\nThank you for choosing the Vellora Duo, a bean-to-cup espresso machine with an integrated conical grinder, a thermoblock heater and an automatic milk system. Please read this manual carefully before using the machine for the first time, and keep it for future reference. Most problems can be solved in a few minutes by following the instructions in the tr",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.37553760409355164
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:64",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 64,
+          "score": 0.2700388431549072,
+          "text": "app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE83 - App version too old. Cause: The Vellora app on your phone is too old for this machine. What to do: Update the Vellora app from your app store.\n\nE84 - Recipe not supported. Cause: A recipe sent from the app is not supported by this machine. What to do: Update the software of the machine from the menu, then try again.\n\nE85 - Scheduled switch-on failed. Cause: The machine could not switch on at t",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.2700388431549072
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:22",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 22,
+          "score": 0.26981121301651,
+          "text": " the list below: it tells you what the code means and what to do. If the code is still displayed after you have followed the instructions, switch the machine off, wait one minute and switch it on again. If the problem persists, write down the code and contact the Vellora customer service: the code helps the technician to diagnose the problem quickly, and often to solve it over the phone without sending the machine for repair.\n\nE01 - Water tank missing. Cause: The machine does not detect the wate",
+          "sources": {
+            "dense": {
+              "rank": 5,
+              "score": 0.26981121301651
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:68",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 68,
+          "score": 0.21785862743854523,
+          "text": "has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92 - Milk container lid open. Cause: The lid of the milk container accessory is not closed. What to do: Close the lid of the milk container until it clicks.\n\nE93 - Milk container too warm. Cause: The milk container accessory has been out of the refrigerator for too long. What to do: Put the milk container back in the refrigerator for at least one hour.\n\nE94 - Factory test mode. Cause: The machine st",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.21785862743854523
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:63",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 63,
+          "score": 0.21754373610019684,
+          "text": "-Fi module does not respond to the main board. What to do: Switch the machine off and on again. The machine can still be used without the app.\n\nE81 - Wi-Fi connection lost. Cause: The machine lost its connection to the home network. What to do: Check your router, then connect the machine again from the Vellora app.\n\nE82 - App pairing failed. Cause: The machine could not be paired with the Vellora app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE8",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.21754373610019684
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:67",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 67,
+          "score": 0.16751167178153992,
+          "text": "r full. Cause: The water counter reached its maximum value. What to do: Run the descaling programme: the counter is reset at the end of the programme.\n\nE90 - Accessory not recognised. Cause: The milk container accessory is not recognised. What to do: Clean the contacts of the milk container and connect it again.\n\nE91 - Unknown accessory. Cause: An accessory that is not compatible with the machine has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92",
+          "sources": {
+            "dense": {
+              "rank": 8,
+              "score": 0.16751167178153992
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:20",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 20,
+          "score": 0.14716395735740662,
+          "text": ", set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half a tank of water. A filter lasts two months, or 50 litres of water. The machine counts the water used and asks for a replacement when the filter is exhausted. When a filter is installed and activated, the machine does not ask for descaling. Only use original Vellora filters: other filters may not fit the holder correctly, may let unfiltered water into the circuit, and are not covered by the warran",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.14716395735740662
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:57",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 57,
+          "score": 0.10713319480419159,
+          "text": "o: Replace the water filter and run the filter programme, or deactivate the filter in the menu.\n\nE67 - Filter not rinsed. Cause: A new filter was installed but the filter programme was not run. What to do: Run the filter programme from the maintenance menu.\n\nE68 - Filter not recognised. Cause: The installed water filter is not recognised by the machine. What to do: Use only original Vellora filters, and check that the filter is screwed in completely.\n\nE69 - Water hardness not set. Cause: The wat",
+          "sources": {
+            "dense": {
+              "rank": 10,
+              "score": 0.10713319480419159
+            }
+          }
+        }
+      ],
+      "hit_at_k": null,
+      "recall_at_k": null,
+      "graph_path": null,
+      "hit_at_1": null,
+      "recall_at_1": null,
+      "hit_at_3": null,
+      "recall_at_3": null,
+      "hit_at_5": null,
+      "recall_at_5": null,
+      "hit_at_10": null,
+      "recall_at_10": null,
+      "cost": {
+        "retrieval_s": 0.02025639999192208,
+        "per_retriever_s": {
+          "dense_s": 0.0202078000002075,
+          "fusion_s": 4.469999112188816e-05
+        },
+        "generation_s": 0.0,
+        "latency_s": 0.02025639999192208,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-15",
+      "question": "My machine shows error E25. How long will the fix that the manual recommends take?",
+      "type": "two_hop",
+      "type_raw": "two_hop",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:18",
+        "vellora-duo-espresso-machine_txt:36"
+      ],
+      "first_gold_rank": null,
+      "hops": [
+        {
+          "source": "vellora-duo-espresso-machine.txt",
+          "quote": "usually because of limescale in the pipes. What to do: Run the descaling programme",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:36"
+          ],
+          "retrieved_by": {},
+          "found_in_top_k": false
+        },
+        {
+          "source": "vellora-duo-espresso-machine.txt",
+          "quote": "The programme takes about 30 minutes",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:18"
+          ],
+          "retrieved_by": {},
+          "found_in_top_k": false
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:76",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 76,
+          "score": 0.5680359601974487,
+          "text": "er and the serial number printed on the label behind the water tank, and the error code shown on the display, if any. Our customer service is available from Monday to Friday, from 9 am to 6 pm. Most problems can be solved over the phone in a few minutes. If the machine must be repaired, we will send you a box to return it to our service centre free of charge. Repairs under warranty usually take ten working days.\n\nDispose of the machine at the end of its life at a collection point for electrical ",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.5680359601974487
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:50",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 50,
+          "score": 0.48341548442840576,
+          "text": "fault. Cause: The control panel does not communicate with the main board. What to do: Switch the machine off and on again. If the code persists, contact customer service.\n\nE52 - Button stuck. Cause: A button of the control panel has been pressed for more than 30 seconds. What to do: Check that nothing is pressing on the control panel, and clean the buttons with a dry cloth.\n\nE53 - Clock reset. Cause: The internal clock was reset after a power cut. What to do: Set the time again in the menu. The ",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.48341548442840576
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:35",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 35,
+          "score": 0.4743603765964508,
+          "text": "arser. If the code persists, run the descaling programme.\n\nE23 - Flow meter fault. Cause: The flow meter does not count the water going through the circuit. What to do: Check that the water tank is full and properly inserted, then switch the machine off and on again.\n\nE24 - Pump noise abnormal. Cause: The pump makes an unusual noise because it runs without enough water. What to do: Fill the water tank and check that the tank valve is not blocked.\n\nE25 - Water circuit blocked. Cause: Water cannot",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.4743603765964508
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:32",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 32,
+          "score": 0.46581903100013733,
+          "text": "e slowly than usual, often because of limescale. What to do: Run the descaling programme. If the code comes back after descaling, contact customer service.\n\nE18 - Temperature sensor fault. Cause: The temperature sensor of the heater sends values that make no sense. What to do: Switch the machine off and on again. If the code comes back, contact customer service: the sensor must be replaced.\n\nE19 - Steam temperature not reached. Cause: The steam circuit does not reach its temperature, often becau",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.46581903100013733
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:52",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 52,
+          "score": 0.45336657762527466,
+          "text": "h the machine off and on again: the update starts again automatically.\n\nE56 - Settings reset. Cause: The user settings were reset to their factory values. What to do: Set the water hardness, the coffee strength and the time again in the menu.\n\nE57 - Main board fault. Cause: The main electronic board detected an internal fault. What to do: Unplug the machine for one minute, then plug it in again. If the code persists, contact customer service.\n\nE58 - Memory full. Cause: The memory for personal re",
+          "sources": {
+            "dense": {
+              "rank": 5,
+              "score": 0.45336657762527466
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:1",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 1,
+          "score": 0.4273298382759094,
+          "text": "ture reference. Most problems can be solved in a few minutes by following the instructions in the troubleshooting and error code sections.\n\nSafety first. Always place the machine on a stable, flat and dry surface, away from the edge of the worktop and out of reach of children. Never immerse the machine, the power cord or the plug in water or any other liquid. Unplug the machine before cleaning it, before removing the brewing unit and when it is not used for a long period. Do not touch the steam ",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.4273298382759094
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:21",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 21,
+          "score": 0.4243186116218567,
+          "text": "t the holder correctly, may let unfiltered water into the circuit, and are not covered by the warranty. Store spare filters in a cool, dry place, in their sealed bag.\n\n9. ERROR CODES\n\nWhen the machine detects a problem, it stops the current preparation and shows an error code on the display. The code is made of the letter E and two digits. Each code identifies one precise problem. Find the code in the list below: it tells you what the code means and what to do. If the code is still displayed aft",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.4243186116218567
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:54",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 54,
+          "score": 0.41859787702560425,
+          "text": " Cause: The maintenance counters were not reset after a service. What to do: Contact customer service to reset the maintenance counters.\n\nE61 - Descaling needed. Cause: The machine has detected a high level of limescale. What to do: Run the descaling programme as soon as possible.\n\nE62 - Descaling interrupted. Cause: The descaling programme was interrupted before the end. What to do: Start the descaling programme again from the beginning. Do not switch off the machine during the programme.\n\nE63 ",
+          "sources": {
+            "dense": {
+              "rank": 8,
+              "score": 0.41859787702560425
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:69",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 69,
+          "score": 0.4043465852737427,
+          "text": "iner back in the refrigerator for at least one hour.\n\nE94 - Factory test mode. Cause: The machine started in factory test mode. What to do: Switch the machine off, then switch it on again without pressing any other button.\n\nE95 - Calibration lost. Cause: The calibration of the flow meter was lost. What to do: Contact customer service to calibrate the flow meter again.\n\nE96 - Unknown water source. Cause: The machine is set for a direct water connection but none is installed. What to do: Set the w",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.4043465852737427
+            }
+          }
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:37",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 37,
+          "score": 0.4005640745162964,
+          "text": "nd adjuster one step finer and increase the coffee strength.\n\nE27 - Pressure too high. Cause: The brewing pressure goes above 15 bar, usually because the grind is far too fine. What to do: Set the grind adjuster three steps coarser while the grinder is running.\n\nE28 - Pressure valve fault. Cause: The safety valve opened to protect the circuit from too much pressure. What to do: Switch off the machine, wait ten minutes, then run a rinse. If the code comes back, contact customer service.\n\nE29 - Ai",
+          "sources": {
+            "dense": {
+              "rank": 10,
+              "score": 0.4005640745162964
+            }
+          }
+        }
+      ],
+      "hit_at_k": false,
+      "recall_at_k": 0.0,
+      "graph_path": null,
+      "hit_at_1": false,
+      "recall_at_1": 0.0,
+      "hit_at_3": false,
+      "recall_at_3": 0.0,
+      "hit_at_5": false,
+      "recall_at_5": 0.0,
+      "hit_at_10": false,
+      "recall_at_10": 0.0,
+      "cost": {
+        "retrieval_s": 0.02185460001055617,
+        "per_retriever_s": {
+          "dense_s": 0.021824399998877198,
+          "fusion_s": 2.710000262595713e-05
+        },
+        "generation_s": 0.0,
+        "latency_s": 0.02185460001055617,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0

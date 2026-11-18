@@ -29,8 +29,8 @@ Saved results:
 
 | Corpus | Result file | Questions |
 |---|---|---:|
-| Kestrel | `data/results/kestrel-no-context-20261103-154342-486588100.json` | 10 |
-| Own | `data/results/own-no-context-20261103-154229-668139900.json` | 12 |
+| Kestrel | `data/results/v2/kestrel-no-context-20261103-154342-486588100.json` | 10 |
+| Own | `data/results/v2/own-no-context-20261103-154229-668139900.json` | 12 |
 
 ### Baseline observations
 
@@ -96,10 +96,10 @@ Results by question type:
 | Vocabulary | 1 | 100% | 100% | 100% | 100% |
 
 Saved result:
-`data/results/kestrel-sentence-transformers-800-10-10.json`
+`data/results/v2/kestrel-sentence-transformers-800-10-10.json`
 
 Generated-answer result:
-`data/results/kestrel-sentence-transformers-800-10-10-generated.json`
+`data/results/v2/kestrel-sentence-transformers-800-10-10-generated.json`
 
 ### 4.4 Final Own Corpus results
 
@@ -127,10 +127,10 @@ Results by question type:
 | Split answer | 2 | 50% | 100% | 100% | 100% |
 
 Saved result:
-`data/results/own-sentence-transformers-500-20-10.json`
+`data/results/v2/own-sentence-transformers-500-20-10.json`
 
 Generated-answer result:
-`data/results/own-sentence-transformers-500-20-10-generated.json`
+`data/results/v2/own-sentence-transformers-500-20-10-generated.json`
 
 ### 4.5 Retriever comparison
 
@@ -311,12 +311,12 @@ These decisions are based on the measured retrieval results. The team should con
 
 Important evaluation artifacts:
 
-- `data/results/kestrel-no-context-20261103-154342-486588100.json`
-- `data/results/own-no-context-20261103-154229-668139900.json`
-- `data/results/kestrel-sentence-transformers-800-10-10.json`
-- `data/results/kestrel-sentence-transformers-800-10-10-generated.json`
-- `data/results/own-sentence-transformers-500-20-10.json`
-- `data/results/own-sentence-transformers-500-20-10-generated.json`
+- `data/results/v2/kestrel-no-context-20261103-154342-486588100.json`
+- `data/results/v2/own-no-context-20261103-154229-668139900.json`
+- `data/results/v2/kestrel-sentence-transformers-800-10-10.json`
+- `data/results/v2/kestrel-sentence-transformers-800-10-10-generated.json`
+- `data/results/v2/own-sentence-transformers-500-20-10.json`
+- `data/results/v2/own-sentence-transformers-500-20-10-generated.json`
 
 Configuration-comparison TF-IDF result files are also retained in `data/results/`.
 

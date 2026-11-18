@@ -25,6 +25,8 @@ Open http://127.0.0.1:8000. The first dense query downloads `all-MiniLM-L6-v2` (
 | `GRAPH_LLM_MODEL` | optional: model used for graph extraction only (default: `LLM_MODEL`) |
 | `GRAPH_CALL_DELAY_S` | optional: seconds between extraction calls, for free-tier rate limits (default `1.0`) |
 | `GRAPH_DISABLE_THINKING` | optional: `1` asks the server to switch a reasoning model's hidden thinking off during the graph build (DECISIONS D-24) |
+| `LLM_DISABLE_THINKING` | optional: `1` switches a reasoning model's hidden thinking off for answers; without it, nemotron often uses all `LLM_MAX_TOKENS` before answering (DECISIONS D-35) |
+| `LLM_MAX_TOKENS` | optional: completion token limit for answers (default `2048`) |
 
 ## Switching retrievers on and off
 
