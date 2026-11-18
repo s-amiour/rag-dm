@@ -20,7 +20,8 @@ import os
 import re
 import time
 import unicodedata
-from typing import Any
+from contextlib import contextmanager
+from typing import Any, Iterator
 
 from . import core
 
@@ -48,6 +49,20 @@ def set_stopwords(enabled: bool) -> None:
 
 def stopwords_enabled() -> bool:
     return _use_stopwords
+
+
+@contextmanager
+def stopwords_setting(enabled: bool) -> Iterator[None]:
+    """Use this stop-word setting inside the `with` block only, then restore the previous one,
+    even if the block raises (v3T17). A failed --no-stopwords run then cannot leave later runs
+    without stop words, and BM25_STOPWORDS=0 from the environment survives a run that sets True."""
+    previous = stopwords_enabled()
+    set_stopwords(enabled)
+
+    try:
+        yield
+    finally:
+        set_stopwords(previous)
 
 _WORD = re.compile(r"\w+(?:-\w+)*", re.UNICODE)
 
