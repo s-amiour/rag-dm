@@ -308,33 +308,56 @@ def evaluate_corpus(
     return {"summary": summary, "results": rows}
 
 
+REGRESSION_K = 5  # chunks the LLM receives in the Ask tab: "worse" = evidence lost from the answer's context
+
+
 def regressions(
     base: dict[str, Any],
-    new: dict[str, Any]
-) -> list[dict[str, Any]]:
-    """Questions where `new` ranks the first gold chunk worse than `base`
-    (or loses it). This is the "adding a retriever made things worse" list."""
+    new: dict[str, Any],
+    k: int = REGRESSION_K
+) -> dict[str, Any]:
+    """Compare two runs question by question, at cutoff k (v3T21).
+
+    worse:  recall@k went down, i.e. at least one hop lost its gold chunk from the top k
+            (this is the "adding a retriever made things worse" list);
+    better: recall@k went up;
+    moved:  recall@k unchanged, but the first gold chunk's rank changed (a reshuffle inside
+            or outside the top k that does not change what the LLM sees).
+    Recall is per hop, so a two_hop question whose second hop drops out is caught even when
+    the first hop keeps its rank."""
+    if k not in CUTOFFS:
+        raise ValueError(f"k must be one of {CUTOFFS} (the cutoffs stored on every result row), not {k}")
+
+    key = f"recall_at_{k}"
     base_rows = {r["id"]: r for r in base["results"] if r["answerable"]}
-    worse = []
+    out: dict[str, Any] = {"k": k, "worse": [], "better": [], "moved": []}
 
     for r in new["results"]:
         b = base_rows.get(r["id"])
 
-        if not b:
+        if not b or not r["answerable"]:
             continue
 
-        before, after = b["first_gold_rank"], r["first_gold_rank"]
-        lost = before is not None and (after is None or after > before)
+        before, after = b.get(key), r.get(key)
 
-        if lost:
-            worse.append({
-                "id": r["id"],
-                "type": r["type"],
-                "question": r["question"],
-                "rank_before": before,
-                "rank_after": after,
-                "recall_before": b[f"recall_at_{base['summary']['config']['top_k']}"],
-                "recall_after": r[f"recall_at_{new['summary']['config']['top_k']}"]
-            })
+        if before is None or after is None:  # gold quote matches no chunk: nothing to compare
+            continue
 
-    return worse
+        item = {
+            "id": r["id"],
+            "type": r["type"],
+            "question": r["question"],
+            "rank_before": b["first_gold_rank"],
+            "rank_after": r["first_gold_rank"],
+            "recall_before": before,
+            "recall_after": after
+        }
+
+        if after < before:
+            out["worse"].append(item)
+        elif after > before:
+            out["better"].append(item)
+        elif b["first_gold_rank"] != r["first_gold_rank"]:
+            out["moved"].append(item)
+
+    return out

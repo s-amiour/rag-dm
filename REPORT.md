@@ -471,8 +471,14 @@ displacers fall to a single BM25 vote (1/62 to 1/66, below the gold chunk's 1/61
 0.00 → 1.00); Kestrel overall Hit@3 0.80 → 0.90, Hit@5 0.90 → 1.00. It does not change `split_answer` (Recall@3 0.38) or `two_hop`
 (Recall@5 0.56), and q05 is still not rank 1. The setting was chosen after looking at this question (D-18).
 
-Other questions that get worse with BM25, all staying in the top 5: Kestrel q03 (`split_answer`) rank 1 → 2; own OWN-01 rank 4 → 5;
-own OWN-02 rank 2 → 3. The full automatic list is in `data/results/v3/summary.md`.
+In that experiment q05 is a real loss by the summary's rule (v3T21): a question counts as **worse** only when a gold chunk leaves the
+top 5 the LLM receives, here recall@5 1.00 → 0.00 (rank 1 → 6). With the final 10 candidates it stays inside (rank 1 → 2) and is
+listed as *moved within the top 5*, like own OWN-01 (4 → 5) and OWN-02 (2 → 3).
+
+The final run has one real loss when BM25 is added: **Kestrel q03** (`split_answer`), "What happens, step by step, when a customer's
+card payment fails?". Its first gold chunk only moves from rank 1 to 2, which the old rule reported as a small reshuffle, but recall@5
+drops **1.00 → 0.25**: three of its four answer pieces leave the top 5, so the answer can no longer list every step. Adding the graph
+does not bring them back. The full lists (worse, better, moved) are in `data/results/v3/summary.md`.
 
 ## 10. Decision log and known failures
 

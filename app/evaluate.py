@@ -31,7 +31,7 @@ from typing import Any
 
 from . import bm25 as bm25_module
 from . import core
-from .evaluation import CUTOFFS, TYPE_ORDER, evaluate_corpus, regressions
+from .evaluation import CUTOFFS, REGRESSION_K, TYPE_ORDER, evaluate_corpus, regressions
 from .retrieval import graph_available
 
 # V2's final chunking per corpus, now defined once in core (v3T08).
@@ -212,18 +212,33 @@ def regression_report(runs) -> str:
         ("dense", "dense+bm25+graph"),
     ]
     out = ""
+    k = REGRESSION_K
+    labels = (
+        ("worse", f"worse: a gold chunk left the top {k}"),
+        ("better", f"better: a gold chunk entered the top {k}"),
+        ("moved", f"moved within the top {k} (same recall@{k}, rank changed)"),
+    )
 
     for corpus in sorted({c for c, _ in by}):
         for a, b in pairs:
             if (corpus, a) in by and (corpus, b) in by:
-                worse = regressions(by[(corpus, a)], by[(corpus, b)])
-                out += f"\n**{corpus}: `{a}` → `{b}`**: {len(worse)} question(s) where the first gold chunk ranks worse.\n"
+                diff = regressions(by[(corpus, a)], by[(corpus, b)], k=k)
+                out += (
+                    f"\n**{corpus}: `{a}` → `{b}`**: {len(diff['worse'])} worse, "
+                    f"{len(diff['better'])} better, {len(diff['moved'])} moved within the top {k}.\n"
+                )
 
-                for w in worse:
-                    out += (
-                        f"- `{w['id']}` ({w['type']}): rank {w['rank_before']} → {w['rank_after']}"
-                        f" (recall@k {fmt(w['recall_before'])} → {fmt(w['recall_after'])}) — {w['question']}\n"
-                    )
+                for key, title in labels:
+                    if not diff[key]:
+                        continue
+
+                    out += f"\n_{title}_\n\n"
+
+                    for w in diff[key]:
+                        out += (
+                            f"- `{w['id']}` ({w['type']}): recall@{k} {fmt(w['recall_before'])} → {fmt(w['recall_after'])},"
+                            f" first gold rank {w['rank_before']} → {w['rank_after']} — {w['question']}\n"
+                        )
 
     return out or "\n(no comparable pairs were run)\n"
 
@@ -277,7 +292,8 @@ def write_summary(runs, out_dir: Path) -> Path:
     md += "## Configurations in this folder\n\n" + configurations_table(runs)
     md += "\n## Results: configurations × corpora × question types\n\n" + results_table(runs)
     md += "\n## Cost per question and index build\n\n" + cost_table(runs)
-    md += "\n## Where adding a retriever made things worse\n" + regression_report(runs)
+    md += (f"\n## Where adding a retriever made things worse (top {REGRESSION_K}, the chunks the LLM receives)\n"
+           + regression_report(runs))
     flagged = {k: v for k, v in unmatched.items() if v}
 
     if flagged:
