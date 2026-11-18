@@ -18,6 +18,8 @@ ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
 from . import evaluate as cli_eval  # the CLI's run-and-save path, shared with /api/evaluate (v3T08)
+from . import bm25 as bm25_module
+from . import retrieval as retrieval_module
 from . import traces
 from .core import (
     DATA,
@@ -25,6 +27,8 @@ from .core import (
     DEFAULT_CHUNKING,
     DEFAULT_RRF_K,
     DEFAULT_TOP_K,
+    DENSE_MODEL_NAME,
+    records_fingerprint,
     resolve_chunking,
     INVALID_ANSWER_MESSAGE,
     build_chunks,
@@ -290,14 +294,66 @@ def config():
 @app.post("/api/index/{corpus}/rebuild")
 def rebuild_index(
     corpus: Literal["kestrel", "own"],
-    chunk_size: int = 800,
-    overlap: int = 10
+    chunk_size: int | None = None,
+    overlap: int | None = None
 ):
-    """Force a BM25 rebuild (it is normally rebuilt automatically when the
-    documents, their selection, or the chunking change)."""
-    retriever = get_bm25(corpus, chunk_size, overlap, force=True)
+    """Force a rebuild of the dense embeddings and the BM25 index (both are normally rebuilt
+    automatically when the documents, their selection, or the chunking change). No chunking given:
+    the corpus default (core.DEFAULT_CHUNKING), as in /api/ask. One `index` trace (v4T03)."""
+    size, overlap = resolve_chunking(corpus, chunk_size, overlap)
 
-    return retriever.info
+    with traces.trace("index", kind="index", corpus=corpus,
+                      chunk_size=size, overlap=overlap, trigger="rebuild") as trace:
+        with trace.span("load+chunk") as span:
+            records = build_chunks(corpus, size, overlap)
+            span.set(documents=len({r["document"] for r in records}), chunks=len(records),
+                     corpus_hash=records_fingerprint(records))
+
+        if not records:
+            raise HTTPException(400, f"No documents found for {corpus}. Upload the corpus documents first.")
+
+        # the fingerprint of the default pipeline over these chunks, so an index trace can be matched
+        # with the questions and evaluation runs that used it
+        trace.set(fingerprint=config_fingerprint(pipeline_config(
+            corpus, records, chunk_size=size, overlap=overlap, top_k=DEFAULT_TOP_K,
+            candidates=DEFAULT_CANDIDATES, retrievers=default_retrievers(), rrf_k=DEFAULT_RRF_K
+        )))
+
+        try:
+            with trace.span("embed") as span:
+                dense = retrieval_module.get_dense(corpus, size, overlap, records=records, strict=True, force=True)
+                dense_info = {
+                    "backend": dense.backend,
+                    "model": DENSE_MODEL_NAME,
+                    "chunks": len(records),
+                    "cache_hit": False,
+                    "build_seconds": round(float(dense.build_seconds), 3)
+                }
+                span.set(**dense_info)
+        except RetrieverUnavailable as e:
+            raise HTTPException(503, str(e))
+
+        with trace.span("bm25.build") as span:
+            retriever = get_bm25(corpus, size, overlap, records=records, force=True)
+            span.set(
+                chunks=retriever.info.get("chunks"),
+                vocabulary=retriever.info.get("terms"),
+                stopwords=bm25_module.stopwords_enabled(),
+                tokenizer_version=bm25_module.TOKENIZER_VERSION,
+                source=retriever.info.get("source"),
+                build_seconds=round(float(retriever.info.get("seconds") or 0.0), 4)
+            )
+
+        trace.set_outcome("ok")
+
+        # today's response (the BM25 info) is kept at the top level; the rest is added
+        return {
+            **retriever.info,
+            "trace_id": trace.id,
+            "chunks": len(records),
+            "dense": dense_info,
+            "bm25": retriever.info
+        }
 
 
 def question_outcome(valid: bool, cited_ids: list[str]) -> str:
