@@ -8,8 +8,11 @@ Examples (from the repository root):
   # every configuration of the V3 report, both corpora, one command
   python -m app.evaluate matrix
 
-  # same, with generated answers (uses LLM quota) and a weighted RRF variant
+  # weighted RRF (any example with `graph` needs the graph built first: python -m app.graph build)
   python -m app.evaluate run --corpus kestrel --retrievers dense,bm25,graph --weights dense=1,bm25=1,graph=2
+
+  # with generated answers (one LLM call per question, uses quota)
+  python -m app.evaluate run --corpus kestrel --retrievers dense,bm25 --generate
 
 Dense runs in strict mode by default: if sentence-transformers cannot load, the run
 stops instead of silently measuring TF-IDF. Use --allow-tfidf-fallback to override
@@ -382,7 +385,7 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--chunk-size", type=int, default=None, help="default: V2 final value per corpus")
         p.add_argument("--overlap", type=int, default=None, help="default: V2 final value per corpus")
         p.add_argument("--rrf-k", type=int, default=core.DEFAULT_RRF_K)
-        p.add_argument("--candidates", type=int, default=core.DEFAULT_CANDIDATES, help="how many results each retriever gives to the fusion (D-18)")
+        p.add_argument("--candidates", type=int, default=core.DEFAULT_CANDIDATES, help="how many results each retriever gives to the fusion (default %(default)s, D-18)")
         p.add_argument("--ids", default=None, help="only these question ids, e.g. q01,q02,q03 (V2 sanity check: q01..q10)")
         p.add_argument("--generate", action="store_true", help="also generate answers (LLM calls)")
         p.add_argument("--allow-tfidf-fallback", action="store_true")

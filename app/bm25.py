@@ -1,7 +1,7 @@
 """Persistent BM25 retriever (lexical search).
 
 Design (see DECISIONS.md, D-03 to D-06):
-- Own ~100-line implementation: no extra dependency, formula visible and testable.
+- Own implementation: no extra dependency, formula visible and testable.
 - Inverted index (term -> [(chunk_no, tf)]) so a query only touches chunks that
   contain one of its terms.
 - Persisted as JSON in data/index/, one file per (corpus, chunk size, overlap).

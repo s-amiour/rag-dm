@@ -186,7 +186,7 @@ never deleted automatically).
 *Recall@k*: share of hops that have a gold chunk in the top k, so it tells whether **all** hops of a chain were retrieved.
 `not_in_corpus` questions have no gold chunk and are excluded from both. Gold chunks = chunks containing the quote, same
 rule as V2. Types are reported with the assignment's names (`different_vocabulary` → `vocabulary`, `two_hops` → `two_hop`);
-the question files are untouched, the original name is kept as `type_raw` in the results.
+the question files are untouched, the original name is kept as `type_raw` in the results.A hop whose quote matches no chunk (for example, a quote cut by a chunk boundary) counts as not retrieved and is listed in `unmatched_hops`.
 
 The UI *Evaluation* tab runs the same code for one configuration.
 
@@ -208,6 +208,7 @@ fake LLM, so no download and no API key are needed.
 The browser test (`tests/test_ui_smoke.py`) needs Playwright, which the app itself does not:
 `pip install -r requirements-dev.txt`, then once `python -m playwright install chromium`.
 Run it alone with `python -m pytest tests/test_ui_smoke.py -rs`; without Playwright it is skipped.
+
 ## Repository map
 
 | Path | Content |
