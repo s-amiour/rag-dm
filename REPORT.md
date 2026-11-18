@@ -601,8 +601,4 @@ The 12 Kestrel questions of the run, including the two not_in_corpus questions:
 
 ### Decision
 
-Reranking stays **off by default**. It helps where V3 lost the answer below rank 5 (q03 and own
-two_hop), but it costs about 2 s per question, it breaks the graph's two-hop gains, and it ranks
-outdated documents first. It is available as a switch (Advanced in the UI, `--rerank` in the CLI) for
-questions that need a long, precise answer. A version-aware rule (prefer the newest document of the same
-policy) would be needed before turning it on for everyone.
+At top 5, the measure T10 uses to pick the final configuration, reranking wins on both corpora (Recall@5 0.84 → 0.87 on Kestrel, 0.92 → 0.96 on own; own Hit@5 0.92 → 1.00), so T10 makes it the app default. It comes with two known risks: about 2 s more per question (on CPU), and outdated documents ranked first on the versions questions (q03, q06, q07), which recall does not measure. It also loses the graph's second hop on q11. A version-aware rule (prefer the newest document of the same policy) is the follow-up that would remove the second risk.
