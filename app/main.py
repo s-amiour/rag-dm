@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -19,6 +19,7 @@ load_dotenv(ROOT / ".env")
 
 from . import evaluate as cli_eval  # the CLI's run-and-save path, shared with /api/evaluate (v3T08)
 from . import bm25 as bm25_module
+from . import graph_search
 from . import retrieval as retrieval_module
 from . import traces
 from .core import (
@@ -488,6 +489,60 @@ def ask(req: AskRequest):
             "timings": out["timings"],
             "usage": usage,
             "trace_id": trace.id  # opens this answer's trace (Details panel, v4T04)
+        }
+
+
+CONCEPT_NOT_FOUND = (
+    "No concept called “{name}” in the Kestrel concept graph. Try an error code (KST-5031), "
+    "a service (postroom) or a team (Messaging)."
+)
+GRAPH_NOT_READY = "The concept map needs the Kestrel concept graph, and it is not ready: {detail}"
+
+
+@app.get("/api/graph/concept")
+def graph_concept(
+    name: str = Query(min_length=1, max_length=200),
+    corpus: Literal["kestrel", "own"] = "kestrel"
+):
+    """Concept map explorer (v4T07): a concept of the Kestrel graph, its one-hop edges with their
+    relations and source chunks, and the documents that mention it. No LLM call. One
+    `concept.lookup` trace per lookup; the chunk texts are in the response (for the tab), never
+    in the trace."""
+    with traces.trace("concept.lookup", kind="concept.lookup", corpus=corpus, concept=name) as trace:
+        if corpus not in retrieval_module.GRAPH_CORPORA:
+            raise HTTPException(400, "The concept graph is only built for the Kestrel corpus.")
+
+        size, overlap = resolve_chunking(corpus)
+
+        try:
+            with trace.span("graph.load") as span:
+                records = build_chunks(corpus, size, overlap)
+                g = graph_search.load(corpus, size, overlap, records=records)
+                span.set(build_id=g.build_id, nodes=len(g.names), edges=len(g.edges))
+        except RetrieverUnavailable as e:
+            raise HTTPException(503, GRAPH_NOT_READY.format(detail=e))
+
+        with trace.span("concept.match") as span:
+            chunk_docs = {r["id"]: r["document"] for r in records}
+            out = graph_search.neighborhood(g, name, chunk_docs=chunk_docs)
+            span.set(
+                matched_by=out["matched_by"],
+                concepts=[{"name": c["name"], "type": c["type"]} for c in out["concepts"]],
+                edges=sum(len(c["edges"]) for c in out["concepts"]),
+                more_edges=sum(c["more_edges"] for c in out["concepts"]),
+                chunk_ids=sorted({ch for c in out["concepts"] for ch in c["chunks"]})
+            )
+
+        trace.set_outcome("found" if out["found"] else "not_found")
+        texts = {r["id"]: r["text"] for r in records}
+        wanted = {ch for c in out["concepts"] for ch in c["chunks"]} | {
+            ch for c in out["concepts"] for e in c["edges"] for ch in e["chunks"]}
+
+        return {
+            **out,
+            "message": None if out["found"] else CONCEPT_NOT_FOUND.format(name=name),
+            "chunk_texts": {ch: texts[ch] for ch in sorted(wanted) if ch in texts},
+            "trace_id": trace.id
         }
 
 
