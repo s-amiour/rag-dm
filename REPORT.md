@@ -365,6 +365,26 @@ the chunk, here at the top. Cost: q01 asks exactly about KST-2044, and `python -
 so the graph path shown in the UI tells support to escalate an error the runbook says not to escalate. The quote check (D-21, D-27)
 cannot catch it: the quote is in the chunk and names an end of the relation.
 
+### How we would evaluate a concept graph beyond 10 triples
+
+Ten graded triples say little: 3 correct of 10 gives a 95% interval of about 0.11 to 0.60 (Wilson). What we would measure next, cheapest
+first:
+
+1. **Automatic checks, every build (0 calls).** Already: integrity (no node or edge without evidence, no unknown chunk id). Easy to add:
+   rules the domain gives, such as "a service has one owner" (would flag `postroom owned_by Identity`), "an error code escalates to one
+   place", and type sanity (a `Team` named like a person or a channel).
+2. **Precision on a larger, stratified sample.** About 50 triples, sampled per relation type and per chunk outcome (fully valid vs
+   kept in part, D-26), so the weak strata are visible instead of averaged away; two graders on the same triples, with their agreement
+   reported (we had one disagreement in ten, #5).
+3. **Recall on a small gold set.** Write by hand every triple of a few chunks (the team table, two runbook sections) and count how many
+   the graph has. Precision alone hides what was never extracted, and our worst losses are of that kind (failures 13, 15).
+4. **Entity resolution.** Label the true clusters of the Team and Service nodes and count wrong merges and missed merges
+   (we know of 0 wrong and at least 2 missed, failure 16).
+5. **The path, not only the chunk.** For each `two_hop` question, is every hop reached through a correct edge? Recall@k counts q08's
+   last hop as found through a wrong edge (failure 17), and the answer view shows that path to the user.
+6. **Downstream.** Per-hop Recall@k with and without the graph, and whether the graph's chunks reach the top k after fusion (section 3
+   and section 8). This is the measure that matters for retrieval, but with 3 `two_hop` questions one question moves Recall by up to 0.33.
+
 ## 8. Fusion: what happened to chunks after RRF
 
 The mechanism was first measured with BM25 (below); the graph's chunks are at the end of this section. RRF uses ranks only, so a chunk found by two retrievers beats a chunk
