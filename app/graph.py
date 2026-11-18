@@ -1321,15 +1321,22 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.cmd == "build":
+        holder: dict[str, Any] = {}
         try:
             rules = parse_rules(args.rules)
-            summary = build(args.corpus, args.chunk_size, args.overlap,
-                            retry_skipped=args.retry_skipped, limit=args.limit, delay_s=args.delay,
-                            strict=args.strict, rules=rules)
+            # one index trace per build (v4T03); an exception still closes it, with outcome error
+            with traces.trace("index", kind="index", corpus=args.corpus) as t:
+                holder["trace"] = t
+                summary = build(args.corpus, args.chunk_size, args.overlap,
+                                retry_skipped=args.retry_skipped, limit=args.limit, delay_s=args.delay,
+                                strict=args.strict, rules=rules, trace=t)
         except (RuntimeError, ValueError) as exc:
             print(f"error: {exc}", file=sys.stderr)
+            if "trace" in holder:
+                print(f"trace: {holder['trace'].id}", file=sys.stderr)
             return 2
         print(format_summary(summary))
+        print(f"  trace              {t.id}" + ("" if t.stored else "  (not stored, see the warning above)"))
         return 0 if summary["integrity"]["ok"] else 1
 
     records = core.build_chunks(args.corpus, args.chunk_size, args.overlap)
