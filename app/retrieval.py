@@ -156,7 +156,14 @@ def retrieve(
                 backend["dense"] = dense.backend
 
                 if span:
-                    span.set(backend=dense.backend, results=_ranked(lists["dense"]))
+                    source = getattr(dense, "source", None)  # built / disk / memory (v4T03)
+                    span.set(
+                        backend=dense.backend,
+                        index_source=source,
+                        cache_hit=source != "built",
+                        build_seconds=0.0 if source == "memory" else round(float(getattr(dense, "build_seconds", 0.0)), 3),
+                        results=_ranked(lists["dense"])
+                    )
 
             elif name == "bm25":
                 lexical = bm25_module.get_bm25(corpus, size, overlap, records=records)
@@ -167,8 +174,10 @@ def retrieve(
                 }
 
                 if span:
-                    span.set(index=backend["bm25"]["index"], stopwords=backend["bm25"]["stopwords"],
-                             results=_ranked(lists["bm25"]))
+                    span.set(index=backend["bm25"]["index"], index_source=lexical.info.get("source"),
+                             build_seconds=round(float(lexical.info.get("seconds") or 0.0), 4)
+                             if lexical.info.get("source") == "built" else 0.0,
+                             stopwords=backend["bm25"]["stopwords"], results=_ranked(lists["bm25"]))
 
             else:  # graph
                 out = _run_graph(corpus, question, n, size, overlap)
