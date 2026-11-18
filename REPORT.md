@@ -399,6 +399,14 @@ found by one, even when the second vote comes from deep in a list. Levers: `cand
 
 Not tried: `--rrf-k` below 60, a score threshold on dense, a cross-encoder re-ranker.
 
+### The graph's chunks after fusion (`dense+bm25+graph`)
+
+TODO(T5 run), from `data/results/v3/summary.md`:
+
+- did the graph's chunks reach the top k after fusion (`graph_gold_in_top_k`), per `two_hop` question: q08, q11, q12;
+- `two_hop` Recall@5 with dense+bm25 → with dense+bm25+graph: 0.56 → TODO, and Recall@10: 0.72 → TODO;
+- any question that got worse with the graph on (q10, which the graph gives 5 hits, is the one to check), and why in one sentence.
+
 ## 9. A question where adding a retriever made things worse
 
 **Kestrel q05**, "I lost my phone and I can't log in anymore. What can I do?" (`vocabulary`). Gold chunk `product-guide_md:6`.
