@@ -327,6 +327,17 @@ def _log_review(corpus: str, name: str, decision: str, scan: dict):
         }, ensure_ascii=False) + "\n")
 
 
+def _review_attributes(scan: dict) -> dict:
+    """What a review trace keeps about the scan: counts and rule names only. No excerpts,
+    because excerpts are document text."""
+    findings = scan.get("findings", [])
+    return {
+        "findings": len(findings),
+        "rules": sorted({f["rule"] for f in findings}),
+        "rules_version": scan.get("rules_version"),
+    }
+
+
 @app.get("/api/quarantine")
 def quarantine_list(corpus: Literal["kestrel", "own"] | None = None):
     """Documents held back by the injection scanner, with what it found."""
@@ -351,12 +362,15 @@ def quarantine_approve(corpus: Literal["kestrel", "own"], name: str):
     if target.exists():
         raise HTTPException(409, f"{path.name} already exists in the corpus. Delete or rename it first.")
     scan = json.loads(scan_file.read_text(encoding="utf-8")) if scan_file.exists() else {}
-    target.parent.mkdir(parents=True, exist_ok=True)
-    os.replace(path, target)
-    scan_file.unlink(missing_ok=True)
-    _update_selection_file(target.parent, add=target.name)
-    _log_review(corpus, path.name, "approved", scan)
-    return {"approved": path.name}
+    with traces.trace("quarantine.approve", kind="quarantine.approve", corpus=corpus,
+                      document=path.name, **_review_attributes(scan)) as t:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(path, target)
+        scan_file.unlink(missing_ok=True)
+        _update_selection_file(target.parent, add=target.name)
+        _log_review(corpus, path.name, "approved", scan)
+        t.set_outcome("approved")
+    return {"approved": path.name, "trace_id": t.id}
 
 
 @app.delete("/api/quarantine/{corpus}/{name}")
@@ -364,10 +378,13 @@ def quarantine_reject(corpus: Literal["kestrel", "own"], name: str):
     """A person decided the document is an attack (or not wanted): delete it."""
     path, scan_file = _quarantined(corpus, name)
     scan = json.loads(scan_file.read_text(encoding="utf-8")) if scan_file.exists() else {}
-    path.unlink()
-    scan_file.unlink(missing_ok=True)
-    _log_review(corpus, path.name, "rejected", scan)
-    return {"rejected": path.name}
+    with traces.trace("quarantine.reject", kind="quarantine.reject", corpus=corpus,
+                      document=path.name, **_review_attributes(scan)) as t:
+        path.unlink()
+        scan_file.unlink(missing_ok=True)
+        _log_review(corpus, path.name, "rejected", scan)
+        t.set_outcome("rejected")
+    return {"rejected": path.name, "trace_id": t.id}
 
 
 @app.get("/api/config")

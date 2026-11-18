@@ -4,6 +4,7 @@ No LLM and no embedding model needed. API tests work on a temporary copy of
 data/corpora, so they never touch the real corpus or quarantine folder.
 """
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -12,7 +13,7 @@ from unittest import mock
 
 from fastapi.testclient import TestClient
 
-from app import core, injection, main
+from app import core, injection, main, traces
 
 REAL_DATA = core.DATA
 
@@ -99,6 +100,9 @@ class QuarantineApiTest(unittest.TestCase):
             patcher = mock.patch.object(target, attr, value)
             patcher.start()
             self.addCleanup(patcher.stop)
+        env = mock.patch.dict(os.environ, {"TRACES_DB": str(self.tmp / "traces.sqlite")})
+        env.start()
+        self.addCleanup(env.stop)
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.client = TestClient(main.app)
 
@@ -152,6 +156,31 @@ class QuarantineApiTest(unittest.TestCase):
         self.upload("billing-policy-2026.md", self.POISON)  # same name as a real document
         r = self.client.post("/api/quarantine/kestrel/billing-policy-2026.md/approve")
         self.assertEqual(r.status_code, 409)
+
+    def assert_review_trace(self, trace_id, kind, outcome):
+        found = traces.get_trace(trace_id)
+        self.assertIsNotNone(found)
+        self.assertEqual(found["trace"]["kind"], kind)
+        self.assertEqual(found["trace"]["outcome"], outcome)
+        self.assertEqual(found["trace"]["corpus"], "kestrel")
+        root = found["spans"][0]["attributes"]
+        self.assertEqual(root["document"], "refund-note.md")
+        self.assertEqual(root["findings"], 1)
+        self.assertEqual(root["rules"], ["override"])
+        self.assertEqual(root["rules_version"], injection.RULES_VERSION)
+        # counts and rule names only: no document text in the trace store
+        stored = (self.tmp / "traces.sqlite").read_bytes()
+        self.assertNotIn(b"Ignore all previous instructions", stored)
+
+    def test_approve_is_traced(self):
+        self.upload("refund-note.md", self.POISON)
+        r = self.client.post("/api/quarantine/kestrel/refund-note.md/approve")
+        self.assert_review_trace(r.json()["trace_id"], "quarantine.approve", "approved")
+
+    def test_reject_is_traced(self):
+        self.upload("refund-note.md", self.POISON)
+        r = self.client.delete("/api/quarantine/kestrel/refund-note.md")
+        self.assert_review_trace(r.json()["trace_id"], "quarantine.reject", "rejected")
 
 
 if __name__ == "__main__":
