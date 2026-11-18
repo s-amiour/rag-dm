@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+
+from . import redact
 from pydantic import BaseModel, ValidationError
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -529,9 +531,19 @@ def generate_answer_with_usage(
         max_retries=1
     )
 
+    # Personal data never leaves the machine (v4T09, DECISIONS D-37): the question and the
+    # chunks are redacted with one shared mapping (same value -> same placeholder); the
+    # answer is restored below, for display on this machine only. The mapping is never stored.
+    pii: dict[str, str] = {}
+    if redact.enabled():
+        question_out, pii = redact.redact(question, pii)
+        chunk_texts = [redact.redact(r["text"], pii)[0] for r in retrieved]
+    else:
+        question_out, chunk_texts = question, [r["text"] for r in retrieved]
+
     context = "\n\n".join(
-        f"[{r['id']}] {r['text']}"
-        for r in retrieved
+        f"[{r['id']}] {text}"
+        for r, text in zip(retrieved, chunk_texts)
     )
 
     prompt = (
@@ -539,11 +551,13 @@ def generate_answer_with_usage(
         "If they do not contain the answer, say that the information "
         "is not in the documents. Return valid JSON with exactly two keys: "
         '"answer" (a string) and "citations" (an array of chunk IDs). '
-        "Only cite IDs that appear in the supplied chunks.\n\n"
+        "Only cite IDs that appear in the supplied chunks. "
+        "Placeholders such as [EMAIL_1] or [NAME_1] stand for personal data that was "
+        "removed: copy them unchanged when you need them.\n\n"
         "CHUNKS:\n"
         + context
         + "\n\nQUESTION:\n"
-        + question
+        + question_out
     )
 
     started = time.perf_counter()
@@ -584,6 +598,10 @@ def generate_answer_with_usage(
     content = choice.message.content or ""
     allowed = {r["id"] for r in retrieved}
     result = parse_llm_answer(content, allowed)
+
+    if pii and result.get("valid"):
+        result["answer"] = redact.restore(result["answer"], pii)
+    usage["redactions"] = redact.counts(pii)  # counts only, never the values
 
     if not result["valid"] and finish_reason == "length":
         result["error"] = (

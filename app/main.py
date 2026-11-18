@@ -40,6 +40,7 @@ from .core import (
 )
 
 from .bm25 import get_bm25
+from . import redact
 from .retrieval import (
     RETRIEVERS,
     RetrieverUnavailable,
@@ -475,10 +476,13 @@ def no_context(req: EvalRequest):
     rows = []
 
     for q in questions:
+        # same redaction as answers (v4T09, D-37): the question leaves the machine
+        question_out, pii = (redact.redact(q["question"]) if redact.enabled()
+                             else (q["question"], {}))
         prompt = (
             "Answer using your own knowledge only, without documents or tools. "
             "If unsure, say so.\n\nQUESTION: "
-            + q["question"]
+            + question_out
         )
 
         try:
@@ -494,7 +498,7 @@ def no_context(req: EvalRequest):
                 "id": q.get("id"),
                 "question": q["question"],
                 "type": q.get("type"),
-                "answer": response.choices[0].message.content or "",
+                "answer": redact.restore(response.choices[0].message.content or "", pii),
                 "finish_reason": response.choices[0].finish_reason
             })
 
