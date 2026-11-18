@@ -141,6 +141,38 @@ provenance, storage and build cost (section 7, DECISIONS D-20 to D-27); entity r
 retrieval (D-29, below); the graph path in the answer view (D-30). Measured in the matrix as `dense+bm25+graph` (section 3); what
 happened to the graph's chunks after fusion is in section 8.
 
+This section follows the brief's list: schema, entity resolution, retrieval, cost, where it fails, optional features. The numbers
+behind it (counts, merges, build cost, graded triples) are in section 7.
+
+### Schema
+
+Fixed, versioned (`app/graph_schema.py`, D-20). **Entity types (8):** Product, Feature, Plan, Service, ErrorCode, Policy,
+Procedure, Team. **Relations (10):** the PRD's eight (`has_feature`, `included_in`, `depends_on`, `causes`, `resolved_by`,
+`governed_by`, `owned_by`, `replaces`) plus **`raised_by`** (ErrorCode → Service) and **`escalates_to`** (ErrorCode → Team | Service),
+because the chains of q08, q11 and q12 start at an error code and no PRD relation fits "raised by postroom" or "escalate to Payments
+Core". Each relation declares the types allowed at each end. Fixed rather than open: the corpus is small and known, a fixed list can be
+checked, and an open one returns the same type under several names (`Team`, `Department`, `Squad`). Cost: what fits no type is dropped
+(people, chat channels, prices).
+
+### Extraction and validation
+
+One LLM call per chunk, temperature 0 (D-21). Pydantic checks every reply against the schema and against the chunk: known types,
+allowed ends, each entity named in the chunk, and **each relation's quote copied from the chunk and naming one of its ends** (D-27;
+a bare "Yes" from a table cell no longer passes). Invalid reply → one retry with the errors; if the retry is invalid too, its valid
+entities and relations are kept and the rest dropped and logged (D-26; `--strict` skips the chunk instead). Every node and edge keeps its
+evidence `{doc, chunk_id, quote}` in SQLite (D-22). Each chunk's extraction is cached under (chunk text, schema version, prompt version),
+so a changed document re-extracts only its own chunks. Prompt v1 → v2 after the first build: D-25.
+
+### Entity resolution
+
+Rules in order: **identifier** (error codes, IPs and plan names match exactly or not at all), **normalised name** (case, accents,
+brackets, articles, the suffixes team/service), **alias** listed by the extraction (D-28). Constraints that always hold: never across
+types, never two different identifiers, never the two ends of a `replaces` edge (postroom replaced mailman: q12 needs both). Every merge
+is recorded with its method and evidence and can be switched off (`--rules none`). Rejected: embedding similarity and an LLM judge,
+because their mistakes are false merges (KST-5031 / KST-5038, mailman / postroom) that silently send a chain to the wrong team; we
+accept missed merges instead. Result on our graph: 171 → 166 entities, 5 merges, one correct cross-document merge and one costly missed
+merge (section 7).
+
 ### Graph retrieval (ticket v3T03)
 
 `app/graph_retriever.py` walks 2 hops from the entities named in the question and ranks the evidence chunks it reaches by hop
@@ -171,6 +203,41 @@ entity of the graph and get no graph hit; the unanswerable q10 gets 5 (known fai
 With RRF k = 60 a chunk found only by the graph scores about 1/61 and can be pushed out of the top 5 by chunks that dense and BM25 both
 rank; section 8 measures it. The gap the graph was built for is in section 3: `two_hop` Recall@5 = 0.56 and Recall@10 = 0.72 for
 dense and for dense+bm25, on q08, q11 (2 hops) and q12 (3 hops with an alias, mailman → postroom → Messaging; D-10).
+
+**In the answer view** (D-30): the entities found in the question with the words that matched them, the edges followed by hop with
+their chunks, and for each chunk "in the final list at rank N" or "not in the final list after fusion". A wrong match or a wrong edge
+(such as `postroom owned_by Identity`) is visible to the user instead of hidden in the ranking.
+
+### Cost
+
+| | LLM calls | Time | When |
+|---|---:|---|---|
+| Build (extraction, prompt v2) | 82 | 286.0 s in LLM calls; 135,390 + 33,797 tokens | once per changed chunk |
+| Rebuild with unchanged documents | 0 | 0.03 s | every build (cache) |
+| Entity resolution | 0 | part of the rebuild | every build |
+| Re-check after a validation change (D-27) | 0 | part of the rebuild | when `VALIDATION_VERSION` changes |
+| Query | 0 | TODO(T5 run) ms per question | every question |
+| Whole experiment (v1, v2, partial runs) | 164 | 504.6 s; 243,380 + 65,138 tokens | spent once |
+
+The model is `nvidia/nemotron-3.5-lightning-30b-a3b` with hidden thinking off (D-24): thinking on cost about 16 times the completion
+tokens and 9 times the time for the same JSON. BM25, for comparison, builds in 0.03 to 0.04 s with no call. The graph is the only
+retriever whose index costs LLM calls, and a document change costs one or two calls per changed chunk.
+
+### Where it fails
+
+Measured on our graph (DECISIONS known failures 9 to 18; the 10 graded triples in section 7: 3 correct, 5 wrong, 2 unsupported):
+
+- **Chunk boundaries.** A line read under the wrong heading gives a wrong edge whose quote is real, so validation cannot catch it:
+  `postroom owned_by Identity` (heading cut at the bottom of the chunk, failure 11) and `KST-2044 escalates_to Data Integrations`
+  (cut at the top, graded triple #1). A boundary also loses a subject (`ledger owned_by Payments Core`, failure 14) and cuts a name
+  ("Analytics Eng", failure 16).
+- **Tables.** The plans table gives no edge since D-27 and the team table is partly extracted, so q08's and q12's last hop (the
+  Messaging row with its channel) is missing (failures 13, 15).
+- **The schema forces a relation.** With no relation for "is printed on" or "a role can do X", the model falls back on `has_feature`,
+  and roles and people become `Team` or `Product` nodes (failure 12; 4 of the 7 bad graded triples).
+- **Missed merges.** One team, three nodes; walks from KST-3012 and KST-3020 stop after one hop (failure 16).
+- **Right chunk, wrong reason.** q08's team-table chunk is reached through the wrong Identity edge; Recall@k counts it (failure 17).
+- **No entity, no graph.** 5 of 12 questions name no entity and get nothing; the unanswerable q10 gets 5 hits (failure 18).
 
 ## 7. The graph in numbers
 
