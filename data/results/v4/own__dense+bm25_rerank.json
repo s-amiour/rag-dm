@@ -1,0 +1,3674 @@
+{
+  "summary": {
+    "label": "dense+bm25 (rerank)",
+    "corpus": "own",
+    "config": {
+      "retrievers": [
+        "dense",
+        "bm25"
+      ],
+      "chunk_size": 500,
+      "overlap": 20,
+      "top_k": 10,
+      "rrf_k": 60,
+      "candidates": 30,
+      "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+      "weights": null,
+      "dense_backend": "sentence-transformers",
+      "allow_tfidf_fallback": false,
+      "bm25_stopwords": true,
+      "generate_answers": false,
+      "fingerprint": "902d4e"
+    },
+    "total_questions": 15,
+    "answerable_questions": 13,
+    "hit_rates": {
+      "hit_rate_at_1": 0.7692307692307693,
+      "hit_rate_at_3": 1.0,
+      "hit_rate_at_5": 1.0,
+      "hit_rate_at_10": 1.0
+    },
+    "recall": {
+      "recall_at_1": 0.7692307692307693,
+      "recall_at_3": 0.9615384615384616,
+      "recall_at_5": 0.9615384615384616,
+      "recall_at_10": 0.9615384615384616
+    },
+    "hit_rate_at_k": 1.0,
+    "recall_at_k": 0.9615384615384616,
+    "by_type": {
+      "exact_identifier": {
+        "count": 5,
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "hit_rate_at_10": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0,
+        "total": 5
+      },
+      "split_answer": {
+        "count": 2,
+        "hit_rate_at_1": 0.5,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "hit_rate_at_10": 1.0,
+        "recall_at_1": 0.5,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0,
+        "total": 2
+      },
+      "vocabulary": {
+        "count": 3,
+        "hit_rate_at_1": 0.6666666666666666,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "hit_rate_at_10": 1.0,
+        "recall_at_1": 0.6666666666666666,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0,
+        "total": 3
+      },
+      "not_in_corpus": {
+        "count": 0,
+        "hit_rate_at_1": null,
+        "hit_rate_at_3": null,
+        "hit_rate_at_5": null,
+        "hit_rate_at_10": null,
+        "recall_at_1": null,
+        "recall_at_3": null,
+        "recall_at_5": null,
+        "recall_at_10": null,
+        "total": 2
+      },
+      "two_hop": {
+        "count": 1,
+        "hit_rate_at_1": 0.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "hit_rate_at_10": 1.0,
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.5,
+        "recall_at_5": 0.5,
+        "recall_at_10": 0.5,
+        "total": 1
+      },
+      "other": {
+        "count": 2,
+        "hit_rate_at_1": 1.0,
+        "hit_rate_at_3": 1.0,
+        "hit_rate_at_5": 1.0,
+        "hit_rate_at_10": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0,
+        "total": 2
+      }
+    },
+    "questions_with_unmatched_hops": [],
+    "index": {
+      "dense": {
+        "backend": "sentence-transformers",
+        "build_seconds": 16.963019299990265,
+        "embedding_cache_hit": true
+      },
+      "bm25": {
+        "source": "disk",
+        "build_seconds": 2.510000194888562e-05,
+        "terms": 982,
+        "stopwords": true
+      },
+      "rerank": {
+        "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        "load_seconds": 1.1008782999997493
+      }
+    },
+    "cost_per_question": {
+      "retrieval_ms": 1114.1126933313597,
+      "latency_ms": 1114.1126933313597,
+      "llm_calls": 0.0,
+      "prompt_tokens": 0.0,
+      "completion_tokens": 0.0,
+      "rerank_ms_median": 1099.0450000099372
+    },
+    "fingerprint": "902d4e",
+    "pipeline_config": {
+      "redaction": true,
+      "answer_prompt_version": "2",
+      "graph_prompt_version": null,
+      "llm_model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "embedding_model": "all-MiniLM-L6-v2",
+      "chunk_size": 500,
+      "overlap": 20,
+      "top_k": 10,
+      "candidates": 30,
+      "retrievers": [
+        "bm25",
+        "dense"
+      ],
+      "rrf_k": 60,
+      "weights": null,
+      "stopwords": true,
+      "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+      "corpus_hash": "ccc54a84262958861e0661f268ab1ed6ec02fed7ca6555c88184f93ce59c361d"
+    },
+    "wall_seconds": 34.79893760000414,
+    "run_at": "2026-11-18 11:15:52"
+  },
+  "results": [
+    {
+      "id": "OWN-01",
+      "question": "What is the capacity of the Vellora Duo water tank?",
+      "type": "exact_identifier",
+      "type_raw": "exact_identifier",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:3"
+      ],
+      "first_gold_rank": 1,
+      "hops": [
+        {
+          "source": null,
+          "quote": "water tank (1.8 litres)",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:3"
+          ],
+          "retrieved_by": {
+            "dense": 4,
+            "bm25": 3
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:3",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 3,
+          "score": 2.571687698364258,
+          "text": "e in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children must not play with the machine, and cleaning must not be done by children without supervision.\n\n2. PARTS OF THE MACHINE\n\nThe Vellora Duo is made of the following main parts: the bean hopper with its aroma-preserving lid, the grind adjuster, the pre-ground coffee chute, the water tank (1.8 litres) with its filter holder, the brewing unit behind the side door, the drip tray with its float indicator,",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.3998081088066101
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 6.748549710977782
+            }
+          },
+          "rank_before": 5,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:74",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 74,
+          "score": 0.8995330333709717,
+          "text": "y loud, or if it sounds like grinding gravel, stop the machine immediately and check the error code on the display.\n\nWater leaks under the machine. The drip tray is full or badly inserted, or the water tank is not inserted correctly. Empty the drip tray and check the seal of the water tank.\n\n11. WARRANTY AND CUSTOMER SERVICE\n\nThe Vellora Duo is covered by a two-year warranty from the date of purchase, on presentation of the receipt. The warranty does not cover damage caused by limescale, by the ",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.40837204456329346
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 8.02737249827766
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:0",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 0,
+          "score": -1.6465668678283691,
+          "text": "VELLORA DUO - ESPRESSO MACHINE\nUSER MANUAL\n(Fictional product. Document written for the BM25 challenge of the RAG course.)\n\n1. BEFORE YOU START\n\nThank you for choosing the Vellora Duo, a bean-to-cup espresso machine with an integrated conical grinder, a thermoblock heater and an automatic milk system. Please read this manual carefully before using the machine for the first time, and keep it for future reference. Most problems can be solved in a few minutes by following the instructions in the tr",
+          "sources": {
+            "dense": {
+              "rank": 5,
+              "score": 0.34675031900405884
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 7.384137818017029
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:20",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 20,
+          "score": -2.8308520317077637,
+          "text": ", set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half a tank of water. A filter lasts two months, or 50 litres of water. The machine counts the water used and asks for a replacement when the filter is exhausted. When a filter is installed and activated, the machine does not ask for descaling. Only use original Vellora filters: other filters may not fit the holder correctly, may let unfiltered water into the circuit, and are not covered by the warran",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.4452013671398163
+            },
+            "bm25": {
+              "rank": 4,
+              "score": 4.46759161486062
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:67",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 67,
+          "score": -4.426527976989746,
+          "text": "r full. Cause: The water counter reached its maximum value. What to do: Run the descaling programme: the counter is reset at the end of the programme.\n\nE90 - Accessory not recognised. Cause: The milk container accessory is not recognised. What to do: Clean the contacts of the milk container and connect it again.\n\nE91 - Unknown accessory. Cause: An accessory that is not compatible with the machine has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.3294483423233032
+            },
+            "bm25": {
+              "rank": 15,
+              "score": 2.798447942226755
+            }
+          },
+          "rank_before": 9,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:22",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 22,
+          "score": -5.778844833374023,
+          "text": " the list below: it tells you what the code means and what to do. If the code is still displayed after you have followed the instructions, switch the machine off, wait one minute and switch it on again. If the problem persists, write down the code and contact the Vellora customer service: the code helps the technician to diagnose the problem quickly, and often to solve it over the phone without sending the machine for repair.\n\nE01 - Water tank missing. Cause: The machine does not detect the wate",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.4258476495742798
+            },
+            "bm25": {
+              "rank": 5,
+              "score": 4.06170280491633
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:57",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 57,
+          "score": -8.007728576660156,
+          "text": "o: Replace the water filter and run the filter programme, or deactivate the filter in the menu.\n\nE67 - Filter not rinsed. Cause: A new filter was installed but the filter programme was not run. What to do: Run the filter programme from the maintenance menu.\n\nE68 - Filter not recognised. Cause: The installed water filter is not recognised by the machine. What to do: Use only original Vellora filters, and check that the filter is screwed in completely.\n\nE69 - Water hardness not set. Cause: The wat",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.3002379238605499
+            },
+            "bm25": {
+              "rank": 9,
+              "score": 3.0754817813693274
+            }
+          },
+          "rank_before": 7,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:68",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 68,
+          "score": -8.64627456665039,
+          "text": "has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92 - Milk container lid open. Cause: The lid of the milk container accessory is not closed. What to do: Close the lid of the milk container until it clicks.\n\nE93 - Milk container too warm. Cause: The milk container accessory has been out of the refrigerator for too long. What to do: Put the milk container back in the refrigerator for at least one hour.\n\nE94 - Factory test mode. Cause: The machine st",
+          "sources": {
+            "dense": {
+              "rank": 15,
+              "score": 0.2248377501964569
+            },
+            "bm25": {
+              "rank": 27,
+              "score": 2.020563701236575
+            }
+          },
+          "rank_before": 22,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:63",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 63,
+          "score": -10.017805099487305,
+          "text": "-Fi module does not respond to the main board. What to do: Switch the machine off and on again. The machine can still be used without the app.\n\nE81 - Wi-Fi connection lost. Cause: The machine lost its connection to the home network. What to do: Check your router, then connect the machine again from the Vellora app.\n\nE82 - App pairing failed. Cause: The machine could not be paired with the Vellora app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE8",
+          "sources": {
+            "dense": {
+              "rank": 29,
+              "score": 0.16034956276416779
+            },
+            "bm25": {
+              "rank": 11,
+              "score": 2.935963319359448
+            }
+          },
+          "rank_before": 20,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:64",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 64,
+          "score": -10.325033187866211,
+          "text": "app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE83 - App version too old. Cause: The Vellora app on your phone is too old for this machine. What to do: Update the Vellora app from your app store.\n\nE84 - Recipe not supported. Cause: A recipe sent from the app is not supported by this machine. What to do: Update the software of the machine from the menu, then try again.\n\nE85 - Scheduled switch-on failed. Cause: The machine could not switch on at t",
+          "sources": {
+            "dense": {
+              "rank": 24,
+              "score": 0.17830848693847656
+            },
+            "bm25": {
+              "rank": 12,
+              "score": 2.918947879079824
+            }
+          },
+          "rank_before": 19,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": true,
+      "recall_at_1": 1.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 0.79626279999502,
+        "per_retriever_s": {
+          "dense_s": 0.019460000010440126,
+          "bm25_s": 0.00045270001282915473,
+          "fusion_s": 0.0002263999922433868,
+          "rerank_s": 0.7761157000059029
+        },
+        "generation_s": 0.0,
+        "latency_s": 0.79626279999502,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-02",
+      "question": "How long should the water filter be soaked before installation, and how long does it last?",
+      "type": "split_answer",
+      "type_raw": "split_answer",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:19"
+      ],
+      "first_gold_rank": 2,
+      "hops": [
+        {
+          "source": null,
+          "quote": "soak the filter in cold water for one minute",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:19"
+          ],
+          "retrieved_by": {
+            "dense": 2,
+            "bm25": 4
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:20",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 20,
+          "score": 4.826562881469727,
+          "text": ", set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half a tank of water. A filter lasts two months, or 50 litres of water. The machine counts the water used and asks for a replacement when the filter is exhausted. When a filter is installed and activated, the machine does not ask for descaling. Only use original Vellora filters: other filters may not fit the holder correctly, may let unfiltered water into the circuit, and are not covered by the warran",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.4980740547180176
+            },
+            "bm25": {
+              "rank": 5,
+              "score": 5.195584962649571
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:19",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 19,
+          "score": -0.8168939352035522,
+          "text": "two phases: the descaling phase, then a rinsing phase for which you must fill the tank with fresh water. Never use vinegar or any other product than the recommended descaling liquid.\n\n8. WATER FILTER\n\nThe optional water filter reduces limescale and improves the taste of the coffee. To install it, soak the filter in cold water for one minute, screw it into the holder at the bottom of the water tank, set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.38307467103004456
+            },
+            "bm25": {
+              "rank": 4,
+              "score": 5.289093513063024
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:7",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 7,
+          "score": -5.886548042297363,
+          "text": "e into a glass of tap water for one second, count the red squares, and enter that number in the menu.\n\nAt first use, and every time the machine has not been used for more than two weeks, the circuit must be filled with water. The display shows \"Fill circuit\": place a container under the steam wand and press the hot water button. When water flows steadily, the machine heats up and performs an automatic rinse through the coffee outlets. The first two or three coffees may taste weak: this is normal",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.31116223335266113
+            }
+          },
+          "rank_before": 17,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:57",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 57,
+          "score": -6.051444053649902,
+          "text": "o: Replace the water filter and run the filter programme, or deactivate the filter in the menu.\n\nE67 - Filter not rinsed. Cause: A new filter was installed but the filter programme was not run. What to do: Run the filter programme from the maintenance menu.\n\nE68 - Filter not recognised. Cause: The installed water filter is not recognised by the machine. What to do: Use only original Vellora filters, and check that the filter is screwed in completely.\n\nE69 - Water hardness not set. Cause: The wat",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.35451048612594604
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 5.434525520379361
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:17",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 17,
+          "score": -6.5713677406311035,
+          "text": "builds up in the heater and the pipes over time, even with soft water. When the display shows \"Descaling needed\", descale the machine as soon as possible. A machine that is not descaled regularly heats less efficiently, makes coffee at a lower temperature, and may eventually be blocked by limescale. Damage caused by limescale is not covered by the warranty.\n\nRemove the water filter from the tank if one is installed. Pour the content of one bottle of descaling liquid into the empty water tank and",
+          "sources": {
+            "dense": {
+              "rank": 11,
+              "score": 0.2752648890018463
+            },
+            "bm25": {
+              "rank": 13,
+              "score": 3.140270202104739
+            }
+          },
+          "rank_before": 7,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:18",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 18,
+          "score": -7.2444939613342285,
+          "text": "f one is installed. Pour the content of one bottle of descaling liquid into the empty water tank and fill it with water up to the descaling mark. Place a large container (at least 1.5 litres) under the coffee outlets and another one under the steam wand. Start the descaling programme from the maintenance menu and follow the instructions on the display. The programme takes about 30 minutes and has two phases: the descaling phase, then a rinsing phase for which you must fill the tank with fresh wa",
+          "sources": {
+            "dense": {
+              "rank": 8,
+              "score": 0.3000069856643677
+            }
+          },
+          "rank_before": 19,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:76",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 76,
+          "score": -7.336864471435547,
+          "text": "er and the serial number printed on the label behind the water tank, and the error code shown on the display, if any. Our customer service is available from Monday to Friday, from 9 am to 6 pm. Most problems can be solved over the phone in a few minutes. If the machine must be repaired, we will send you a box to return it to our service centre free of charge. Repairs under warranty usually take ten working days.\n\nDispose of the machine at the end of its life at a collection point for electrical ",
+          "sources": {
+            "dense": {
+              "rank": 13,
+              "score": 0.25583210587501526
+            }
+          },
+          "rank_before": 25,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:56",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 56,
+          "score": -7.796677589416504,
+          "text": " What to do: Put the drip tray back and start the cleaning programme again.\n\nE65 - Cleaning tablet not detected. Cause: The cleaning programme did not detect the cleaning tablet in the brewing unit. What to do: Drop one cleaning tablet into the pre-ground coffee chute and start the cleaning programme again.\n\nE66 - Filter exhausted. Cause: The water filter has reached the end of its life. What to do: Replace the water filter and run the filter programme, or deactivate the filter in the menu.\n\nE67",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.2806588411331177
+            },
+            "bm25": {
+              "rank": 6,
+              "score": 4.786282265151837
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:38",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 38,
+          "score": -8.533077239990234,
+          "text": "ine, wait ten minutes, then run a rinse. If the code comes back, contact customer service.\n\nE29 - Air in the circuit. Cause: Air entered the circuit after the water tank was removed during a preparation. What to do: Fill the circuit again: place a cup under the steam wand and press hot water until water flows steadily.\n\nE30 - Rinse not completed. Cause: The automatic rinse at switch-on did not complete. What to do: Empty the drip tray, fill the water tank and switch the machine off and on again.",
+          "sources": {
+            "dense": {
+              "rank": 15,
+              "score": 0.24011997878551483
+            }
+          },
+          "rank_before": 27,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:16",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 16,
+          "score": -9.232969284057617,
+          "text": "d leave the side door open for an hour.\n\nEvery month, or when the display asks for it, run the cleaning programme with a cleaning tablet. Open the pre-ground coffee chute, drop one tablet into it, close the lid and start the programme from the maintenance menu. The programme takes about ten minutes. Do not interrupt it, and do not remove the drip tray while it is running.\n\n7. DESCALING\n\nLimescale builds up in the heater and the pipes over time, even with soft water. When the display shows \"Desca",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.3285159468650818
+            }
+          },
+          "rank_before": 15,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": false,
+      "recall_at_1": 0.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 1.1717350999970222,
+        "per_retriever_s": {
+          "dense_s": 0.02034849999472499,
+          "bm25_s": 0.0004929999995511025,
+          "fusion_s": 0.000258700005360879,
+          "rerank_s": 1.150626899994677
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.1717350999970222,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-03",
+      "question": "What should I do if coffee comes out drop by drop?",
+      "type": "vocabulary",
+      "type_raw": "vocabulary",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:10",
+        "vellora-duo-espresso-machine_txt:34",
+        "vellora-duo-espresso-machine_txt:72"
+      ],
+      "first_gold_rank": 1,
+      "hops": [
+        {
+          "source": null,
+          "quote": "the grind is too fine",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:10",
+            "vellora-duo-espresso-machine_txt:34",
+            "vellora-duo-espresso-machine_txt:72"
+          ],
+          "retrieved_by": {
+            "dense": 1,
+            "bm25": 1
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:10",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 10,
+          "score": 8.119714736938477,
+          "text": "rinder is running, one step at a time. A finer grind gives a stronger, more intense coffee and a slower flow; a coarser grind gives a lighter coffee and a faster flow. If the coffee comes out drop by drop, the grind is too fine; if it comes out too fast and pale, the grind is too coarse.\n\nTo use pre-ground coffee, open the chute lid, add one level measuring spoon of ground coffee, close the lid and press espresso or lungo within one minute. Never put more than one spoon, and never put coffee bea",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.4980354607105255
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 11.262939698199784
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:72",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 72,
+          "score": 6.538067817687988,
+          "text": "se the coffee temperature in the menu, and descale the machine if it has not been done for a long time.\n\nThe coffee comes out too slowly or drop by drop. The grind is too fine or the brewing unit is dirty. Set the grind adjuster one or two steps coarser, while the grinder is running, and rinse the brewing unit.\n\nThe coffee has no crema. The beans are not fresh enough, or the grind is too coarse. Use fresh beans, stored in an airtight container, and set the grind adjuster one step finer.\n\nThe mil",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.5497931838035583
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 9.545422853858131
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:56",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 56,
+          "score": -1.7622442245483398,
+          "text": " What to do: Put the drip tray back and start the cleaning programme again.\n\nE65 - Cleaning tablet not detected. Cause: The cleaning programme did not detect the cleaning tablet in the brewing unit. What to do: Drop one cleaning tablet into the pre-ground coffee chute and start the cleaning programme again.\n\nE66 - Filter exhausted. Cause: The water filter has reached the end of its life. What to do: Replace the water filter and run the filter programme, or deactivate the filter in the menu.\n\nE67",
+          "sources": {
+            "dense": {
+              "rank": 29,
+              "score": 0.3485752046108246
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 3.6441735000102664
+            }
+          },
+          "rank_before": 10,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:48",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 48,
+          "score": -1.869011402130127,
+          "text": "t to do: Unplug the machine, empty the bean hopper with a vacuum cleaner, and use the hexagonal key supplied with the machine to turn the upper burr anticlockwise until the object falls out. Never use a knife or a screwdriver.\n\nE48 - Portion not ground. Cause: The grinder stopped before the end of the portion. What to do: Make sure the bean hopper lid is closed properly, then try again.\n\nE49 - Grind quantity too small. Cause: The portion of ground coffee is lighter than expected. What to do: Inc",
+          "sources": {
+            "dense": {
+              "rank": 10,
+              "score": 0.46851980686187744
+            },
+            "bm25": {
+              "rank": 11,
+              "score": 2.766590379645818
+            }
+          },
+          "rank_before": 5,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:15",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 15,
+          "score": -1.8776776790618896,
+          "text": "washer: it would remove the grease that keeps the unit moving smoothly. Let the unit dry in the open air, then slide it back in until it clicks. Clean the inside of the machine with a soft brush to remove the coffee powder that falls around the unit. If you notice a strong smell of old coffee when you open the side door, the brewing unit has not been rinsed often enough: rinse it twice in a row and leave the side door open for an hour.\n\nEvery month, or when the display asks for it, run the clean",
+          "sources": {
+            "dense": {
+              "rank": 17,
+              "score": 0.4285174310207367
+            },
+            "bm25": {
+              "rank": 24,
+              "score": 1.0653766550351171
+            }
+          },
+          "rank_before": 16,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:25",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 25,
+          "score": -3.1936581134796143,
+          "text": "er running water, and replace the seal if it is cracked.\n\nE05 - Grounds container full. Cause: The coffee grounds container has reached its maximum number of portions. What to do: Empty the grounds container while the machine is switched on, and wait five seconds before putting it back.\n\nE06 - Grounds container missing. Cause: The grounds container was not put back after emptying. What to do: Put the grounds container back in place, inside the drip tray.\n\nE07 - Drip tray float stuck. Cause: The ",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.5260661840438843
+            }
+          },
+          "rank_before": 22,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:8",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 8,
+          "score": -3.4351511001586914,
+          "text": "atic rinse through the coffee outlets. The first two or three coffees may taste weak: this is normal, the grinder needs a few cycles to adjust.\n\n4. MAKING COFFEE\n\nPlace a cup under the coffee outlets and lower the outlets as close to the cup as possible to keep the crema. Press espresso for a short coffee (40 ml) or lungo for a long coffee (110 ml). Press the button twice within two seconds to make two cups at once. You can stop the flow at any time by pressing the same button again.\n\nThe coffee",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.48320019245147705
+            },
+            "bm25": {
+              "rank": 17,
+              "score": 1.4672998414571863
+            }
+          },
+          "rank_before": 6,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:49",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 49,
+          "score": -3.6064140796661377,
+          "text": "nd quantity too small. Cause: The portion of ground coffee is lighter than expected. What to do: Increase the coffee strength by one level, or set the grind adjuster one step finer.\n\nE50 - Bean hopper lid open. Cause: The aroma-preserving lid of the bean hopper is not closed. What to do: Close the lid of the bean hopper. The grinder only starts when the lid is closed.\n\nE51 - Display communication fault. Cause: The control panel does not communicate with the main board. What to do: Switch the mac",
+          "sources": {
+            "dense": {
+              "rank": 24,
+              "score": 0.3773519992828369
+            },
+            "bm25": {
+              "rank": 25,
+              "score": 1.0593077583683317
+            }
+          },
+          "rank_before": 20,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:71",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 71,
+          "score": -3.9204657077789307,
+          "text": "ect water connection. What to do: Close the water tap of the direct connection and contact customer service.\n\nE99 - Unknown error. Cause: The machine detected a problem that has no specific code. What to do: Switch the machine off and on again. If the code comes back, contact customer service.\n\n10. PROBLEMS WITHOUT AN ERROR CODE\n\nThe coffee is not hot enough. Preheat the cup with hot water, increase the coffee temperature in the menu, and descale the machine if it has not been done for a long ti",
+          "sources": {
+            "bm25": {
+              "rank": 6,
+              "score": 3.566105420859783
+            }
+          },
+          "rank_before": 24,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:28",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 28,
+          "score": -4.019276142120361,
+          "text": "by hand. What to do: Switch the machine off and on again: it moves the brewing unit back to its starting position.\n\nE11 - Brewing unit stuck. Cause: The brewing unit cannot move to its starting position, often because of dried coffee residue. What to do: Remove the brewing unit, rinse it under lukewarm water, let it dry and insert it again.\n\nE12 - Brewing unit overload. Cause: Too much ground coffee was used, so the unit cannot compress the coffee. What to do: Remove the brewing unit and clean i",
+          "sources": {
+            "dense": {
+              "rank": 5,
+              "score": 0.48791271448135376
+            },
+            "bm25": {
+              "rank": 21,
+              "score": 1.242696027480418
+            }
+          },
+          "rank_before": 7,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": true,
+      "recall_at_1": 1.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 1.3360629999951925,
+        "per_retriever_s": {
+          "dense_s": 0.024351200001547113,
+          "bm25_s": 0.0008174000104190782,
+          "fusion_s": 0.0004337999998824671,
+          "rerank_s": 1.3104519000044093
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.3360629999951925,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-04",
+      "question": "Can I use vinegar to descale the machine?",
+      "type": "other",
+      "type_raw": "other",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:19"
+      ],
+      "first_gold_rank": 1,
+      "hops": [
+        {
+          "source": null,
+          "quote": "Never use vinegar or any other product than the recommended descaling liquid.",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:19"
+          ],
+          "retrieved_by": {
+            "dense": 1,
+            "bm25": 1
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:19",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 19,
+          "score": 3.197535991668701,
+          "text": "two phases: the descaling phase, then a rinsing phase for which you must fill the tank with fresh water. Never use vinegar or any other product than the recommended descaling liquid.\n\n8. WATER FILTER\n\nThe optional water filter reduces limescale and improves the taste of the coffee. To install it, soak the filter in cold water for one minute, screw it into the holder at the bottom of the water tank, set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.5295145511627197
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 5.270184307216797
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:17",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 17,
+          "score": -1.4771287441253662,
+          "text": "builds up in the heater and the pipes over time, even with soft water. When the display shows \"Descaling needed\", descale the machine as soon as possible. A machine that is not descaled regularly heats less efficiently, makes coffee at a lower temperature, and may eventually be blocked by limescale. Damage caused by limescale is not covered by the warranty.\n\nRemove the water filter from the tank if one is installed. Pour the content of one bottle of descaling liquid into the empty water tank and",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.5104814171791077
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 3.614437031837821
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:72",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 72,
+          "score": -2.4089460372924805,
+          "text": "se the coffee temperature in the menu, and descale the machine if it has not been done for a long time.\n\nThe coffee comes out too slowly or drop by drop. The grind is too fine or the brewing unit is dirty. Set the grind adjuster one or two steps coarser, while the grinder is running, and rinse the brewing unit.\n\nThe coffee has no crema. The beans are not fresh enough, or the grind is too coarse. Use fresh beans, stored in an airtight container, and set the grind adjuster one step finer.\n\nThe mil",
+          "sources": {
+            "dense": {
+              "rank": 23,
+              "score": 0.2934883236885071
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 4.345498652791323
+            }
+          },
+          "rank_before": 5,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:20",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 20,
+          "score": -2.4789748191833496,
+          "text": ", set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half a tank of water. A filter lasts two months, or 50 litres of water. The machine counts the water used and asks for a replacement when the filter is exhausted. When a filter is installed and activated, the machine does not ask for descaling. Only use original Vellora filters: other filters may not fit the holder correctly, may let unfiltered water into the circuit, and are not covered by the warran",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.44033318758010864
+            },
+            "bm25": {
+              "rank": 9,
+              "score": 1.5365366077386273
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:18",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 18,
+          "score": -4.737294673919678,
+          "text": "f one is installed. Pour the content of one bottle of descaling liquid into the empty water tank and fill it with water up to the descaling mark. Place a large container (at least 1.5 litres) under the coffee outlets and another one under the steam wand. Start the descaling programme from the maintenance menu and follow the instructions on the display. The programme takes about 30 minutes and has two phases: the descaling phase, then a rinsing phase for which you must fill the tank with fresh wa",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.47554606199264526
+            }
+          },
+          "rank_before": 15,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:67",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 67,
+          "score": -4.764059066772461,
+          "text": "r full. Cause: The water counter reached its maximum value. What to do: Run the descaling programme: the counter is reset at the end of the programme.\n\nE90 - Accessory not recognised. Cause: The milk container accessory is not recognised. What to do: Clean the contacts of the milk container and connect it again.\n\nE91 - Unknown accessory. Cause: An accessory that is not compatible with the machine has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92",
+          "sources": {
+            "bm25": {
+              "rank": 13,
+              "score": 1.4825676640921206
+            }
+          },
+          "rank_before": 29,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:54",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 54,
+          "score": -5.399939060211182,
+          "text": " Cause: The maintenance counters were not reset after a service. What to do: Contact customer service to reset the maintenance counters.\n\nE61 - Descaling needed. Cause: The machine has detected a high level of limescale. What to do: Run the descaling programme as soon as possible.\n\nE62 - Descaling interrupted. Cause: The descaling programme was interrupted before the end. What to do: Start the descaling programme again from the beginning. Do not switch off the machine during the programme.\n\nE63 ",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.35683298110961914
+            }
+          },
+          "rank_before": 23,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:71",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 71,
+          "score": -5.473742485046387,
+          "text": "ect water connection. What to do: Close the water tap of the direct connection and contact customer service.\n\nE99 - Unknown error. Cause: The machine detected a problem that has no specific code. What to do: Switch the machine off and on again. If the code comes back, contact customer service.\n\n10. PROBLEMS WITHOUT AN ERROR CODE\n\nThe coffee is not hot enough. Preheat the cup with hot water, increase the coffee temperature in the menu, and descale the machine if it has not been done for a long ti",
+          "sources": {
+            "bm25": {
+              "rank": 4,
+              "score": 3.565511041149948
+            }
+          },
+          "rank_before": 16,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:58",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 58,
+          "score": -6.467277526855469,
+          "text": "s, and check that the filter is screwed in completely.\n\nE69 - Water hardness not set. Cause: The water hardness was not set at first use. What to do: Measure the water hardness with the test strip and enter the value in the menu.\n\nE70 - Descaling liquid not rinsed. Cause: Traces of descaling liquid were detected in the circuit after descaling. What to do: Fill the water tank with fresh water and run the rinsing programme twice.\n\nE71 - Power supply too low. Cause: The mains voltage is too low for",
+          "sources": {
+            "dense": {
+              "rank": 25,
+              "score": 0.28495728969573975
+            },
+            "bm25": {
+              "rank": 23,
+              "score": 1.1231534964568042
+            }
+          },
+          "rank_before": 13,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:16",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 16,
+          "score": -7.217205047607422,
+          "text": "d leave the side door open for an hour.\n\nEvery month, or when the display asks for it, run the cleaning programme with a cleaning tablet. Open the pre-ground coffee chute, drop one tablet into it, close the lid and start the programme from the maintenance menu. The programme takes about ten minutes. Do not interrupt it, and do not remove the drip tray while it is running.\n\n7. DESCALING\n\nLimescale builds up in the heater and the pipes over time, even with soft water. When the display shows \"Desca",
+          "sources": {
+            "dense": {
+              "rank": 5,
+              "score": 0.44293737411499023
+            }
+          },
+          "rank_before": 17,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": true,
+      "recall_at_1": 1.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 1.3966615999961505,
+        "per_retriever_s": {
+          "dense_s": 0.027499800009536557,
+          "bm25_s": 0.0006121000042185187,
+          "fusion_s": 0.0003003000019816682,
+          "rerank_s": 1.3682412000052864
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.3966615999961505,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-05",
+      "question": "What are the two phases of the descaling programme?",
+      "type": "other",
+      "type_raw": "other",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:18",
+        "vellora-duo-espresso-machine_txt:19"
+      ],
+      "first_gold_rank": 1,
+      "hops": [
+        {
+          "source": null,
+          "quote": "the descaling phase, then a rinsing phase",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:18",
+            "vellora-duo-espresso-machine_txt:19"
+          ],
+          "retrieved_by": {
+            "dense": 1,
+            "bm25": 1
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:18",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 18,
+          "score": 6.442674160003662,
+          "text": "f one is installed. Pour the content of one bottle of descaling liquid into the empty water tank and fill it with water up to the descaling mark. Place a large container (at least 1.5 litres) under the coffee outlets and another one under the steam wand. Start the descaling programme from the maintenance menu and follow the instructions on the display. The programme takes about 30 minutes and has two phases: the descaling phase, then a rinsing phase for which you must fill the tank with fresh wa",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.5244073271751404
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 9.708893563532566
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:19",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 19,
+          "score": 6.0099101066589355,
+          "text": "two phases: the descaling phase, then a rinsing phase for which you must fill the tank with fresh water. Never use vinegar or any other product than the recommended descaling liquid.\n\n8. WATER FILTER\n\nThe optional water filter reduces limescale and improves the taste of the coffee. To install it, soak the filter in cold water for one minute, screw it into the holder at the bottom of the water tank, set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.38044947385787964
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 8.784071265812287
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:16",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 16,
+          "score": -1.9230380058288574,
+          "text": "d leave the side door open for an hour.\n\nEvery month, or when the display asks for it, run the cleaning programme with a cleaning tablet. Open the pre-ground coffee chute, drop one tablet into it, close the lid and start the programme from the maintenance menu. The programme takes about ten minutes. Do not interrupt it, and do not remove the drip tray while it is running.\n\n7. DESCALING\n\nLimescale builds up in the heater and the pipes over time, even with soft water. When the display shows \"Desca",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.43222594261169434
+            },
+            "bm25": {
+              "rank": 8,
+              "score": 3.842427991254521
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:54",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 54,
+          "score": -2.4327049255371094,
+          "text": " Cause: The maintenance counters were not reset after a service. What to do: Contact customer service to reset the maintenance counters.\n\nE61 - Descaling needed. Cause: The machine has detected a high level of limescale. What to do: Run the descaling programme as soon as possible.\n\nE62 - Descaling interrupted. Cause: The descaling programme was interrupted before the end. What to do: Start the descaling programme again from the beginning. Do not switch off the machine during the programme.\n\nE63 ",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.3770369291305542
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 5.5756601379621396
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:34",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 34,
+          "score": -2.5293705463409424,
+          "text": "iming. Cause: The pump runs but does not draw water, usually because of an air bubble in the circuit. What to do: Refill the water tank, place a cup under the steam wand and press hot water until water flows steadily.\n\nE22 - Pump overload. Cause: The pump works against too much pressure, because the grind is too fine or the circuit is partly blocked. What to do: Set the grind adjuster two steps coarser. If the code persists, run the descaling programme.\n\nE23 - Flow meter fault. Cause: The flow m",
+          "sources": {
+            "dense": {
+              "rank": 23,
+              "score": 0.15198564529418945
+            },
+            "bm25": {
+              "rank": 6,
+              "score": 4.183981495850752
+            }
+          },
+          "rank_before": 14,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:20",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 20,
+          "score": -2.7918827533721924,
+          "text": ", set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half a tank of water. A filter lasts two months, or 50 litres of water. The machine counts the water used and asks for a replacement when the filter is exhausted. When a filter is installed and activated, the machine does not ask for descaling. Only use original Vellora filters: other filters may not fit the holder correctly, may let unfiltered water into the circuit, and are not covered by the warran",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.31492334604263306
+            },
+            "bm25": {
+              "rank": 4,
+              "score": 4.491043979481281
+            }
+          },
+          "rank_before": 5,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:35",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 35,
+          "score": -3.2802746295928955,
+          "text": "arser. If the code persists, run the descaling programme.\n\nE23 - Flow meter fault. Cause: The flow meter does not count the water going through the circuit. What to do: Check that the water tank is full and properly inserted, then switch the machine off and on again.\n\nE24 - Pump noise abnormal. Cause: The pump makes an unusual noise because it runs without enough water. What to do: Fill the water tank and check that the tank valve is not blocked.\n\nE25 - Water circuit blocked. Cause: Water cannot",
+          "sources": {
+            "dense": {
+              "rank": 28,
+              "score": 0.13905677199363708
+            },
+            "bm25": {
+              "rank": 15,
+              "score": 2.863910180423134
+            }
+          },
+          "rank_before": 17,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:67",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 67,
+          "score": -3.380406379699707,
+          "text": "r full. Cause: The water counter reached its maximum value. What to do: Run the descaling programme: the counter is reset at the end of the programme.\n\nE90 - Accessory not recognised. Cause: The milk container accessory is not recognised. What to do: Clean the contacts of the milk container and connect it again.\n\nE91 - Unknown accessory. Cause: An accessory that is not compatible with the machine has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92",
+          "sources": {
+            "dense": {
+              "rank": 17,
+              "score": 0.1826997697353363
+            },
+            "bm25": {
+              "rank": 9,
+              "score": 3.682865798345505
+            }
+          },
+          "rank_before": 12,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:66",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 66,
+          "score": -3.64912486076355,
+          "text": "energy saving mode lowered the temperature of the heater. What to do: Wait two minutes for the machine to heat up, or deactivate the energy saving mode in the menu.\n\nE88 - Service interval reached. Cause: The machine has made 15,000 coffees and needs a preventive service. What to do: Contact customer service to book a service. The machine can still be used in the meantime.\n\nE89 - Water used counter full. Cause: The water counter reached its maximum value. What to do: Run the descaling programme:",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.23476719856262207
+            },
+            "bm25": {
+              "rank": 5,
+              "score": 4.491043979481281
+            }
+          },
+          "rank_before": 6,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:32",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 32,
+          "score": -3.8243467807769775,
+          "text": "e slowly than usual, often because of limescale. What to do: Run the descaling programme. If the code comes back after descaling, contact customer service.\n\nE18 - Temperature sensor fault. Cause: The temperature sensor of the heater sends values that make no sense. What to do: Switch the machine off and on again. If the code comes back, contact customer service: the sensor must be replaced.\n\nE19 - Steam temperature not reached. Cause: The steam circuit does not reach its temperature, often becau",
+          "sources": {
+            "dense": {
+              "rank": 11,
+              "score": 0.22950445115566254
+            },
+            "bm25": {
+              "rank": 10,
+              "score": 3.5558681554994678
+            }
+          },
+          "rank_before": 9,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": true,
+      "recall_at_1": 1.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 1.0739335999969626,
+        "per_retriever_s": {
+          "dense_s": 0.027960799998254515,
+          "bm25_s": 0.0005522999999811873,
+          "fusion_s": 0.00027779999072663486,
+          "rerank_s": 1.0451362000021618
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.0739335999969626,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-06",
+      "question": "What is error E47 and how should it be fixed?",
+      "type": "exact_identifier",
+      "type_raw": "exact_identifier",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:47"
+      ],
+      "first_gold_rank": 1,
+      "hops": [
+        {
+          "source": null,
+          "quote": "E47 - Grinder blocked by a foreign object.",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:47"
+          ],
+          "retrieved_by": {
+            "dense": 3,
+            "bm25": 1
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:47",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 47,
+          "score": -0.4990466833114624,
+          "text": "utes.\n\nE46 - Grinder speed sensor fault. Cause: The sensor that measures the speed of the grinder motor does not send any signal. What to do: Switch the machine off and on again. If the code persists, contact customer service.\n\nE47 - Grinder blocked by a foreign object. Cause: A foreign object, often a small stone found among the coffee beans, is jammed between the burrs and stops the grinder. What to do: Unplug the machine, empty the bean hopper with a vacuum cleaner, and use the hexagonal key ",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.5089584589004517
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 4.033603851940293
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:52",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 52,
+          "score": -3.970715045928955,
+          "text": "h the machine off and on again: the update starts again automatically.\n\nE56 - Settings reset. Cause: The user settings were reset to their factory values. What to do: Set the water hardness, the coffee strength and the time again in the menu.\n\nE57 - Main board fault. Cause: The main electronic board detected an internal fault. What to do: Unplug the machine for one minute, then plug it in again. If the code persists, contact customer service.\n\nE58 - Memory full. Cause: The memory for personal re",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.5563061833381653
+            }
+          },
+          "rank_before": 5,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:51",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 51,
+          "score": -4.873461723327637,
+          "text": "se: The internal clock was reset after a power cut. What to do: Set the time again in the menu. The automatic switch-on will not work until the time is set.\n\nE54 - Language not set. Cause: The display language was lost after a software update. What to do: Choose the display language again in the menu.\n\nE55 - Software update failed. Cause: The last software update was interrupted. What to do: Switch the machine off and on again: the update starts again automatically.\n\nE56 - Settings reset. Cause:",
+          "sources": {
+            "dense": {
+              "rank": 10,
+              "score": 0.4265463352203369
+            }
+          },
+          "rank_before": 16,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:50",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 50,
+          "score": -4.908663749694824,
+          "text": "fault. Cause: The control panel does not communicate with the main board. What to do: Switch the machine off and on again. If the code persists, contact customer service.\n\nE52 - Button stuck. Cause: A button of the control panel has been pressed for more than 30 seconds. What to do: Check that nothing is pressing on the control panel, and clean the buttons with a dry cloth.\n\nE53 - Clock reset. Cause: The internal clock was reset after a power cut. What to do: Set the time again in the menu. The ",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.5549596548080444
+            }
+          },
+          "rank_before": 6,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:21",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 21,
+          "score": -5.1527252197265625,
+          "text": "t the holder correctly, may let unfiltered water into the circuit, and are not covered by the warranty. Store spare filters in a cool, dry place, in their sealed bag.\n\n9. ERROR CODES\n\nWhen the machine detects a problem, it stops the current preparation and shows an error code on the display. The code is made of the letter E and two digits. Each code identifies one precise problem. Find the code in the list below: it tells you what the code means and what to do. If the code is still displayed aft",
+          "sources": {
+            "dense": {
+              "rank": 14,
+              "score": 0.40806031227111816
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 3.206005679288152
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:76",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 76,
+          "score": -5.615400791168213,
+          "text": "er and the serial number printed on the label behind the water tank, and the error code shown on the display, if any. Our customer service is available from Monday to Friday, from 9 am to 6 pm. Most problems can be solved over the phone in a few minutes. If the machine must be repaired, we will send you a box to return it to our service centre free of charge. Repairs under warranty usually take ten working days.\n\nDispose of the machine at the end of its life at a collection point for electrical ",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.4548937976360321
+            },
+            "bm25": {
+              "rank": 6,
+              "score": 2.3061479849066857
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:22",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 22,
+          "score": -5.880171775817871,
+          "text": " the list below: it tells you what the code means and what to do. If the code is still displayed after you have followed the instructions, switch the machine off, wait one minute and switch it on again. If the problem persists, write down the code and contact the Vellora customer service: the code helps the technician to diagnose the problem quickly, and often to solve it over the phone without sending the machine for repair.\n\nE01 - Water tank missing. Cause: The machine does not detect the wate",
+          "sources": {
+            "dense": {
+              "rank": 16,
+              "score": 0.40461456775665283
+            }
+          },
+          "rank_before": 21,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:1",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 1,
+          "score": -6.232698440551758,
+          "text": "ture reference. Most problems can be solved in a few minutes by following the instructions in the troubleshooting and error code sections.\n\nSafety first. Always place the machine on a stable, flat and dry surface, away from the edge of the worktop and out of reach of children. Never immerse the machine, the power cord or the plug in water or any other liquid. Unplug the machine before cleaning it, before removing the brewing unit and when it is not used for a long period. Do not touch the steam ",
+          "sources": {
+            "bm25": {
+              "rank": 4,
+              "score": 2.3061479849066857
+            }
+          },
+          "rank_before": 7,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:71",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 71,
+          "score": -6.3883514404296875,
+          "text": "ect water connection. What to do: Close the water tap of the direct connection and contact customer service.\n\nE99 - Unknown error. Cause: The machine detected a problem that has no specific code. What to do: Switch the machine off and on again. If the code comes back, contact customer service.\n\n10. PROBLEMS WITHOUT AN ERROR CODE\n\nThe coffee is not hot enough. Preheat the cup with hot water, increase the coffee temperature in the menu, and descale the machine if it has not been done for a long ti",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.45125386118888855
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 3.1876381019462308
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:5",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 5,
+          "score": -6.847545146942139,
+          "text": "enu button gives access to the settings: coffee strength, coffee temperature, water hardness, automatic switch-off, display language and the maintenance programmes (rinsing, cleaning, descaling and filter replacement). When something goes wrong, the display shows a message and, for most problems, an error code made of the letter E followed by two digits.\n\n3. FIRST USE\n\nRemove all packaging, stickers and protective films. Rinse the water tank and fill it with fresh, cold drinking water up to the ",
+          "sources": {
+            "bm25": {
+              "rank": 9,
+              "score": 2.1968799040883478
+            }
+          },
+          "rank_before": 15,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": true,
+      "recall_at_1": 1.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 1.1192528999963542,
+        "per_retriever_s": {
+          "dense_s": 0.01818870000715833,
+          "bm25_s": 0.0006656000041402876,
+          "fusion_s": 0.0003132999991066754,
+          "rerank_s": 1.10007850000693
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.1192528999963542,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-07",
+      "question": "How often should the brewing unit be rinsed?",
+      "type": "vocabulary",
+      "type_raw": "vocabulary",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:14"
+      ],
+      "first_gold_rank": 2,
+      "hops": [
+        {
+          "source": null,
+          "quote": "Every week, remove the brewing unit and rinse it under lukewarm running water.",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:14"
+          ],
+          "retrieved_by": {
+            "dense": 2,
+            "bm25": 6
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:15",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 15,
+          "score": 6.4644999504089355,
+          "text": "washer: it would remove the grease that keeps the unit moving smoothly. Let the unit dry in the open air, then slide it back in until it clicks. Clean the inside of the machine with a soft brush to remove the coffee powder that falls around the unit. If you notice a strong smell of old coffee when you open the side door, the brewing unit has not been rinsed often enough: rinse it twice in a row and leave the side door open for an hour.\n\nEvery month, or when the display asks for it, run the clean",
+          "sources": {
+            "dense": {
+              "rank": 5,
+              "score": 0.49115070700645447
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 9.552233851118382
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:14",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 14,
+          "score": 5.981449127197266,
+          "text": "en removed for at least five seconds. Empty the water tank, rinse it and fill it with fresh water. Wipe the coffee outlets and the frothing head with a damp cloth.\n\nEvery week, remove the brewing unit and rinse it under lukewarm running water. Switch off the machine, open the side door, press the red button on the brewing unit and pull it out by its handle. Do not use washing-up liquid or the dishwasher: it would remove the grease that keeps the unit moving smoothly. Let the unit dry in the open",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.5501468181610107
+            },
+            "bm25": {
+              "rank": 6,
+              "score": 5.228848971506817
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:28",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 28,
+          "score": 2.401303291320801,
+          "text": "by hand. What to do: Switch the machine off and on again: it moves the brewing unit back to its starting position.\n\nE11 - Brewing unit stuck. Cause: The brewing unit cannot move to its starting position, often because of dried coffee residue. What to do: Remove the brewing unit, rinse it under lukewarm water, let it dry and insert it again.\n\nE12 - Brewing unit overload. Cause: Too much ground coffee was used, so the unit cannot compress the coffee. What to do: Remove the brewing unit and clean i",
+          "sources": {
+            "dense": {
+              "rank": 13,
+              "score": 0.37482529878616333
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 8.85718427816666
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:72",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 72,
+          "score": -1.2075276374816895,
+          "text": "se the coffee temperature in the menu, and descale the machine if it has not been done for a long time.\n\nThe coffee comes out too slowly or drop by drop. The grind is too fine or the brewing unit is dirty. Set the grind adjuster one or two steps coarser, while the grinder is running, and rinse the brewing unit.\n\nThe coffee has no crema. The beans are not fresh enough, or the grind is too coarse. Use fresh beans, stored in an airtight container, and set the grind adjuster one step finer.\n\nThe mil",
+          "sources": {
+            "dense": {
+              "rank": 21,
+              "score": 0.32377028465270996
+            },
+            "bm25": {
+              "rank": 8,
+              "score": 4.533369395837035
+            }
+          },
+          "rank_before": 6,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:2",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 2,
+          "score": -1.2082525491714478,
+          "text": " before removing the brewing unit and when it is not used for a long period. Do not touch the steam wand or the coffee outlets during or just after use: they get very hot. Only use the machine indoors, at a room temperature between 10 and 32 degrees Celsius.\n\nThe machine must be connected to a properly earthed socket. If the power cord is damaged, it must be replaced by an authorised service centre in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children ",
+          "sources": {
+            "dense": {
+              "rank": 11,
+              "score": 0.4021650552749634
+            },
+            "bm25": {
+              "rank": 12,
+              "score": 3.239420739449915
+            }
+          },
+          "rank_before": 5,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:29",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 29,
+          "score": -2.7347805500030518,
+          "text": "ee was used, so the unit cannot compress the coffee. What to do: Remove the brewing unit and clean it. Reduce the coffee strength by one level, or put only one spoon of pre-ground coffee.\n\nE13 - Brewing unit grease missing. Cause: The brewing unit moves with difficulty because its guides are dry. What to do: Remove the brewing unit and apply a thin layer of the grease supplied with the machine on its two side guides.\n\nE14 - Pre-ground chute blocked. Cause: Pre-ground coffee is stuck in the chute",
+          "sources": {
+            "bm25": {
+              "rank": 4,
+              "score": 6.010249935611723
+            }
+          },
+          "rank_before": 14,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:26",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 26,
+          "score": -2.73990535736084,
+          "text": "the grounds container back in place, inside the drip tray.\n\nE07 - Drip tray float stuck. Cause: The float of the drip tray is stuck in the up position by coffee residue. What to do: Remove the drip tray, rinse the float under warm water and check that it moves freely.\n\nE08 - Side door open. Cause: The side door giving access to the brewing unit is open or badly closed. What to do: Close the side door firmly. If it does not close, check that the brewing unit is inserted correctly.\n\nE09 - Brewing ",
+          "sources": {
+            "bm25": {
+              "rank": 7,
+              "score": 4.960518487800952
+            }
+          },
+          "rank_before": 17,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:1",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 1,
+          "score": -3.029047966003418,
+          "text": "ture reference. Most problems can be solved in a few minutes by following the instructions in the troubleshooting and error code sections.\n\nSafety first. Always place the machine on a stable, flat and dry surface, away from the edge of the worktop and out of reach of children. Never immerse the machine, the power cord or the plug in water or any other liquid. Unplug the machine before cleaning it, before removing the brewing unit and when it is not used for a long period. Do not touch the steam ",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.4594258666038513
+            },
+            "bm25": {
+              "rank": 9,
+              "score": 3.373688922288104
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:56",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 56,
+          "score": -3.418809413909912,
+          "text": " What to do: Put the drip tray back and start the cleaning programme again.\n\nE65 - Cleaning tablet not detected. Cause: The cleaning programme did not detect the cleaning tablet in the brewing unit. What to do: Drop one cleaning tablet into the pre-ground coffee chute and start the cleaning programme again.\n\nE66 - Filter exhausted. Cause: The water filter has reached the end of its life. What to do: Replace the water filter and run the filter programme, or deactivate the filter in the menu.\n\nE67",
+          "sources": {
+            "dense": {
+              "rank": 18,
+              "score": 0.34320923686027527
+            },
+            "bm25": {
+              "rank": 11,
+              "score": 3.291824780447584
+            }
+          },
+          "rank_before": 7,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:30",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 30,
+          "score": -3.7996675968170166,
+          "text": "its two side guides.\n\nE14 - Pre-ground chute blocked. Cause: Pre-ground coffee is stuck in the chute, often because the coffee is too fine or humid. What to do: Switch off the machine, remove the brewing unit and clean the chute with the handle of the measuring spoon.\n\nE15 - Heater temperature too low. Cause: The thermoblock does not reach its working temperature in the expected time. What to do: Switch the machine off and on again. Check that the room temperature is above 10 degrees Celsius.\n\nE",
+          "sources": {
+            "bm25": {
+              "rank": 5,
+              "score": 5.41071936475076
+            }
+          },
+          "rank_before": 15,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": false,
+      "recall_at_1": 0.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 1.053825599999982,
+        "per_retriever_s": {
+          "dense_s": 0.020856900009675883,
+          "bm25_s": 0.0006873999955132604,
+          "fusion_s": 0.00038940001104492694,
+          "rerank_s": 1.0318840999971144
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.053825599999982,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-08",
+      "question": "How much coffee grounds are used at strength level 5?",
+      "type": "split_answer",
+      "type_raw": "split_answer",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:9"
+      ],
+      "first_gold_rank": 1,
+      "hops": [
+        {
+          "source": null,
+          "quote": "between 7 and 14 grams",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:9"
+          ],
+          "retrieved_by": {
+            "dense": 1,
+            "bm25": 1
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:9",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 9,
+          "score": 4.467616081237793,
+          "text": "e two cups at once. You can stop the flow at any time by pressing the same button again.\n\nThe coffee strength can be set from 1 (mild) to 5 (very strong) in the menu. Strength changes the quantity of ground coffee used for each cup, between 7 and 14 grams. The grind adjuster on top of the bean hopper sets the fineness of the grind from 1 (finest) to 9 (coarsest). Turn the adjuster only while the grinder is running, one step at a time. A finer grind gives a stronger, more intense coffee and a slo",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.6537553071975708
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 8.822199263058556
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:49",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 49,
+          "score": -4.989902496337891,
+          "text": "nd quantity too small. Cause: The portion of ground coffee is lighter than expected. What to do: Increase the coffee strength by one level, or set the grind adjuster one step finer.\n\nE50 - Bean hopper lid open. Cause: The aroma-preserving lid of the bean hopper is not closed. What to do: Close the lid of the bean hopper. The grinder only starts when the lid is closed.\n\nE51 - Display communication fault. Cause: The control panel does not communicate with the main board. What to do: Switch the mac",
+          "sources": {
+            "dense": {
+              "rank": 13,
+              "score": 0.31339532136917114
+            },
+            "bm25": {
+              "rank": 6,
+              "score": 5.920426824856561
+            }
+          },
+          "rank_before": 7,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:29",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 29,
+          "score": -5.065584182739258,
+          "text": "ee was used, so the unit cannot compress the coffee. What to do: Remove the brewing unit and clean it. Reduce the coffee strength by one level, or put only one spoon of pre-ground coffee.\n\nE13 - Brewing unit grease missing. Cause: The brewing unit moves with difficulty because its guides are dry. What to do: Remove the brewing unit and apply a thin layer of the grease supplied with the machine on its two side guides.\n\nE14 - Pre-ground chute blocked. Cause: Pre-ground coffee is stuck in the chute",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.35313791036605835
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 7.98499157111017
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:25",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 25,
+          "score": -7.232143402099609,
+          "text": "er running water, and replace the seal if it is cracked.\n\nE05 - Grounds container full. Cause: The coffee grounds container has reached its maximum number of portions. What to do: Empty the grounds container while the machine is switched on, and wait five seconds before putting it back.\n\nE06 - Grounds container missing. Cause: The grounds container was not put back after emptying. What to do: Put the grounds container back in place, inside the drip tray.\n\nE07 - Drip tray float stuck. Cause: The ",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.3831879794597626
+            },
+            "bm25": {
+              "rank": 5,
+              "score": 6.0574692941643145
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:4",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 4,
+          "score": -7.441185474395752,
+          "text": "th its filter holder, the brewing unit behind the side door, the drip tray with its float indicator, the coffee grounds container, the height-adjustable coffee outlets, the milk system with its suction tube and frothing head, the hot water and steam wand, and the control panel with its colour display.\n\nThe control panel has six buttons: power, espresso, lungo, cappuccino, hot water and menu. The menu button gives access to the settings: coffee strength, coffee temperature, water hardness, automa",
+          "sources": {
+            "dense": {
+              "rank": 11,
+              "score": 0.328418493270874
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 6.1684218287599855
+            }
+          },
+          "rank_before": 6,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:37",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 37,
+          "score": -8.712959289550781,
+          "text": "nd adjuster one step finer and increase the coffee strength.\n\nE27 - Pressure too high. Cause: The brewing pressure goes above 15 bar, usually because the grind is far too fine. What to do: Set the grind adjuster three steps coarser while the grinder is running.\n\nE28 - Pressure valve fault. Cause: The safety valve opened to protect the circuit from too much pressure. What to do: Switch off the machine, wait ten minutes, then run a rinse. If the code comes back, contact customer service.\n\nE29 - Ai",
+          "sources": {
+            "dense": {
+              "rank": 17,
+              "score": 0.2907950282096863
+            },
+            "bm25": {
+              "rank": 7,
+              "score": 5.536130273139501
+            }
+          },
+          "rank_before": 9,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:5",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 5,
+          "score": -9.012711524963379,
+          "text": "enu button gives access to the settings: coffee strength, coffee temperature, water hardness, automatic switch-off, display language and the maintenance programmes (rinsing, cleaning, descaling and filter replacement). When something goes wrong, the display shows a message and, for most problems, an error code made of the letter E followed by two digits.\n\n3. FIRST USE\n\nRemove all packaging, stickers and protective films. Rinse the water tank and fill it with fresh, cold drinking water up to the ",
+          "sources": {
+            "dense": {
+              "rank": 27,
+              "score": 0.23805159330368042
+            },
+            "bm25": {
+              "rank": 14,
+              "score": 3.250187516846247
+            }
+          },
+          "rank_before": 18,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:10",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 10,
+          "score": -9.333498001098633,
+          "text": "rinder is running, one step at a time. A finer grind gives a stronger, more intense coffee and a slower flow; a coarser grind gives a lighter coffee and a faster flow. If the coffee comes out drop by drop, the grind is too fine; if it comes out too fast and pale, the grind is too coarse.\n\nTo use pre-ground coffee, open the chute lid, add one level measuring spoon of ground coffee, close the lid and press espresso or lungo within one minute. Never put more than one spoon, and never put coffee bea",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.48954445123672485
+            },
+            "bm25": {
+              "rank": 10,
+              "score": 3.8567592181618098
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:52",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 52,
+          "score": -9.62631607055664,
+          "text": "h the machine off and on again: the update starts again automatically.\n\nE56 - Settings reset. Cause: The user settings were reset to their factory values. What to do: Set the water hardness, the coffee strength and the time again in the menu.\n\nE57 - Main board fault. Cause: The main electronic board detected an internal fault. What to do: Unplug the machine for one minute, then plug it in again. If the code persists, contact customer service.\n\nE58 - Memory full. Cause: The memory for personal re",
+          "sources": {
+            "bm25": {
+              "rank": 16,
+              "score": 3.026730811509377
+            }
+          },
+          "rank_before": 23,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:36",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 36,
+          "score": -9.819046020507812,
+          "text": "tank and check that the tank valve is not blocked.\n\nE25 - Water circuit blocked. Cause: Water cannot go through the circuit, usually because of limescale in the pipes. What to do: Run the descaling programme. If the machine refuses to start it, contact customer service.\n\nE26 - Pressure too low. Cause: The brewing pressure stays below 6 bar, so the coffee is under-extracted. What to do: Set the grind adjuster one step finer and increase the coffee strength.\n\nE27 - Pressure too high. Cause: The br",
+          "sources": {
+            "dense": {
+              "rank": 16,
+              "score": 0.30116915702819824
+            },
+            "bm25": {
+              "rank": 15,
+              "score": 3.227042414652974
+            }
+          },
+          "rank_before": 14,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": true,
+      "recall_at_1": 1.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 1.1361627000005683,
+        "per_retriever_s": {
+          "dense_s": 0.017448600003262982,
+          "bm25_s": 0.0005636999994749203,
+          "fusion_s": 0.0002598999999463558,
+          "rerank_s": 1.1178837999905227
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.1361627000005683,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-09",
+      "question": "What temperature should the milk be for the best foam?",
+      "type": "exact_identifier",
+      "type_raw": "exact_identifier",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:11",
+        "vellora-duo-espresso-machine_txt:12"
+      ],
+      "first_gold_rank": 1,
+      "hops": [
+        {
+          "source": null,
+          "quote": "around 5 degrees Celsius",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:11",
+            "vellora-duo-espresso-machine_txt:12"
+          ],
+          "retrieved_by": {
+            "dense": 1,
+            "bm25": 1
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:12",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 12,
+          "score": 6.906352996826172,
+          "text": "f milk foam can be set in the menu. For the best foam, use cold milk (around 5 degrees Celsius) straight from the refrigerator. Whole milk gives a creamier foam, skimmed milk a lighter and more abundant one. Plant-based drinks also work, but the result depends on the brand.\n\nAfter each milk drink, the display offers to rinse the milk system. Always accept: put a cup under the frothing head and press the button that flashes. Milk residues dry very quickly and block the frothing head, which leads ",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.696113109588623
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 11.694973566782455
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:11",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 11,
+          "score": 3.567643404006958,
+          "text": "d press espresso or lungo within one minute. Never put more than one spoon, and never put coffee beans or instant coffee in the chute.\n\n5. MILK DRINKS\n\nConnect the suction tube to the frothing head and dip the other end into a carton or a jug of cold milk. Place a cup under the frothing head and press cappuccino: the machine first froths the milk, then brews the coffee on top of it. The quantity of milk foam can be set in the menu. For the best foam, use cold milk (around 5 degrees Celsius) stra",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.5633842945098877
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 10.750884681854984
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:42",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 42,
+          "score": -6.582450866699219,
+          "text": " to do: Remove the frothing head, take it apart and wash all its parts in warm soapy water.\n\nE37 - Milk rinse not done. Cause: The milk system was not rinsed after the last milk drink. What to do: Place a cup under the frothing head and press the flashing button to start the milk rinse.\n\nE38 - Milk temperature too high. Cause: The milk drawn by the milk system is warmer than 20 degrees Celsius. What to do: Use milk straight from the refrigerator. Do not leave the milk next to the machine.\n\nE39 -",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.41886210441589355
+            },
+            "bm25": {
+              "rank": 4,
+              "score": 5.320250359490078
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:13",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 13,
+          "score": -8.591975212097168,
+          "text": "ss the button that flashes. Milk residues dry very quickly and block the frothing head, which leads to a poor foam or to milk spitting out of the head.\n\n6. DAILY AND WEEKLY CLEANING\n\nEvery day, empty and rinse the drip tray and the coffee grounds container. Do this while the machine is switched on: the machine counts the grounds and resets its counter only when it detects that the container has been removed for at least five seconds. Empty the water tank, rinse it and fill it with fresh water. W",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.3393683433532715
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 5.583730483748436
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:2",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 2,
+          "score": -9.847387313842773,
+          "text": " before removing the brewing unit and when it is not used for a long period. Do not touch the steam wand or the coffee outlets during or just after use: they get very hot. Only use the machine indoors, at a room temperature between 10 and 32 degrees Celsius.\n\nThe machine must be connected to a properly earthed socket. If the power cord is damaged, it must be replaced by an authorised service centre in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children ",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.28529515862464905
+            },
+            "bm25": {
+              "rank": 20,
+              "score": 1.7548587821301116
+            }
+          },
+          "rank_before": 13,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:4",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 4,
+          "score": -10.882875442504883,
+          "text": "th its filter holder, the brewing unit behind the side door, the drip tray with its float indicator, the coffee grounds container, the height-adjustable coffee outlets, the milk system with its suction tube and frothing head, the hot water and steam wand, and the control panel with its colour display.\n\nThe control panel has six buttons: power, espresso, lungo, cappuccino, hot water and menu. The menu button gives access to the settings: coffee strength, coffee temperature, water hardness, automa",
+          "sources": {
+            "dense": {
+              "rank": 19,
+              "score": 0.1708502471446991
+            },
+            "bm25": {
+              "rank": 6,
+              "score": 3.411584611428301
+            }
+          },
+          "rank_before": 9,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:31",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 31,
+          "score": -10.99746322631836,
+          "text": "Switch the machine off and on again. Check that the room temperature is above 10 degrees Celsius.\n\nE16 - Heater temperature too high. Cause: The thermoblock is overheating, usually after many hot water or steam preparations in a row. What to do: Switch off the machine and let it cool down for 30 minutes before using it again.\n\nE17 - Heater warming up too slowly. Cause: The thermoblock heats up more slowly than usual, often because of limescale. What to do: Run the descaling programme. If the cod",
+          "sources": {
+            "dense": {
+              "rank": 11,
+              "score": 0.2594531774520874
+            },
+            "bm25": {
+              "rank": 15,
+              "score": 2.4975473701133337
+            }
+          },
+          "rank_before": 11,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:41",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 41,
+          "score": -11.141857147216797,
+          "text": "o the frothing head and dip it into the milk.\n\nE35 - Milk not detected. Cause: The milk system draws air instead of milk, because the milk carton is empty or the tube is out of the milk. What to do: Dip the suction tube into the milk, or replace the empty carton.\n\nE36 - Frothing head blocked. Cause: Dried milk blocks the frothing head, usually because the milk system was not rinsed after use. What to do: Remove the frothing head, take it apart and wash all its parts in warm soapy water.\n\nE37 - M",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.35376882553100586
+            },
+            "bm25": {
+              "rank": 5,
+              "score": 3.5995009497878514
+            }
+          },
+          "rank_before": 5,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:68",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 68,
+          "score": -11.14774227142334,
+          "text": "has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92 - Milk container lid open. Cause: The lid of the milk container accessory is not closed. What to do: Close the lid of the milk container until it clicks.\n\nE93 - Milk container too warm. Cause: The milk container accessory has been out of the refrigerator for too long. What to do: Put the milk container back in the refrigerator for at least one hour.\n\nE94 - Factory test mode. Cause: The machine st",
+          "sources": {
+            "dense": {
+              "rank": 10,
+              "score": 0.2761591076850891
+            },
+            "bm25": {
+              "rank": 7,
+              "score": 3.391992375550389
+            }
+          },
+          "rank_before": 8,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:30",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 30,
+          "score": -11.154159545898438,
+          "text": "its two side guides.\n\nE14 - Pre-ground chute blocked. Cause: Pre-ground coffee is stuck in the chute, often because the coffee is too fine or humid. What to do: Switch off the machine, remove the brewing unit and clean the chute with the handle of the measuring spoon.\n\nE15 - Heater temperature too low. Cause: The thermoblock does not reach its working temperature in the expected time. What to do: Switch the machine off and on again. Check that the room temperature is above 10 degrees Celsius.\n\nE",
+          "sources": {
+            "dense": {
+              "rank": 14,
+              "score": 0.2127070128917694
+            },
+            "bm25": {
+              "rank": 12,
+              "score": 2.9205920786379655
+            }
+          },
+          "rank_before": 12,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": true,
+      "recall_at_1": 1.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 1.1251182999985758,
+        "per_retriever_s": {
+          "dense_s": 0.021473999993759207,
+          "bm25_s": 0.0007437000022036955,
+          "fusion_s": 0.0003414000093471259,
+          "rerank_s": 1.1025512000051094
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.1251182999985758,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-10",
+      "question": "How much space should be left behind the machine for ventilation?",
+      "type": "exact_identifier",
+      "type_raw": "exact_identifier",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:62"
+      ],
+      "first_gold_rank": 1,
+      "hops": [
+        {
+          "source": null,
+          "quote": "Leave at least 10 centimetres between the back of the machine and the wall.",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:62"
+          ],
+          "retrieved_by": {
+            "dense": 1,
+            "bm25": 1
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:62",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 62,
+          "score": -0.9510493278503418,
+          "text": "E78 - Fan fault. Cause: The cooling fan of the electronic board does not turn. What to do: Check that the ventilation slots at the back of the machine are not blocked.\n\nE79 - Ventilation slots blocked. Cause: The machine is too close to the wall and cannot cool down. What to do: Leave at least 10 centimetres between the back of the machine and the wall.\n\nE80 - Wi-Fi module not found. Cause: The Wi-Fi module does not respond to the main board. What to do: Switch the machine off and on again. The ",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.30112534761428833
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 6.119145576323259
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:2",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 2,
+          "score": -8.738140106201172,
+          "text": " before removing the brewing unit and when it is not used for a long period. Do not touch the steam wand or the coffee outlets during or just after use: they get very hot. Only use the machine indoors, at a room temperature between 10 and 32 degrees Celsius.\n\nThe machine must be connected to a properly earthed socket. If the power cord is damaged, it must be replaced by an authorised service centre in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children ",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.2688087224960327
+            }
+          },
+          "rank_before": 15,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:3",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 3,
+          "score": -9.196269989013672,
+          "text": "e in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children must not play with the machine, and cleaning must not be done by children without supervision.\n\n2. PARTS OF THE MACHINE\n\nThe Vellora Duo is made of the following main parts: the bean hopper with its aroma-preserving lid, the grind adjuster, the pre-ground coffee chute, the water tank (1.8 litres) with its filter holder, the brewing unit behind the side door, the drip tray with its float indicator,",
+          "sources": {
+            "dense": {
+              "rank": 21,
+              "score": 0.160199373960495
+            },
+            "bm25": {
+              "rank": 6,
+              "score": 3.1291137042496144
+            }
+          },
+          "rank_before": 7,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:76",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 76,
+          "score": -9.441272735595703,
+          "text": "er and the serial number printed on the label behind the water tank, and the error code shown on the display, if any. Our customer service is available from Monday to Friday, from 9 am to 6 pm. Most problems can be solved over the phone in a few minutes. If the machine must be repaired, we will send you a box to return it to our service centre free of charge. Repairs under warranty usually take ten working days.\n\nDispose of the machine at the end of its life at a collection point for electrical ",
+          "sources": {
+            "dense": {
+              "rank": 26,
+              "score": 0.1548864096403122
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 3.354468868815203
+            }
+          },
+          "rank_before": 5,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:1",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 1,
+          "score": -10.301556587219238,
+          "text": "ture reference. Most problems can be solved in a few minutes by following the instructions in the troubleshooting and error code sections.\n\nSafety first. Always place the machine on a stable, flat and dry surface, away from the edge of the worktop and out of reach of children. Never immerse the machine, the power cord or the plug in water or any other liquid. Unplug the machine before cleaning it, before removing the brewing unit and when it is not used for a long period. Do not touch the steam ",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.29133695363998413
+            },
+            "bm25": {
+              "rank": 13,
+              "score": 0.45305251412901804
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:66",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 66,
+          "score": -10.428872108459473,
+          "text": "energy saving mode lowered the temperature of the heater. What to do: Wait two minutes for the machine to heat up, or deactivate the energy saving mode in the menu.\n\nE88 - Service interval reached. Cause: The machine has made 15,000 coffees and needs a preventive service. What to do: Contact customer service to book a service. The machine can still be used in the meantime.\n\nE89 - Water used counter full. Cause: The water counter reached its maximum value. What to do: Run the descaling programme:",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.2506394386291504
+            },
+            "bm25": {
+              "rank": 16,
+              "score": 0.4489794279024086
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:20",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 20,
+          "score": -10.44105339050293,
+          "text": ", set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half a tank of water. A filter lasts two months, or 50 litres of water. The machine counts the water used and asks for a replacement when the filter is exhausted. When a filter is installed and activated, the machine does not ask for descaling. Only use original Vellora filters: other filters may not fit the holder correctly, may let unfiltered water into the circuit, and are not covered by the warran",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.2286883443593979
+            },
+            "bm25": {
+              "rank": 27,
+              "score": 0.3859070256074199
+            }
+          },
+          "rank_before": 8,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:77",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 77,
+          "score": -10.624795913696289,
+          "text": "n working days.\n\nDispose of the machine at the end of its life at a collection point for electrical and electronic equipment. Do not throw it away with household waste. The packaging is made of recyclable cardboard and paper.",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.21812096238136292
+            }
+          },
+          "rank_before": 20,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:15",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 15,
+          "score": -10.688897132873535,
+          "text": "washer: it would remove the grease that keeps the unit moving smoothly. Let the unit dry in the open air, then slide it back in until it clicks. Clean the inside of the machine with a soft brush to remove the coffee powder that falls around the unit. If you notice a strong smell of old coffee when you open the side door, the brewing unit has not been rinsed often enough: rinse it twice in a row and leave the side door open for an hour.\n\nEvery month, or when the display asks for it, run the clean",
+          "sources": {
+            "dense": {
+              "rank": 15,
+              "score": 0.17389190196990967
+            }
+          },
+          "rank_before": 30,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:17",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 17,
+          "score": -10.791772842407227,
+          "text": "builds up in the heater and the pipes over time, even with soft water. When the display shows \"Descaling needed\", descale the machine as soon as possible. A machine that is not descaled regularly heats less efficiently, makes coffee at a lower temperature, and may eventually be blocked by limescale. Damage caused by limescale is not covered by the warranty.\n\nRemove the water filter from the tank if one is installed. Pour the content of one bottle of descaling liquid into the empty water tank and",
+          "sources": {
+            "dense": {
+              "rank": 18,
+              "score": 0.1649753749370575
+            },
+            "bm25": {
+              "rank": 24,
+              "score": 0.39043254650509135
+            }
+          },
+          "rank_before": 12,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": true,
+      "recall_at_1": 1.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 1.1197687999956543,
+        "per_retriever_s": {
+          "dense_s": 0.018728299997746944,
+          "bm25_s": 0.0005617999995592982,
+          "fusion_s": 0.00027520000003278255,
+          "rerank_s": 1.1001977999985684
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.1197687999956543,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-11",
+      "question": "Does the machine support a Wi-Fi connection?",
+      "type": "vocabulary",
+      "type_raw": "vocabulary",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:63"
+      ],
+      "first_gold_rank": 1,
+      "hops": [
+        {
+          "source": null,
+          "quote": "The machine can still be used without the app.",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:63"
+          ],
+          "retrieved_by": {
+            "dense": 1,
+            "bm25": 1
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:63",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 63,
+          "score": 2.7512238025665283,
+          "text": "-Fi module does not respond to the main board. What to do: Switch the machine off and on again. The machine can still be used without the app.\n\nE81 - Wi-Fi connection lost. Cause: The machine lost its connection to the home network. What to do: Check your router, then connect the machine again from the Vellora app.\n\nE82 - App pairing failed. Cause: The machine could not be paired with the Vellora app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE8",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.2714405655860901
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 16.81595002166415
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:62",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 62,
+          "score": -2.1865272521972656,
+          "text": "E78 - Fan fault. Cause: The cooling fan of the electronic board does not turn. What to do: Check that the ventilation slots at the back of the machine are not blocked.\n\nE79 - Ventilation slots blocked. Cause: The machine is too close to the wall and cannot cool down. What to do: Leave at least 10 centimetres between the back of the machine and the wall.\n\nE80 - Wi-Fi module not found. Cause: The Wi-Fi module does not respond to the main board. What to do: Switch the machine off and on again. The ",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.2299230545759201
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 15.211519481024386
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:70",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 70,
+          "score": -7.447556495666504,
+          "text": "Cause: The machine is set for a direct water connection but none is installed. What to do: Set the water source to 'Water tank' in the menu.\n\nE97 - Direct connection pressure too low. Cause: The pressure of the direct water connection is too low. What to do: Check that the water tap of the direct connection is fully open.\n\nE98 - Direct connection leak. Cause: The machine detected a leak on the direct water connection. What to do: Close the water tap of the direct connection and contact customer ",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.10713309049606323
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 6.331629644211984
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:2",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 2,
+          "score": -8.407708168029785,
+          "text": " before removing the brewing unit and when it is not used for a long period. Do not touch the steam wand or the coffee outlets during or just after use: they get very hot. Only use the machine indoors, at a room temperature between 10 and 32 degrees Celsius.\n\nThe machine must be connected to a properly earthed socket. If the power cord is damaged, it must be replaced by an authorised service centre in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children ",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.13332423567771912
+            },
+            "bm25": {
+              "rank": 27,
+              "score": 0.3793120908010416
+            }
+          },
+          "rank_before": 9,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:64",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 64,
+          "score": -9.87159538269043,
+          "text": "app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE83 - App version too old. Cause: The Vellora app on your phone is too old for this machine. What to do: Update the Vellora app from your app store.\n\nE84 - Recipe not supported. Cause: A recipe sent from the app is not supported by this machine. What to do: Update the software of the machine from the menu, then try again.\n\nE85 - Scheduled switch-on failed. Cause: The machine could not switch on at t",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.12288373708724976
+            },
+            "bm25": {
+              "rank": 6,
+              "score": 0.5165144686116071
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:71",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 71,
+          "score": -9.950920104980469,
+          "text": "ect water connection. What to do: Close the water tap of the direct connection and contact customer service.\n\nE99 - Unknown error. Cause: The machine detected a problem that has no specific code. What to do: Switch the machine off and on again. If the code comes back, contact customer service.\n\n10. PROBLEMS WITHOUT AN ERROR CODE\n\nThe coffee is not hot enough. Preheat the cup with hot water, increase the coffee temperature in the menu, and descale the machine if it has not been done for a long ti",
+          "sources": {
+            "dense": {
+              "rank": 22,
+              "score": 0.06590747088193893
+            },
+            "bm25": {
+              "rank": 4,
+              "score": 4.541973211679707
+            }
+          },
+          "rank_before": 7,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:59",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 59,
+          "score": -10.129940032958984,
+          "text": "un the rinsing programme twice.\n\nE71 - Power supply too low. Cause: The mains voltage is too low for the heater to work correctly. What to do: Connect the machine directly to a wall socket, without an extension cord.\n\nE72 - Power cut during preparation. Cause: The power was cut while a preparation was running. What to do: Empty the drip tray, then switch the machine on: it runs an automatic rinse.\n\nE73 - Standby fault. Cause: The machine did not enter standby mode correctly. What to do: Switch t",
+          "sources": {
+            "bm25": {
+              "rank": 15,
+              "score": 0.4449789258032095
+            }
+          },
+          "rank_before": 25,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:3",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 3,
+          "score": -10.369373321533203,
+          "text": "e in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children must not play with the machine, and cleaning must not be done by children without supervision.\n\n2. PARTS OF THE MACHINE\n\nThe Vellora Duo is made of the following main parts: the bean hopper with its aroma-preserving lid, the grind adjuster, the pre-ground coffee chute, the water tank (1.8 litres) with its filter holder, the brewing unit behind the side door, the drip tray with its float indicator,",
+          "sources": {
+            "dense": {
+              "rank": 15,
+              "score": 0.08890809118747711
+            }
+          },
+          "rank_before": 24,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:69",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 69,
+          "score": -10.521506309509277,
+          "text": "iner back in the refrigerator for at least one hour.\n\nE94 - Factory test mode. Cause: The machine started in factory test mode. What to do: Switch the machine off, then switch it on again without pressing any other button.\n\nE95 - Calibration lost. Cause: The calibration of the flow meter was lost. What to do: Contact customer service to calibrate the flow meter again.\n\nE96 - Unknown water source. Cause: The machine is set for a direct water connection but none is installed. What to do: Set the w",
+          "sources": {
+            "dense": {
+              "rank": 13,
+              "score": 0.0981588363647461
+            },
+            "bm25": {
+              "rank": 5,
+              "score": 3.3390828183211303
+            }
+          },
+          "rank_before": 5,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:61",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 61,
+          "score": -10.537596702575684,
+          "text": "tlets and clean them with the brush supplied with the machine.\n\nE76 - Cup sensor fault. Cause: The cup sensor under the coffee outlets is dirty. What to do: Clean the cup sensor with a damp cloth.\n\nE77 - Light sensor fault. Cause: The ambient light sensor that adjusts the display brightness does not respond. What to do: Switch the machine off and on again. The machine can still be used normally.\n\nE78 - Fan fault. Cause: The cooling fan of the electronic board does not turn. What to do: Check tha",
+          "sources": {
+            "dense": {
+              "rank": 25,
+              "score": 0.06039886176586151
+            },
+            "bm25": {
+              "rank": 10,
+              "score": 0.4489794279024086
+            }
+          },
+          "rank_before": 12,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": true,
+      "recall_at_1": 1.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 1.045768299998599,
+        "per_retriever_s": {
+          "dense_s": 0.019486700010020286,
+          "bm25_s": 0.0008615000115241855,
+          "fusion_s": 0.0005944000004092231,
+          "rerank_s": 1.0248157999885734
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.045768299998599,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-12",
+      "question": "What is the warranty duration for the Vellora Duo?",
+      "type": "exact_identifier",
+      "type_raw": "exact_identifier",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:74"
+      ],
+      "first_gold_rank": 1,
+      "hops": [
+        {
+          "source": null,
+          "quote": "The Vellora Duo is covered by a two-year warranty from the date of purchase, on presentation of the receipt.",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:74"
+          ],
+          "retrieved_by": {
+            "dense": 1,
+            "bm25": 1
+          },
+          "found_in_top_k": true
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:74",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 74,
+          "score": 4.514014720916748,
+          "text": "y loud, or if it sounds like grinding gravel, stop the machine immediately and check the error code on the display.\n\nWater leaks under the machine. The drip tray is full or badly inserted, or the water tank is not inserted correctly. Empty the drip tray and check the seal of the water tank.\n\n11. WARRANTY AND CUSTOMER SERVICE\n\nThe Vellora Duo is covered by a two-year warranty from the date of purchase, on presentation of the receipt. The warranty does not cover damage caused by limescale, by the ",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.4925762414932251
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 9.64677779464836
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:0",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 0,
+          "score": -1.749238133430481,
+          "text": "VELLORA DUO - ESPRESSO MACHINE\nUSER MANUAL\n(Fictional product. Document written for the BM25 challenge of the RAG course.)\n\n1. BEFORE YOU START\n\nThank you for choosing the Vellora Duo, a bean-to-cup espresso machine with an integrated conical grinder, a thermoblock heater and an automatic milk system. Please read this manual carefully before using the machine for the first time, and keep it for future reference. Most problems can be solved in a few minutes by following the instructions in the tr",
+          "sources": {
+            "dense": {
+              "rank": 8,
+              "score": 0.26300370693206787
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 7.384137818017029
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:3",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 3,
+          "score": -1.9019603729248047,
+          "text": "e in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children must not play with the machine, and cleaning must not be done by children without supervision.\n\n2. PARTS OF THE MACHINE\n\nThe Vellora Duo is made of the following main parts: the bean hopper with its aroma-preserving lid, the grind adjuster, the pre-ground coffee chute, the water tank (1.8 litres) with its filter holder, the brewing unit behind the side door, the drip tray with its float indicator,",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.344273179769516
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 4.942800764648109
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:20",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 20,
+          "score": -4.982750415802002,
+          "text": ", set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half a tank of water. A filter lasts two months, or 50 litres of water. The machine counts the water used and asks for a replacement when the filter is exhausted. When a filter is installed and activated, the machine does not ask for descaling. Only use original Vellora filters: other filters may not fit the holder correctly, may let unfiltered water into the circuit, and are not covered by the warran",
+          "sources": {
+            "dense": {
+              "rank": 10,
+              "score": 0.24553853273391724
+            },
+            "bm25": {
+              "rank": 12,
+              "score": 2.0535168588954376
+            }
+          },
+          "rank_before": 10,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:67",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 67,
+          "score": -7.784867286682129,
+          "text": "r full. Cause: The water counter reached its maximum value. What to do: Run the descaling programme: the counter is reset at the end of the programme.\n\nE90 - Accessory not recognised. Cause: The milk container accessory is not recognised. What to do: Clean the contacts of the milk container and connect it again.\n\nE91 - Unknown accessory. Cause: An accessory that is not compatible with the machine has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92",
+          "sources": {
+            "dense": {
+              "rank": 14,
+              "score": 0.18320685625076294
+            },
+            "bm25": {
+              "rank": 10,
+              "score": 2.140802142805474
+            }
+          },
+          "rank_before": 12,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:68",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 68,
+          "score": -7.9555511474609375,
+          "text": "has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92 - Milk container lid open. Cause: The lid of the milk container accessory is not closed. What to do: Close the lid of the milk container until it clicks.\n\nE93 - Milk container too warm. Cause: The milk container accessory has been out of the refrigerator for too long. What to do: Put the milk container back in the refrigerator for at least one hour.\n\nE94 - Factory test mode. Cause: The machine st",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.2563183307647705
+            },
+            "bm25": {
+              "rank": 14,
+              "score": 2.020563701236575
+            }
+          },
+          "rank_before": 11,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:22",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 22,
+          "score": -8.460394859313965,
+          "text": " the list below: it tells you what the code means and what to do. If the code is still displayed after you have followed the instructions, switch the machine off, wait one minute and switch it on again. If the problem persists, write down the code and contact the Vellora customer service: the code helps the technician to diagnose the problem quickly, and often to solve it over the phone without sending the machine for repair.\n\nE01 - Water tank missing. Cause: The machine does not detect the wate",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.3474951982498169
+            },
+            "bm25": {
+              "rank": 11,
+              "score": 2.1050124949226077
+            }
+          },
+          "rank_before": 7,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:64",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 64,
+          "score": -8.49308967590332,
+          "text": "app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE83 - App version too old. Cause: The Vellora app on your phone is too old for this machine. What to do: Update the Vellora app from your app store.\n\nE84 - Recipe not supported. Cause: A recipe sent from the app is not supported by this machine. What to do: Update the software of the machine from the menu, then try again.\n\nE85 - Scheduled switch-on failed. Cause: The machine could not switch on at t",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.28446558117866516
+            },
+            "bm25": {
+              "rank": 5,
+              "score": 2.918947879079824
+            }
+          },
+          "rank_before": 6,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:63",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 63,
+          "score": -9.001143455505371,
+          "text": "-Fi module does not respond to the main board. What to do: Switch the machine off and on again. The machine can still be used without the app.\n\nE81 - Wi-Fi connection lost. Cause: The machine lost its connection to the home network. What to do: Check your router, then connect the machine again from the Vellora app.\n\nE82 - App pairing failed. Cause: The machine could not be paired with the Vellora app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE8",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.2656182646751404
+            },
+            "bm25": {
+              "rank": 4,
+              "score": 2.935963319359448
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:57",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 57,
+          "score": -10.362346649169922,
+          "text": "o: Replace the water filter and run the filter programme, or deactivate the filter in the menu.\n\nE67 - Filter not rinsed. Cause: A new filter was installed but the filter programme was not run. What to do: Run the filter programme from the maintenance menu.\n\nE68 - Filter not recognised. Cause: The installed water filter is not recognised by the machine. What to do: Use only original Vellora filters, and check that the filter is screwed in completely.\n\nE69 - Water hardness not set. Cause: The wat",
+          "sources": {
+            "dense": {
+              "rank": 15,
+              "score": 0.17972268164157867
+            },
+            "bm25": {
+              "rank": 13,
+              "score": 2.036907009431852
+            }
+          },
+          "rank_before": 14,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 1.0,
+      "graph_path": null,
+      "hit_at_1": true,
+      "recall_at_1": 1.0,
+      "hit_at_3": true,
+      "recall_at_3": 1.0,
+      "hit_at_5": true,
+      "recall_at_5": 1.0,
+      "hit_at_10": true,
+      "recall_at_10": 1.0,
+      "cost": {
+        "retrieval_s": 1.103503999998793,
+        "per_retriever_s": {
+          "dense_s": 0.020928099998855032,
+          "bm25_s": 0.0005053000058978796,
+          "fusion_s": 0.0001939000067068264,
+          "rerank_s": 1.0818705999990925
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.103503999998793,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-13",
+      "question": "How much does the Vellora Duo weigh?",
+      "type": "not_in_corpus",
+      "type_raw": "not_in_corpus",
+      "answerable": false,
+      "relevant_chunk_ids": [],
+      "first_gold_rank": null,
+      "hops": [],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:3",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 3,
+          "score": -0.6867977380752563,
+          "text": "e in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children must not play with the machine, and cleaning must not be done by children without supervision.\n\n2. PARTS OF THE MACHINE\n\nThe Vellora Duo is made of the following main parts: the bean hopper with its aroma-preserving lid, the grind adjuster, the pre-ground coffee chute, the water tank (1.8 litres) with its filter holder, the brewing unit behind the side door, the drip tray with its float indicator,",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.3634416460990906
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 4.942800764648109
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:0",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 0,
+          "score": -2.526101589202881,
+          "text": "VELLORA DUO - ESPRESSO MACHINE\nUSER MANUAL\n(Fictional product. Document written for the BM25 challenge of the RAG course.)\n\n1. BEFORE YOU START\n\nThank you for choosing the Vellora Duo, a bean-to-cup espresso machine with an integrated conical grinder, a thermoblock heater and an automatic milk system. Please read this manual carefully before using the machine for the first time, and keep it for future reference. Most problems can be solved in a few minutes by following the instructions in the tr",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.2949811518192291
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 7.384137818017029
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:74",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 74,
+          "score": -3.9681007862091064,
+          "text": "y loud, or if it sounds like grinding gravel, stop the machine immediately and check the error code on the display.\n\nWater leaks under the machine. The drip tray is full or badly inserted, or the water tank is not inserted correctly. Empty the drip tray and check the seal of the water tank.\n\n11. WARRANTY AND CUSTOMER SERVICE\n\nThe Vellora Duo is covered by a two-year warranty from the date of purchase, on presentation of the receipt. The warranty does not cover damage caused by limescale, by the ",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.3619801104068756
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 5.1826795158947725
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:20",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 20,
+          "score": -8.409805297851562,
+          "text": ", set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half a tank of water. A filter lasts two months, or 50 litres of water. The machine counts the water used and asks for a replacement when the filter is exhausted. When a filter is installed and activated, the machine does not ask for descaling. Only use original Vellora filters: other filters may not fit the holder correctly, may let unfiltered water into the circuit, and are not covered by the warran",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.12053601443767548
+            },
+            "bm25": {
+              "rank": 12,
+              "score": 2.0535168588954376
+            }
+          },
+          "rank_before": 9,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:67",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 67,
+          "score": -9.307153701782227,
+          "text": "r full. Cause: The water counter reached its maximum value. What to do: Run the descaling programme: the counter is reset at the end of the programme.\n\nE90 - Accessory not recognised. Cause: The milk container accessory is not recognised. What to do: Clean the contacts of the milk container and connect it again.\n\nE91 - Unknown accessory. Cause: An accessory that is not compatible with the machine has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92",
+          "sources": {
+            "dense": {
+              "rank": 8,
+              "score": 0.13276252150535583
+            },
+            "bm25": {
+              "rank": 10,
+              "score": 2.140802142805474
+            }
+          },
+          "rank_before": 7,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:63",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 63,
+          "score": -9.794073104858398,
+          "text": "-Fi module does not respond to the main board. What to do: Switch the machine off and on again. The machine can still be used without the app.\n\nE81 - Wi-Fi connection lost. Cause: The machine lost its connection to the home network. What to do: Check your router, then connect the machine again from the Vellora app.\n\nE82 - App pairing failed. Cause: The machine could not be paired with the Vellora app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE8",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.18224743008613586
+            },
+            "bm25": {
+              "rank": 4,
+              "score": 2.935963319359448
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:64",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 64,
+          "score": -9.846304893493652,
+          "text": "app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE83 - App version too old. Cause: The Vellora app on your phone is too old for this machine. What to do: Update the Vellora app from your app store.\n\nE84 - Recipe not supported. Cause: A recipe sent from the app is not supported by this machine. What to do: Update the software of the machine from the menu, then try again.\n\nE85 - Scheduled switch-on failed. Cause: The machine could not switch on at t",
+          "sources": {
+            "dense": {
+              "rank": 5,
+              "score": 0.22518348693847656
+            },
+            "bm25": {
+              "rank": 5,
+              "score": 2.918947879079824
+            }
+          },
+          "rank_before": 5,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:68",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 68,
+          "score": -9.855382919311523,
+          "text": "has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92 - Milk container lid open. Cause: The lid of the milk container accessory is not closed. What to do: Close the lid of the milk container until it clicks.\n\nE93 - Milk container too warm. Cause: The milk container accessory has been out of the refrigerator for too long. What to do: Put the milk container back in the refrigerator for at least one hour.\n\nE94 - Factory test mode. Cause: The machine st",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.1698545217514038
+            },
+            "bm25": {
+              "rank": 14,
+              "score": 2.020563701236575
+            }
+          },
+          "rank_before": 8,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:22",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 22,
+          "score": -10.668085098266602,
+          "text": " the list below: it tells you what the code means and what to do. If the code is still displayed after you have followed the instructions, switch the machine off, wait one minute and switch it on again. If the problem persists, write down the code and contact the Vellora customer service: the code helps the technician to diagnose the problem quickly, and often to solve it over the phone without sending the machine for repair.\n\nE01 - Water tank missing. Cause: The machine does not detect the wate",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.25120580196380615
+            },
+            "bm25": {
+              "rank": 11,
+              "score": 2.1050124949226077
+            }
+          },
+          "rank_before": 6,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:57",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 57,
+          "score": -10.826923370361328,
+          "text": "o: Replace the water filter and run the filter programme, or deactivate the filter in the menu.\n\nE67 - Filter not rinsed. Cause: A new filter was installed but the filter programme was not run. What to do: Run the filter programme from the maintenance menu.\n\nE68 - Filter not recognised. Cause: The installed water filter is not recognised by the machine. What to do: Use only original Vellora filters, and check that the filter is screwed in completely.\n\nE69 - Water hardness not set. Cause: The wat",
+          "sources": {
+            "dense": {
+              "rank": 11,
+              "score": 0.07632361352443695
+            },
+            "bm25": {
+              "rank": 13,
+              "score": 2.036907009431852
+            }
+          },
+          "rank_before": 10,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": null,
+      "recall_at_k": null,
+      "graph_path": null,
+      "hit_at_1": null,
+      "recall_at_1": null,
+      "hit_at_3": null,
+      "recall_at_3": null,
+      "hit_at_5": null,
+      "recall_at_5": null,
+      "hit_at_10": null,
+      "recall_at_10": null,
+      "cost": {
+        "retrieval_s": 1.0733105999970576,
+        "per_retriever_s": {
+          "dense_s": 0.021836900006746873,
+          "bm25_s": 0.000716499998816289,
+          "fusion_s": 0.0003868000057991594,
+          "rerank_s": 1.050362199996016
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.0733105999970576,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-14",
+      "question": "How much does the Vellora Duo cost?",
+      "type": "not_in_corpus",
+      "type_raw": "not_in_corpus",
+      "answerable": false,
+      "relevant_chunk_ids": [],
+      "first_gold_rank": null,
+      "hops": [],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:3",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 3,
+          "score": -1.0432816743850708,
+          "text": "e in order to avoid any hazard. Do not use an extension cord or a multiple socket adapter. Children must not play with the machine, and cleaning must not be done by children without supervision.\n\n2. PARTS OF THE MACHINE\n\nThe Vellora Duo is made of the following main parts: the bean hopper with its aroma-preserving lid, the grind adjuster, the pre-ground coffee chute, the water tank (1.8 litres) with its filter holder, the brewing unit behind the side door, the drip tray with its float indicator,",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.4567810297012329
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 4.942800764648109
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:0",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 0,
+          "score": -1.0524402856826782,
+          "text": "VELLORA DUO - ESPRESSO MACHINE\nUSER MANUAL\n(Fictional product. Document written for the BM25 challenge of the RAG course.)\n\n1. BEFORE YOU START\n\nThank you for choosing the Vellora Duo, a bean-to-cup espresso machine with an integrated conical grinder, a thermoblock heater and an automatic milk system. Please read this manual carefully before using the machine for the first time, and keep it for future reference. Most problems can be solved in a few minutes by following the instructions in the tr",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.37553760409355164
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 7.384137818017029
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:74",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 74,
+          "score": -1.9942631721496582,
+          "text": "y loud, or if it sounds like grinding gravel, stop the machine immediately and check the error code on the display.\n\nWater leaks under the machine. The drip tray is full or badly inserted, or the water tank is not inserted correctly. Empty the drip tray and check the seal of the water tank.\n\n11. WARRANTY AND CUSTOMER SERVICE\n\nThe Vellora Duo is covered by a two-year warranty from the date of purchase, on presentation of the receipt. The warranty does not cover damage caused by limescale, by the ",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.3875594437122345
+            },
+            "bm25": {
+              "rank": 2,
+              "score": 5.1826795158947725
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:63",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 63,
+          "score": -7.5571794509887695,
+          "text": "-Fi module does not respond to the main board. What to do: Switch the machine off and on again. The machine can still be used without the app.\n\nE81 - Wi-Fi connection lost. Cause: The machine lost its connection to the home network. What to do: Check your router, then connect the machine again from the Vellora app.\n\nE82 - App pairing failed. Cause: The machine could not be paired with the Vellora app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE8",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.21754373610019684
+            },
+            "bm25": {
+              "rank": 4,
+              "score": 2.935963319359448
+            }
+          },
+          "rank_before": 5,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:20",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 20,
+          "score": -7.946998596191406,
+          "text": ", set \"Filter installed\" in the menu and run the filter programme, which rinses the filter with half a tank of water. A filter lasts two months, or 50 litres of water. The machine counts the water used and asks for a replacement when the filter is exhausted. When a filter is installed and activated, the machine does not ask for descaling. Only use original Vellora filters: other filters may not fit the holder correctly, may let unfiltered water into the circuit, and are not covered by the warran",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.14716395735740662
+            },
+            "bm25": {
+              "rank": 12,
+              "score": 2.0535168588954376
+            }
+          },
+          "rank_before": 9,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:64",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 64,
+          "score": -7.951569557189941,
+          "text": "app. What to do: Move your phone closer to the machine and start the pairing again from the app.\n\nE83 - App version too old. Cause: The Vellora app on your phone is too old for this machine. What to do: Update the Vellora app from your app store.\n\nE84 - Recipe not supported. Cause: A recipe sent from the app is not supported by this machine. What to do: Update the software of the machine from the menu, then try again.\n\nE85 - Scheduled switch-on failed. Cause: The machine could not switch on at t",
+          "sources": {
+            "dense": {
+              "rank": 4,
+              "score": 0.2700388431549072
+            },
+            "bm25": {
+              "rank": 5,
+              "score": 2.918947879079824
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:67",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 67,
+          "score": -8.453601837158203,
+          "text": "r full. Cause: The water counter reached its maximum value. What to do: Run the descaling programme: the counter is reset at the end of the programme.\n\nE90 - Accessory not recognised. Cause: The milk container accessory is not recognised. What to do: Clean the contacts of the milk container and connect it again.\n\nE91 - Unknown accessory. Cause: An accessory that is not compatible with the machine has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92",
+          "sources": {
+            "dense": {
+              "rank": 8,
+              "score": 0.16751167178153992
+            },
+            "bm25": {
+              "rank": 10,
+              "score": 2.140802142805474
+            }
+          },
+          "rank_before": 7,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:68",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 68,
+          "score": -9.167495727539062,
+          "text": "has been connected. What to do: Remove the accessory and use only original Vellora accessories.\n\nE92 - Milk container lid open. Cause: The lid of the milk container accessory is not closed. What to do: Close the lid of the milk container until it clicks.\n\nE93 - Milk container too warm. Cause: The milk container accessory has been out of the refrigerator for too long. What to do: Put the milk container back in the refrigerator for at least one hour.\n\nE94 - Factory test mode. Cause: The machine st",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.21785862743854523
+            },
+            "bm25": {
+              "rank": 14,
+              "score": 2.020563701236575
+            }
+          },
+          "rank_before": 8,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:22",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 22,
+          "score": -9.878181457519531,
+          "text": " the list below: it tells you what the code means and what to do. If the code is still displayed after you have followed the instructions, switch the machine off, wait one minute and switch it on again. If the problem persists, write down the code and contact the Vellora customer service: the code helps the technician to diagnose the problem quickly, and often to solve it over the phone without sending the machine for repair.\n\nE01 - Water tank missing. Cause: The machine does not detect the wate",
+          "sources": {
+            "dense": {
+              "rank": 5,
+              "score": 0.26981121301651
+            },
+            "bm25": {
+              "rank": 11,
+              "score": 2.1050124949226077
+            }
+          },
+          "rank_before": 6,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:57",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 57,
+          "score": -10.443902969360352,
+          "text": "o: Replace the water filter and run the filter programme, or deactivate the filter in the menu.\n\nE67 - Filter not rinsed. Cause: A new filter was installed but the filter programme was not run. What to do: Run the filter programme from the maintenance menu.\n\nE68 - Filter not recognised. Cause: The installed water filter is not recognised by the machine. What to do: Use only original Vellora filters, and check that the filter is screwed in completely.\n\nE69 - Water hardness not set. Cause: The wat",
+          "sources": {
+            "dense": {
+              "rank": 10,
+              "score": 0.10713319480419159
+            },
+            "bm25": {
+              "rank": 13,
+              "score": 2.036907009431852
+            }
+          },
+          "rank_before": 10,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": null,
+      "recall_at_k": null,
+      "graph_path": null,
+      "hit_at_1": null,
+      "recall_at_1": null,
+      "hit_at_3": null,
+      "recall_at_3": null,
+      "hit_at_5": null,
+      "recall_at_5": null,
+      "hit_at_10": null,
+      "recall_at_10": null,
+      "cost": {
+        "retrieval_s": 1.040325900001335,
+        "per_retriever_s": {
+          "dense_s": 0.014451099996222183,
+          "bm25_s": 0.0007328999927267432,
+          "fusion_s": 0.0003502000035950914,
+          "rerank_s": 1.0247839000076056
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.040325900001335,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    },
+    {
+      "id": "OWN-15",
+      "question": "My machine shows error E25. How long will the fix that the manual recommends take?",
+      "type": "two_hop",
+      "type_raw": "two_hop",
+      "answerable": true,
+      "relevant_chunk_ids": [
+        "vellora-duo-espresso-machine_txt:18",
+        "vellora-duo-espresso-machine_txt:36"
+      ],
+      "first_gold_rank": 3,
+      "hops": [
+        {
+          "source": "vellora-duo-espresso-machine.txt",
+          "quote": "usually because of limescale in the pipes. What to do: Run the descaling programme",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:36"
+          ],
+          "retrieved_by": {
+            "dense": 18,
+            "bm25": 8
+          },
+          "found_in_top_k": true
+        },
+        {
+          "source": "vellora-duo-espresso-machine.txt",
+          "quote": "The programme takes about 30 minutes",
+          "gold_chunk_ids": [
+            "vellora-duo-espresso-machine_txt:18"
+          ],
+          "retrieved_by": {},
+          "found_in_top_k": false
+        }
+      ],
+      "unmatched_hops": [],
+      "retrieved": [
+        {
+          "id": "vellora-duo-espresso-machine_txt:76",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 76,
+          "score": -0.6488217115402222,
+          "text": "er and the serial number printed on the label behind the water tank, and the error code shown on the display, if any. Our customer service is available from Monday to Friday, from 9 am to 6 pm. Most problems can be solved over the phone in a few minutes. If the machine must be repaired, we will send you a box to return it to our service centre free of charge. Repairs under warranty usually take ten working days.\n\nDispose of the machine at the end of its life at a collection point for electrical ",
+          "sources": {
+            "dense": {
+              "rank": 1,
+              "score": 0.5680359601974487
+            },
+            "bm25": {
+              "rank": 3,
+              "score": 5.920585016744507
+            }
+          },
+          "rank_before": 1,
+          "rank_after": 1
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:1",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 1,
+          "score": -4.113382816314697,
+          "text": "ture reference. Most problems can be solved in a few minutes by following the instructions in the troubleshooting and error code sections.\n\nSafety first. Always place the machine on a stable, flat and dry surface, away from the edge of the worktop and out of reach of children. Never immerse the machine, the power cord or the plug in water or any other liquid. Unplug the machine before cleaning it, before removing the brewing unit and when it is not used for a long period. Do not touch the steam ",
+          "sources": {
+            "dense": {
+              "rank": 6,
+              "score": 0.4273298382759094
+            },
+            "bm25": {
+              "rank": 5,
+              "score": 4.84676319504192
+            }
+          },
+          "rank_before": 4,
+          "rank_after": 2
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:36",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 36,
+          "score": -5.06072998046875,
+          "text": "tank and check that the tank valve is not blocked.\n\nE25 - Water circuit blocked. Cause: Water cannot go through the circuit, usually because of limescale in the pipes. What to do: Run the descaling programme. If the machine refuses to start it, contact customer service.\n\nE26 - Pressure too low. Cause: The brewing pressure stays below 6 bar, so the coffee is under-extracted. What to do: Set the grind adjuster one step finer and increase the coffee strength.\n\nE27 - Pressure too high. Cause: The br",
+          "sources": {
+            "dense": {
+              "rank": 18,
+              "score": 0.36829519271850586
+            },
+            "bm25": {
+              "rank": 8,
+              "score": 3.6370079339139583
+            }
+          },
+          "rank_before": 6,
+          "rank_after": 3
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:35",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 35,
+          "score": -5.231234550476074,
+          "text": "arser. If the code persists, run the descaling programme.\n\nE23 - Flow meter fault. Cause: The flow meter does not count the water going through the circuit. What to do: Check that the water tank is full and properly inserted, then switch the machine off and on again.\n\nE24 - Pump noise abnormal. Cause: The pump makes an unusual noise because it runs without enough water. What to do: Fill the water tank and check that the tank valve is not blocked.\n\nE25 - Water circuit blocked. Cause: Water cannot",
+          "sources": {
+            "dense": {
+              "rank": 3,
+              "score": 0.4743603765964508
+            },
+            "bm25": {
+              "rank": 7,
+              "score": 3.665728906394246
+            }
+          },
+          "rank_before": 3,
+          "rank_after": 4
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:22",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 22,
+          "score": -5.240481376647949,
+          "text": " the list below: it tells you what the code means and what to do. If the code is still displayed after you have followed the instructions, switch the machine off, wait one minute and switch it on again. If the problem persists, write down the code and contact the Vellora customer service: the code helps the technician to diagnose the problem quickly, and often to solve it over the phone without sending the machine for repair.\n\nE01 - Water tank missing. Cause: The machine does not detect the wate",
+          "sources": {
+            "dense": {
+              "rank": 14,
+              "score": 0.38659846782684326
+            },
+            "bm25": {
+              "rank": 28,
+              "score": 0.45511689642263076
+            }
+          },
+          "rank_before": 8,
+          "rank_after": 5
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:50",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 50,
+          "score": -5.800721645355225,
+          "text": "fault. Cause: The control panel does not communicate with the main board. What to do: Switch the machine off and on again. If the code persists, contact customer service.\n\nE52 - Button stuck. Cause: A button of the control panel has been pressed for more than 30 seconds. What to do: Check that nothing is pressing on the control panel, and clean the buttons with a dry cloth.\n\nE53 - Clock reset. Cause: The internal clock was reset after a power cut. What to do: Set the time again in the menu. The ",
+          "sources": {
+            "dense": {
+              "rank": 2,
+              "score": 0.48341548442840576
+            }
+          },
+          "rank_before": 12,
+          "rank_after": 6
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:21",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 21,
+          "score": -5.923792362213135,
+          "text": "t the holder correctly, may let unfiltered water into the circuit, and are not covered by the warranty. Store spare filters in a cool, dry place, in their sealed bag.\n\n9. ERROR CODES\n\nWhen the machine detects a problem, it stops the current preparation and shows an error code on the display. The code is made of the letter E and two digits. Each code identifies one precise problem. Find the code in the list below: it tells you what the code means and what to do. If the code is still displayed aft",
+          "sources": {
+            "dense": {
+              "rank": 7,
+              "score": 0.4243186116218567
+            },
+            "bm25": {
+              "rank": 1,
+              "score": 6.164869282179186
+            }
+          },
+          "rank_before": 2,
+          "rank_after": 7
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:52",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 52,
+          "score": -6.023747444152832,
+          "text": "h the machine off and on again: the update starts again automatically.\n\nE56 - Settings reset. Cause: The user settings were reset to their factory values. What to do: Set the water hardness, the coffee strength and the time again in the menu.\n\nE57 - Main board fault. Cause: The main electronic board detected an internal fault. What to do: Unplug the machine for one minute, then plug it in again. If the code persists, contact customer service.\n\nE58 - Memory full. Cause: The memory for personal re",
+          "sources": {
+            "dense": {
+              "rank": 5,
+              "score": 0.45336657762527466
+            }
+          },
+          "rank_before": 14,
+          "rank_after": 8
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:0",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 0,
+          "score": -6.4614715576171875,
+          "text": "VELLORA DUO - ESPRESSO MACHINE\nUSER MANUAL\n(Fictional product. Document written for the BM25 challenge of the RAG course.)\n\n1. BEFORE YOU START\n\nThank you for choosing the Vellora Duo, a bean-to-cup espresso machine with an integrated conical grinder, a thermoblock heater and an automatic milk system. Please read this manual carefully before using the machine for the first time, and keep it for future reference. Most problems can be solved in a few minutes by following the instructions in the tr",
+          "sources": {
+            "bm25": {
+              "rank": 2,
+              "score": 6.1474526750537155
+            }
+          },
+          "rank_before": 11,
+          "rank_after": 9
+        },
+        {
+          "id": "vellora-duo-espresso-machine_txt:69",
+          "document": "vellora-duo-espresso-machine.txt",
+          "index": 69,
+          "score": -6.810144424438477,
+          "text": "iner back in the refrigerator for at least one hour.\n\nE94 - Factory test mode. Cause: The machine started in factory test mode. What to do: Switch the machine off, then switch it on again without pressing any other button.\n\nE95 - Calibration lost. Cause: The calibration of the flow meter was lost. What to do: Contact customer service to calibrate the flow meter again.\n\nE96 - Unknown water source. Cause: The machine is set for a direct water connection but none is installed. What to do: Set the w",
+          "sources": {
+            "dense": {
+              "rank": 9,
+              "score": 0.4043465852737427
+            }
+          },
+          "rank_before": 18,
+          "rank_after": 10
+        }
+      ],
+      "hit_at_k": true,
+      "recall_at_k": 0.5,
+      "graph_path": null,
+      "hit_at_1": false,
+      "recall_at_1": 0.0,
+      "hit_at_3": true,
+      "recall_at_3": 0.5,
+      "hit_at_5": true,
+      "recall_at_5": 0.5,
+      "hit_at_10": true,
+      "recall_at_10": 0.5,
+      "cost": {
+        "retrieval_s": 1.1199972000031266,
+        "per_retriever_s": {
+          "dense_s": 0.01998009999806527,
+          "bm25_s": 0.0006679999933112413,
+          "fusion_s": 0.0002973000082420185,
+          "rerank_s": 1.0990450000099372
+        },
+        "generation_s": 0.0,
+        "latency_s": 1.1199972000031266,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    }
+  ]
+}
