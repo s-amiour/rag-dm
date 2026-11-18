@@ -6,6 +6,7 @@ ApiTestCase gives every test:
 - a fake dense retriever with a fixed ranking (no model download);
 - a fake LLM that cites the first retrieved chunk and counts its calls (no API key, no quota);
 - a network guard: any attempt to open a socket fails the test;
+- a trace store in the temporary folder (TRACES_DB), so tests never write into data/traces/;
 - `self.graph_module(...)` to plug in a fake graph retriever, or to make it look missing.
 
 Not collected as a test module (its name does not start with "test").
@@ -13,6 +14,7 @@ Not collected as a test module (its name does not start with "test").
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import socket
 import sys
@@ -133,6 +135,7 @@ class ApiTestCase(unittest.TestCase):
             mock.patch.object(core, "INDEX_DIR", self.data / "index"),
             mock.patch.object(main, "DATA", self.data),
             mock.patch.object(cli_eval, "DEFAULT_OUT", self.data / "results" / "v3"),
+            mock.patch.dict(os.environ, {"TRACES_DB": str(self.data / "traces" / "traces.sqlite")}),
             mock.patch.object(retrieval, "get_dense", fake_get_dense),
             mock.patch.object(evaluation, "get_dense", fake_get_dense),
             mock.patch.object(main, "generate_answer_with_usage", fake_llm),
