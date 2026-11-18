@@ -34,3 +34,5 @@ __pycache__/
 
 # Derived indexes (BM25, embeddings): rebuilt automatically
 data/index/
+
+data/traces/
