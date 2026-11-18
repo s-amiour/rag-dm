@@ -34,5 +34,6 @@ __pycache__/
 
 # Derived indexes (BM25, embeddings): rebuilt automatically
 data/index/
-
+# quarantined uploads and the review log (v4T08): runtime data
+data/quarantine/
 data/traces/

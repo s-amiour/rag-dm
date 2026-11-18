@@ -49,6 +49,8 @@ from .core import (
 )
 
 from .bm25 import get_bm25
+from . import redact
+from . import injection
 from .retrieval import (
     RETRIEVERS,
     RetrieverUnavailable,
@@ -236,12 +238,40 @@ async def upload_document(
             "Document must be UTF-8 encoded."
         )
 
+    # Injection scanner (v4T08, DECISIONS D-36): a suspicious document goes to
+    # data/quarantine/<corpus>/ instead of the corpus folder, so it is never chunked,
+    # embedded or indexed until someone approves it.
+    scan = injection.report(text)
+    if scan["suspicious"]:
+        qfolder = QUARANTINE / corpus
+        qfolder.mkdir(parents=True, exist_ok=True)
+        (qfolder / name).write_text(text, encoding="utf-8")
+        save_json(qfolder / (name + ".scan.json"), {
+            **scan,
+            "corpus": corpus,
+            "name": name,
+            "characters": len(text),
+            "uploaded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        })
+        return {
+            "uploaded": name,
+            "characters": len(text),
+            "quarantined": True,
+            "findings": scan["findings"],
+            "message": (
+                f"{name} looks like it contains instructions aimed at the model "
+                f"({len(scan['findings'])} finding(s)). It is in quarantine and will not be "
+                "searched until you review it in the Documents tab."
+            ),
+        }
+
     (folder / name).write_text(text, encoding="utf-8")
     _update_selection_file(folder, add=name)
 
     return {
         "uploaded": name,
-        "characters": len(text)
+        "characters": len(text),
+        "quarantined": False
     }
 
 
@@ -270,6 +300,93 @@ def delete_document(
     _update_selection_file(path.parent, remove=path.name)
 
     return {"deleted": path.name}
+
+
+QUARANTINE = DATA / "quarantine"
+
+
+def _quarantined(corpus: str, name: str) -> tuple[Path, Path]:
+    original = Path(name)
+    if original.suffix.lower() not in {".txt", ".md"}:
+        raise HTTPException(415, "Only .txt and .md documents can be in quarantine.")
+    path = QUARANTINE / corpus / (safe_name(original.stem) + original.suffix.lower())
+    if not path.exists():
+        raise HTTPException(404, "This document is not in quarantine.")
+    return path, path.with_name(path.name + ".scan.json")
+
+
+def _log_review(corpus: str, name: str, decision: str, scan: dict):
+    QUARANTINE.mkdir(parents=True, exist_ok=True)
+    with (QUARANTINE / "review-log.jsonl").open("a", encoding="utf-8") as log:
+        log.write(json.dumps({
+            "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "corpus": corpus,
+            "name": name,
+            "decision": decision,
+            "findings": len(scan.get("findings", [])),
+            "rules": sorted({f["rule"] for f in scan.get("findings", [])}),
+            "rules_version": scan.get("rules_version"),
+        }, ensure_ascii=False) + "\n")
+
+
+def _review_attributes(scan: dict) -> dict:
+    """What a review trace keeps about the scan: counts and rule names only. No excerpts,
+    because excerpts are document text."""
+    findings = scan.get("findings", [])
+    return {
+        "findings": len(findings),
+        "rules": sorted({f["rule"] for f in findings}),
+        "rules_version": scan.get("rules_version"),
+    }
+
+
+@app.get("/api/quarantine")
+def quarantine_list(corpus: Literal["kestrel", "own"] | None = None):
+    """Documents held back by the injection scanner, with what it found."""
+    corpora = [corpus] if corpus else ["kestrel", "own"]
+    items = []
+    for c in corpora:
+        folder = QUARANTINE / c
+        for scan_file in sorted(folder.glob("*.scan.json")) if folder.exists() else []:
+            try:
+                items.append(json.loads(scan_file.read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                continue
+    return items
+
+
+@app.post("/api/quarantine/{corpus}/{name}/approve")
+def quarantine_approve(corpus: Literal["kestrel", "own"], name: str):
+    """A person read the findings and decided the document is safe: move it into the
+    corpus (it is indexed on the next query, like any upload)."""
+    path, scan_file = _quarantined(corpus, name)
+    target = DATA / "corpora" / corpus / path.name
+    if target.exists():
+        raise HTTPException(409, f"{path.name} already exists in the corpus. Delete or rename it first.")
+    scan = json.loads(scan_file.read_text(encoding="utf-8")) if scan_file.exists() else {}
+    with traces.trace("quarantine.approve", kind="quarantine.approve", corpus=corpus,
+                      document=path.name, **_review_attributes(scan)) as t:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(path, target)
+        scan_file.unlink(missing_ok=True)
+        _update_selection_file(target.parent, add=target.name)
+        _log_review(corpus, path.name, "approved", scan)
+        t.set_outcome("approved")
+    return {"approved": path.name, "trace_id": t.id}
+
+
+@app.delete("/api/quarantine/{corpus}/{name}")
+def quarantine_reject(corpus: Literal["kestrel", "own"], name: str):
+    """A person decided the document is an attack (or not wanted): delete it."""
+    path, scan_file = _quarantined(corpus, name)
+    scan = json.loads(scan_file.read_text(encoding="utf-8")) if scan_file.exists() else {}
+    with traces.trace("quarantine.reject", kind="quarantine.reject", corpus=corpus,
+                      document=path.name, **_review_attributes(scan)) as t:
+        path.unlink()
+        scan_file.unlink(missing_ok=True)
+        _log_review(corpus, path.name, "rejected", scan)
+        t.set_outcome("rejected")
+    return {"rejected": path.name, "trace_id": t.id}
 
 
 @app.get("/api/config")
@@ -372,11 +489,15 @@ def ask(req: AskRequest):
 
     # One trace per question (v4T02). An exception closes it with outcome "error" before the
     # HTTP error reaches the user. T09: pass the redacted question here.
+    question_for_trace, question_pii = (
+        redact.redact(req.question) if redact.enabled() else (req.question, {})
+       )
     with traces.trace(
         "request",
         kind="question",
         corpus=req.corpus,
-        question=req.question,
+        question=question_for_trace,
+        redactions=redact.counts(question_pii),
         retrievers=list(dict.fromkeys(req.retrievers)),
         top_k=req.top_k,
         candidates=req.candidates,
@@ -437,6 +558,7 @@ def ask(req: AskRequest):
                     "gen_ai.usage.output_tokens": gen_usage["completion_tokens"],
                     "gen_ai.response.finish_reasons": [gen_usage.get("finish_reason")],
                     "thinking": gen_usage.get("thinking"),
+                    "redactions": gen_usage.get("redactions", {}),
                     "cost_usd": cost_usd,
                     "price_known": price_known
                 })
@@ -644,10 +766,13 @@ def no_context(req: EvalRequest):
     rows = []
 
     for q in questions:
+        # same redaction as answers (v4T09, D-37): the question leaves the machine
+        question_out, pii = (redact.redact(q["question"]) if redact.enabled()
+                             else (q["question"], {}))
         prompt = (
             "Answer using your own knowledge only, without documents or tools. "
             "If unsure, say so.\n\nQUESTION: "
-            + q["question"]
+            + question_out
         )
 
         try:
@@ -663,7 +788,7 @@ def no_context(req: EvalRequest):
                 "id": q.get("id"),
                 "question": q["question"],
                 "type": q.get("type"),
-                "answer": response.choices[0].message.content or "",
+                "answer": redact.restore(response.choices[0].message.content or "", pii),
                 "finish_reason": response.choices[0].finish_reason
             })
 
