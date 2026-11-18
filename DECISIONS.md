@@ -356,6 +356,9 @@ limit configurable. If a reply is invalid **and** `finish_reason` is `length`, t
 to change, and the user sees "The model ran out of space before it finished its answer" instead of the generic message. `finish_reason`
 and the thinking setting are returned with the usage of every answer. Risk: with thinking off, answers on hard questions (two_hop,
 versions) may be worse. Tests: `tests/test_answer_generation.py` (fake client).
+*Update:* the no-context baseline (`/api/no-context`) had its own `max_tokens=2048` and thinking on, so with nemotron it could
+return empty answers that look like "the model does not know". Answers and the baseline now share `core.llm_request_options()`,
+and the baseline records `finish_reason` for every question.
 
 ## Words tab
 

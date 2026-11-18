@@ -553,18 +553,15 @@ def generate_answer_with_usage(
     # before the answer started, so the reply was cut off. Same switch as the graph
     # build (graph.OpenAICompatibleLLM, DECISIONS D-24); servers that do not know
     # chat_template_kwargs ignore it. DECISIONS D-35.
-    disable_thinking = os.getenv("LLM_DISABLE_THINKING", "0").strip().lower() in ("1", "true", "yes")
-    max_tokens = int(os.getenv("LLM_MAX_TOKENS", "2048"))
+    options = llm_request_options()
+    disable_thinking = "extra_body" in options
+    max_tokens = options["max_tokens"]
 
     request = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": max_tokens
+        **options
     }
-    if disable_thinking:
-        request["extra_body"] = {
-            "chat_template_kwargs": {"enable_thinking": False, "thinking": False}
-        }
 
     response = client.chat.completions.create(**request)
 
