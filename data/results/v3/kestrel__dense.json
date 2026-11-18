@@ -13,6 +13,7 @@
       "candidates": 10,
       "weights": null,
       "dense_backend": "sentence-transformers",
+      "allow_tfidf_fallback": false,
       "bm25_stopwords": null,
       "generate_answers": false
     },
@@ -110,18 +111,19 @@
     "index": {
       "dense": {
         "backend": "sentence-transformers",
-        "build_seconds": 22.640503900009207,
+        "build_seconds": 21.99286349999602,
         "embedding_cache_hit": true
       }
     },
     "cost_per_question": {
-      "retrieval_ms": 16.409683332312852,
-      "latency_ms": 16.409683332312852,
+      "retrieval_ms": 35.75030833356626,
+      "latency_ms": 35.75030833356626,
       "llm_calls": 0.0,
       "prompt_tokens": 0.0,
       "completion_tokens": 0.0
     },
-    "wall_seconds": 22.902259499998763
+    "wall_seconds": 22.44644200000039,
+    "run_at": "2026-11-18 02:12:21"
   },
   "results": [
     {
@@ -303,13 +305,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.049292300012893975,
+        "retrieval_s": 0.09440380000160076,
         "per_retriever_s": {
-          "dense_s": 0.04926429991610348,
-          "fusion_s": 2.3600063286721706e-05
+          "dense_s": 0.09434279998822603,
+          "fusion_s": 5.5199998314492404e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.049292300012893975,
+        "latency_s": 0.09440380000160076,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -495,13 +497,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.011399100068956614,
+        "retrieval_s": 0.02646939999249298,
         "per_retriever_s": {
-          "dense_s": 0.011368100065737963,
-          "fusion_s": 2.750009298324585e-05
+          "dense_s": 0.026420399997732602,
+          "fusion_s": 4.389999958220869e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.011399100068956614,
+        "latency_s": 0.02646939999249298,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -709,13 +711,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.01242769998498261,
+        "retrieval_s": 0.025310600001830608,
         "per_retriever_s": {
-          "dense_s": 0.012406400055624545,
-          "fusion_s": 1.9000028260052204e-05
+          "dense_s": 0.02526880000368692,
+          "fusion_s": 3.8399986806325614e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.01242769998498261,
+        "latency_s": 0.025310600001830608,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -901,13 +903,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.014008999918587506,
+        "retrieval_s": 0.025144300001556985,
         "per_retriever_s": {
-          "dense_s": 0.013981199939735234,
-          "fusion_s": 2.4999957531690598e-05
+          "dense_s": 0.025098799989791587,
+          "fusion_s": 4.1399995097890496e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.014008999918587506,
+        "latency_s": 0.025144300001556985,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1092,13 +1094,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.011360899894498289,
+        "retrieval_s": 0.027844199998071417,
         "per_retriever_s": {
-          "dense_s": 0.011340999975800514,
-          "fusion_s": 1.7699901945888996e-05
+          "dense_s": 0.027796199996373616,
+          "fusion_s": 4.410000110510737e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.011360899894498289,
+        "latency_s": 0.027844199998071417,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1283,13 +1285,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.012552800006233156,
+        "retrieval_s": 0.024141399990185164,
         "per_retriever_s": {
-          "dense_s": 0.012530099949799478,
-          "fusion_s": 2.0200037397444248e-05
+          "dense_s": 0.024094100008369423,
+          "fusion_s": 4.360001184977591e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.012552800006233156,
+        "latency_s": 0.024141399990185164,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1463,13 +1465,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.012254900066182017,
+        "retrieval_s": 0.04195719999552239,
         "per_retriever_s": {
-          "dense_s": 0.012223700061440468,
-          "fusion_s": 2.8199981898069382e-05
+          "dense_s": 0.04190979999839328,
+          "fusion_s": 4.339999577496201e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.012254900066182017,
+        "latency_s": 0.04195719999552239,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1653,13 +1655,13 @@
       "hit_at_10": true,
       "recall_at_10": 0.5,
       "cost": {
-        "retrieval_s": 0.016262000077404082,
+        "retrieval_s": 0.027084999994258396,
         "per_retriever_s": {
-          "dense_s": 0.01623250008560717,
-          "fusion_s": 2.719997428357601e-05
+          "dense_s": 0.027036200001020916,
+          "fusion_s": 4.4599990360438824e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.016262000077404082,
+        "latency_s": 0.027084999994258396,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1819,13 +1821,13 @@
       "hit_at_10": null,
       "recall_at_10": null,
       "cost": {
-        "retrieval_s": 0.013616599957458675,
+        "retrieval_s": 0.030071100001805462,
         "per_retriever_s": {
-          "dense_s": 0.013588199974037707,
-          "fusion_s": 2.5999965146183968e-05
+          "dense_s": 0.030028900000615977,
+          "fusion_s": 3.880000440403819e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.013616599957458675,
+        "latency_s": 0.030071100001805462,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -1985,13 +1987,13 @@
       "hit_at_10": null,
       "recall_at_10": null,
       "cost": {
-        "retrieval_s": 0.012653099955059588,
+        "retrieval_s": 0.023813200008589774,
         "per_retriever_s": {
-          "dense_s": 0.012634000042453408,
-          "fusion_s": 1.7299898900091648e-05
+          "dense_s": 0.0237691999936942,
+          "fusion_s": 4.030000127386302e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.012653099955059588,
+        "latency_s": 0.023813200008589774,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -2177,13 +2179,13 @@
       "hit_at_10": true,
       "recall_at_10": 1.0,
       "cost": {
-        "retrieval_s": 0.015648099943064153,
+        "retrieval_s": 0.05240300000878051,
         "per_retriever_s": {
-          "dense_s": 0.015621399972587824,
-          "fusion_s": 2.4099950678646564e-05
+          "dense_s": 0.052351699996506795,
+          "fusion_s": 4.709999484475702e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.015648099943064153,
+        "latency_s": 0.05240300000878051,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0
@@ -2378,13 +2380,13 @@
       "hit_at_10": true,
       "recall_at_10": 0.6666666666666666,
       "cost": {
-        "retrieval_s": 0.015439700102433562,
+        "retrieval_s": 0.030360500008100644,
         "per_retriever_s": {
-          "dense_s": 0.015412200009450316,
-          "fusion_s": 2.52000754699111e-05
+          "dense_s": 0.030308800007333048,
+          "fusion_s": 4.7299996367655694e-05
         },
         "generation_s": 0.0,
-        "latency_s": 0.015439700102433562,
+        "latency_s": 0.030360500008100644,
         "llm_calls": 0,
         "prompt_tokens": 0,
         "completion_tokens": 0

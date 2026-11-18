@@ -118,7 +118,8 @@ that fails validation, how to merge aliases (q12: mailman → postroom), and how
 (entity-neighbourhood expansion, path search, GraphRAG community summaries, LightRAG-style dual-level retrieval).
 
 *Update (ticket v3T01):* extraction, schema, validation, provenance and build cost are now done (D-20 to D-27).
-Entity resolution (T2), the graph retriever (T3) and the UI (T4) are still open; until T3, selecting the graph returns 503.
+Entity resolution (D-28, v3T02), the graph retriever (D-29, v3T03) and the path in the UI (D-30, v3T04) followed. Selecting the graph
+returns 503 only when the graph is missing or stale for the current chunking, with the command to rebuild it.
 
 **D-20. Schema: fixed types, plus two relations.** File `app/graph_schema.py` (versioned: `SCHEMA_VERSION`). Options: (a) an
 **open** schema, where the LLM names whatever types it finds (as in GraphRAG's default prompt); (b) a **fixed** schema, where the LLM may
@@ -400,14 +401,15 @@ are not visible on the slide, unless confirmed by the teacher.
 6. Rank-only fusion lets a chunk found by two retrievers outrank a correct chunk found by one, even when its second vote comes from deep
    in a list: Kestrel q05 (dense #1, BM25 absent) fell from rank 1 to 6 with 30 candidates; limiting to 10 candidates brings it back to
    rank 2 (D-18), still not rank 1. `split_answer` Recall@3 stays at 0.38 with BM25 on (q03 loses a hop to chunks BM25 promotes).
-7. `two_hop` Recall stays at 0.56 at k = 5 and 0.72 at k = 10 with dense, with or without BM25: finding every hop of a chain needs
-   something that follows relations between chunks (the missing graph).
-8. The concept graph is not queried yet: extraction is done (D-20 to D-23); resolution, retrieval and UI are not (D-12 update).
+7. `two_hop` Recall stays at 0.56 at k = 5 and 0.72 at k = 10 with dense, with or without BM25. With the graph, Recall@5 is 0.72 but
+   Recall@10 stays 0.72: the one hop only the graph finds (`service-catalog_md:3` for q08 and q12, at rank 4 to 5 of the graph's list)
+   gets a single RRF vote and is pushed out of the top 10 by chunks with two votes (REPORT section 8).
+8. The graph exists for Kestrel only (`GRAPH_CORPORA`): selecting it on the own corpus returns 503 (REPORT section 6, optional features).
 9. The fixed schema drops what fits no type: people, chat channels (`#oncall-messaging`), prices, IP addresses. A chain that ends at a
    channel stops at the `Team` node; the channel is only in that node's evidence chunk (the team table row).
 10. Cross-chunk relations are not extracted. Extraction sees one chunk at a time, so a relation whose two ends sit in different
     chunks is missed: e.g. "escalate to the team that owns postroom" gives `KST-5031 escalates_to postroom`, not `escalates_to Messaging`.
-    T2 is expected to join such pieces through shared nodes (postroom); what it cannot join will be listed here.
+    The walk joins such pieces through shared nodes (postroom → Messaging at hop 2, D-29); what it cannot join is in 13, 14 and 16.
 11. Quote checking catches invented quotes, not wrong readings of a true quote: a triple whose quote is in the chunk but whose direction
     or relation is wrong passes validation (to be measured by the 10-triple extraction-quality grading).
     **Seen in the built graph: `postroom owned_by Identity`** (quote "Owner: **Identity**.", `service-catalog_md:1`). That chunk ends

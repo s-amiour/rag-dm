@@ -8,23 +8,29 @@
   - **Jaimie MATHANGI**
 - Team of 3 (GitHub: `s-amiour`, `Msaadjaved`, `Chimaera-Emerald`); Jaimie joined for V4. The "teams of 3" extra piece applies:
   weighted RRF compared with plain RRF (ticket B7).
+- Repository: https://github.com/s-amiour/rag-dm · tag `v3`
+- Previous report: `docs/REPORT_V2.md` · decision log: `DECISIONS.md` · how to run: `README.md`
 
 ## 2. Summary
 
 - V3 adds **BM25** (both corpora, persistent index), **RRF fusion** with every retriever switchable from the UI, the API and the
   evaluation command, and **Recall@k per hop** next to V2's HitRate@k.
-- **Concept graph: extraction, entity resolution and graph retrieval done (tickets v3T01 to v3T03; sections 6 and 7); UI path pending
-  (T4).** Graph alone puts both hop chunks of q08 and q11 in its top 10 (section 6). The third required configuration
-  (`dense+bm25+graph`) now runs; its measurement is T5.
+- **Concept graph: extraction, entity resolution, graph retrieval and the path in the UI done (tickets v3T01 to v3T04; sections 6
+  and 7).** Graph alone puts both hop chunks of q08 and q11 in its top 10 (section 6). The third required configuration
+  (`dense+bm25+graph`) runs. **Adding the graph to dense+bm25 on Kestrel: Hit@1 0.50 → 0.70, Hit@3 0.90 → 1.00, Recall@5 0.79 →
+  0.84, `two_hop` Recall@5 0.56 → 0.72, no question worse at its first gold chunk, no LLM call at query time.** It moves found
+  hops up; it adds no hop to the top 10 (section 8).
 - **BM25 helps, but only once fusion is configured carefully.** On Kestrel, plain RRF with 30 candidates per retriever left Hit@k unchanged
   (0.50 / 0.80 / 0.90 / 1.00 at k = 1, 3, 5, 10) and lowered Recall@3 from 0.72 to 0.54. Limiting each retriever to its 10 best candidates
   (D-18) gives Hit@3 **0.90**, Hit@5 **1.00** and Recall@5 **0.79**, the best of all configurations at k = 3 and 5. It fixes
   `exact_identifier` (Hit@5 0.50 → 1.00). It costs a little on rank 1 (Hit@1 stays 0.50, q05 and q03 drop from rank 1 to 2) and on
   `split_answer` Recall@3 (1.00 → 0.38).
-- On our own corpus: Hit@1 0.67 → 0.75, no loss at k ≥ 3, identical with 10 or 30 candidates.
-- BM25 needs no LLM call, builds in 0.03 to 0.04 s and adds no measurable query latency (15 to 20 ms per query in every configuration).
-- **Limit of this work:** `two_hop` Recall stays at 0.56 at k = 5 and 0.72 at k = 10 with or without BM25. Finding every hop of a chain is
-  the unsolved part, and it is what the graph was meant to address.
+- On our own corpus (13 answerable questions since v3T13): Hit@1 0.62 → 0.69, no loss at k ≥ 3.
+- BM25 needs no LLM call, builds in 0.03 to 0.04 s and adds no measurable query latency (15 to 36 ms per query in every configuration
+  and run; the differences are noise).
+- **Limit of this work:** `two_hop` Recall@10 stays at 0.72 in every configuration, graph included. The missing hop is the same chunk
+  for q08 and q12 (the team table): the graph finds it, but only at rank 4 to 5 of its own list, and fusion pushes it out of the top 10
+  (section 8). It is also reached through a wrong edge (known failure 17).
 - **Caveat:** Kestrel has 10 answerable questions, so one question is worth 0.10; most types have n = 1 to 5. Differences are indicative.
   The `candidates` = 10 setting was chosen after looking at q05 and is scored on the same questions (no held-out set).
 
@@ -61,24 +67,35 @@ row is V2's baseline re-measured on the extended question set and nothing else c
 | *ablation:* dense+bm25, 30 candidates, weights dense=2 bm25=1 | **ALL** | 10 | 0.60 | 0.70 | 0.90 | 1.00 | 0.34 | 0.54 | 0.77 | 0.92 |
 | *ablation:* same, weighted | vocabulary | 1 | 0.00 | 0.00 | 0.00 | 1.00 | 0.00 | 0.00 | 0.00 | 1.00 |
 | *ablation:* same, weighted | two_hop | 3 | 0.67 | 0.67 | 1.00 | 1.00 | 0.39 | 0.39 | 0.56 | 0.72 |
-| dense+bm25+graph | | | not run (section 6) | | | | | | | |
+| **dense+bm25+graph** | **ALL** | 10 | **0.70** | **1.00** | 1.00 | 1.00 | **0.47** | **0.79** | **0.84** | 0.92 |
+| dense+bm25+graph | exact_identifier | 2 | **1.00** | **1.00** | 1.00 | 1.00 | **0.75** | **1.00** | 1.00 | 1.00 |
+| dense+bm25+graph | split_answer | 2 | 0.50 | 1.00 | 1.00 | 1.00 | 0.25 | 0.38 | 0.62 | 1.00 |
+| dense+bm25+graph | vocabulary | 1 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 |
+| dense+bm25+graph | versions | 2 | 0.50 | 1.00 | 1.00 | 1.00 | 0.50 | 1.00 | 1.00 | 1.00 |
+| dense+bm25+graph | two_hop | 3 | **1.00** | 1.00 | 1.00 | 1.00 | **0.56** | **0.72** | **0.72** | 0.72 |
 
-### Own corpus (500/20), identical with 10 and 30 candidates
+Kestrel only: the graph is built for Kestrel (section 6). Rerun of 18 November 2026 (`data/results/v3/`): the dense and dense+bm25
+rows came out identical to the earlier run.
+
+### Own corpus (500/20)
+
+Question set after v3T13 (D-34): 15 questions, 13 answerable (OWN-13 and OWN-14 are `not_in_corpus`). Rerun 18 November 2026; the
+earlier 12-question numbers are in git history. The check that 10 and 30 candidates give identical results was made on the earlier set.
 
 | Configuration | Type | n | Hit@1 | Hit@3 | Hit@5 | Hit@10 | Recall@1 | Recall@3 | Recall@5 | Recall@10 |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| dense | **ALL** | 12 | 0.67 | 0.92 | 1.00 | 1.00 | 0.67 | 0.92 | 1.00 | 1.00 |
+| dense | **ALL** | 13 | 0.62 | 0.85 | 0.92 | 0.92 | 0.62 | 0.85 | 0.92 | 0.92 |
 | dense | exact_identifier | 5 | 0.60 | 0.80 | 1.00 | 1.00 | 0.60 | 0.80 | 1.00 | 1.00 |
 | dense | split_answer | 2 | 0.50 | 1.00 | 1.00 | 1.00 | 0.50 | 1.00 | 1.00 | 1.00 |
 | dense | vocabulary | 3 | 0.67 | 1.00 | 1.00 | 1.00 | 0.67 | 1.00 | 1.00 | 1.00 |
-| dense | two_hop | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| dense | not_in_corpus_trap | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| **dense+bm25 (default)** | **ALL** | 12 | **0.75** | 0.92 | 1.00 | 1.00 | **0.75** | 0.92 | 1.00 | 1.00 |
+| dense | two_hop | 1 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| dense | other | 2 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| **dense+bm25 (default)** | **ALL** | 13 | **0.69** | 0.85 | 0.92 | 0.92 | **0.69** | 0.85 | 0.92 | 0.92 |
 | dense+bm25 | exact_identifier | 5 | **0.80** | 0.80 | 1.00 | 1.00 | **0.80** | 0.80 | 1.00 | 1.00 |
 | dense+bm25 | split_answer | 2 | 0.50 | 1.00 | 1.00 | 1.00 | 0.50 | 1.00 | 1.00 | 1.00 |
 | dense+bm25 | vocabulary | 3 | 0.67 | 1.00 | 1.00 | 1.00 | 0.67 | 1.00 | 1.00 | 1.00 |
-| dense+bm25 | two_hop | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| dense+bm25 | not_in_corpus_trap | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| dense+bm25 | two_hop | 1 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| dense+bm25 | other | 2 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 
 Reading the tables:
 
@@ -86,23 +103,28 @@ Reading the tables:
 - **`vocabulary`:** BM25 cannot help (no shared word) and can hurt through fusion (q05, section 9).
 - **`versions`:** Hit@1 0.00 → 0.50 with BM25; Hit@3 is already 1.00 with dense.
 - **`two_hop`:** Hit@10 is 1.00 but Recall@10 only 0.72: every chain is "found" but not every hop. In the V2 check, q08 alone has
-  Recall@10 = 0.50 with dense: one of its two hops is not in the top 10.
-- **`not_in_corpus`:** the two Kestrel questions are excluded from the metrics. The own corpus has none: its `not_in_corpus_trap`
-  question (OWN-04, vinegar) is answerable and therefore scored (D-09). OWN-05 (`two_hops`) has a single evidence quote, so Hit = Recall there.
-  The own corpus has no `versions` question. Type names in `own.jsonl` (`different_vocabulary`, `two_hops`) are mapped to the assignment's
-  names when reporting; the file is untouched.
+  Recall@10 = 0.50 with dense: one of its two hops is not in the top 10. The graph raises Recall@3 and @5 to 0.72 (q11's second hop,
+  rank 6 → 2) but not Recall@10 (section 8).
+- **Graph:** it changes only the 5 questions that name an entity of the graph; types without one (`vocabulary`, `versions`, most of
+  `split_answer`) are identical to dense+bm25. `exact_identifier` Hit@1 0.50 → 1.00: q01's chunk goes rank 4 → 1.
+- **`not_in_corpus`:** excluded from the metrics: q09 and q10 on Kestrel, OWN-13 and OWN-14 on the own corpus (D-34). OWN-04
+  (vinegar, answerable) and OWN-05 (one evidence quote) are now typed `other`. The own corpus has no `versions` question.
+- **Own `two_hop` (OWN-15, n = 1):** neither hop is in the top 10 with dense or with dense+bm25, so the own corpus's Hit@10 is 0.92,
+  not 1.00. There is no graph for the own corpus to try (section 6, optional features).
 
 ### Cost per question (no answer generation)
 
 | Corpus | Configuration | Retrieval ms | LLM calls | Index build |
 |---|---|---:|---:|---|
-| Kestrel | dense | 16.4 | 0 | dense 22.6 s (model load; embeddings cached on disk after the first run) |
-| Kestrel | dense+bm25 | 15.2 | 0 | + BM25 0.03 s when built, 0.00 s when loaded from disk |
-| Own | dense | 20.0 | 0 | dense 0.02 s (cached) |
-| Own | dense+bm25 | 13.0 | 0 | + BM25 0.04 s when built, 0.00 s when loaded |
+| Kestrel | dense | 35.8 | 0 | dense 22.0 s (model load; embeddings cached on disk after the first run) |
+| Kestrel | dense+bm25 | 27.6 | 0 | + BM25 0.03 s when built, 0.00 s when loaded from disk |
+| Kestrel | dense+bm25+graph | 33.4 | 0 | + graph: 82 LLM calls once (section 7); 0 calls and 0.03 s when unchanged |
+| Own | dense | 29.0 | 0 | dense 0.02 s (cached) |
+| Own | dense+bm25 | 19.2 | 0 | + BM25 0.04 s when built, 0.00 s when loaded |
 
-Latency differences between configurations are within run-to-run noise (an earlier run measured 31 ms and 40 ms for Kestrel
-dense and dense+bm25; this one 16 ms and 15 ms). The honest statement is: BM25 adds no LLM call and no measurable per-query cost.
+Latency differences between configurations are within run-to-run noise: earlier runs measured 31 and 40 ms, then 16 and 15 ms, for
+Kestrel dense and dense+bm25; this one 36 and 28 ms. The honest statement is: BM25 and the graph add no LLM call and no measurable
+per-query cost; the graph's cost is its build.
 The measured costs of generation (1 LLM call per question) are the same in every configuration.
 
 ## 4. Default configuration and why
@@ -112,7 +134,7 @@ The measured costs of generation (1 LLM call per question) are the same in every
   Against the other fusion settings it is best at k = 3 and 5 (30 candidates: Hit@5 0.90, Recall@5 0.69; weighted 2:1 with 30 candidates: Hit@3 0.70).
   Price, stated openly: Recall@3 is 0.64 against 0.72 for dense alone (`split_answer` Recall@3 0.38 against 1.00: q03 loses a hop to chunks
   that BM25 promotes), and q05 and q03 sit at rank 2 instead of rank 1 (Hit@1 stays 0.50).
-- **Own corpus: `dense+bm25`, same settings.** Hit@1 0.67 → 0.75 (`exact_identifier` 0.60 → 0.80), no loss at any k ≥ 3, no cost.
+- **Own corpus: `dense+bm25`, same settings.** Hit@1 0.62 → 0.69 (`exact_identifier` 0.60 → 0.80), no loss at any k ≥ 3, no cost.
 - Set `DEFAULT_RETRIEVERS=dense,bm25` in `.env`; `candidates` defaults to 10 in code. Weights are an option (`--weights`), not the default,
   because they did not beat plain RRF with 10 candidates and need tuning data we do not have.
 - **Caveat:** `candidates` = 10 was chosen after seeing q05, on the questions it is scored on.
@@ -133,12 +155,42 @@ The measured costs of generation (1 LLM call per question) are the same in every
 
 ## 6. Concept graph
 
-**Status: extraction, entity resolution and graph retrieval done (v3T01 to v3T03); UI path pending (T4).** The V3 submission had
-no graph. Since then:
+**Status: done (v3T01 to v3T04).** The V3 submission had no graph (D-12). Since then: schema, LLM extraction, validation,
+provenance, storage and build cost (section 7, DECISIONS D-20 to D-27); entity resolution with recorded merges (D-28); graph
+retrieval (D-29, below); the graph path in the answer view (D-30). Measured in the matrix as `dense+bm25+graph` (section 3); what
+happened to the graph's chunks after fusion is in section 8.
 
-- done: schema, LLM extraction, validation, provenance, storage, build cost (section 7, DECISIONS D-20 to D-27); entity resolution
-  with recorded merges (D-28); graph retrieval (D-29, below);
-- pending: the path display in the UI (T4); the `dense+bm25+graph` measurement and the "graph's chunks after fusion" analysis (T5).
+This section follows the brief's list: schema, entity resolution, retrieval, cost, where it fails, optional features. The numbers
+behind it (counts, merges, build cost, graded triples) are in section 7.
+
+### Schema
+
+Fixed, versioned (`app/graph_schema.py`, D-20). **Entity types (8):** Product, Feature, Plan, Service, ErrorCode, Policy,
+Procedure, Team. **Relations (10):** the PRD's eight (`has_feature`, `included_in`, `depends_on`, `causes`, `resolved_by`,
+`governed_by`, `owned_by`, `replaces`) plus **`raised_by`** (ErrorCode → Service) and **`escalates_to`** (ErrorCode → Team | Service),
+because the chains of q08, q11 and q12 start at an error code and no PRD relation fits "raised by postroom" or "escalate to Payments
+Core". Each relation declares the types allowed at each end. Fixed rather than open: the corpus is small and known, a fixed list can be
+checked, and an open one returns the same type under several names (`Team`, `Department`, `Squad`). Cost: what fits no type is dropped
+(people, chat channels, prices).
+
+### Extraction and validation
+
+One LLM call per chunk, temperature 0 (D-21). Pydantic checks every reply against the schema and against the chunk: known types,
+allowed ends, each entity named in the chunk, and **each relation's quote copied from the chunk and naming one of its ends** (D-27;
+a bare "Yes" from a table cell no longer passes). Invalid reply → one retry with the errors; if the retry is invalid too, its valid
+entities and relations are kept and the rest dropped and logged (D-26; `--strict` skips the chunk instead). Every node and edge keeps its
+evidence `{doc, chunk_id, quote}` in SQLite (D-22). Each chunk's extraction is cached under (chunk text, schema version, prompt version),
+so a changed document re-extracts only its own chunks. Prompt v1 → v2 after the first build: D-25.
+
+### Entity resolution
+
+Rules in order: **identifier** (error codes, IPs and plan names match exactly or not at all), **normalised name** (case, accents,
+brackets, articles, the suffixes team/service), **alias** listed by the extraction (D-28). Constraints that always hold: never across
+types, never two different identifiers, never the two ends of a `replaces` edge (postroom replaced mailman: q12 needs both). Every merge
+is recorded with its method and evidence and can be switched off (`--rules none`). Rejected: embedding similarity and an LLM judge,
+because their mistakes are false merges (KST-5031 / KST-5038, mailman / postroom) that silently send a chain to the wrong team; we
+accept missed merges instead. Result on our graph: 171 → 166 entities, 5 merges, one correct cross-document merge and one costly missed
+merge (section 7).
 
 ### Graph retrieval (ticket v3T03)
 
@@ -168,13 +220,52 @@ q12 and none of their last hops; counting the evidence of every node reached fin
 **Hub cap** (15 edges) never fires: the highest degree in our graph is 5. **No entity, no graph:** 5 of the 12 questions name no
 entity of the graph and get no graph hit; the unanswerable q10 gets 5 (known failure 18).
 With RRF k = 60 a chunk found only by the graph scores about 1/61 and can be pushed out of the top 5 by chunks that dense and BM25 both
-rank; measuring that is T5.
+rank; section 8 measures it. The gap the graph was built for is in section 3: `two_hop` Recall@5 = 0.56 and Recall@10 = 0.72 for
+dense and for dense+bm25, on q08, q11 (2 hops) and q12 (3 hops with an alias, mailman → postroom → Messaging; D-10).
 
-What exists and works toward it: the retriever contract (`app/retrieval.py`, README), the switches in the UI, the API and the evaluation
-command (`--retrievers dense,bm25,graph` is accepted and fails with a clear message while `app/graph_retriever.py` is absent), the graph-path
-panel in the UI, per-hop Recall@k, and two new Kestrel `two_hop` questions with one evidence quote per hop (q11, 2 hops; q12, 3 hops with an
-alias, mailman → postroom → Messaging). The measured gap the graph would have to close is in section 3: `two_hop` Recall@5 = 0.56 and
-Recall@10 = 0.72 for dense and for dense+bm25. Open design decisions are listed in D-12.
+**In the answer view** (D-30): the entities found in the question with the words that matched them, the edges followed by hop with
+their chunks, and for each chunk "in the final list at rank N" or "not in the final list after fusion". A wrong match or a wrong edge
+(such as `postroom owned_by Identity`) is visible to the user instead of hidden in the ranking.
+
+### Cost
+
+| | LLM calls | Time | When |
+|---|---:|---|---|
+| Build (extraction, prompt v2) | 82 | 286.0 s in LLM calls; 135,390 + 33,797 tokens | once per changed chunk |
+| Rebuild with unchanged documents | 0 | 0.03 s | every build (cache) |
+| Entity resolution | 0 | part of the rebuild | every build |
+| Re-check after a validation change (D-27) | 0 | part of the rebuild | when `VALIDATION_VERSION` changes |
+| Query | 0 | 33.4 ms per question for dense+bm25+graph (27.6 ms without the graph, same run: noise) | every question |
+| Whole experiment (v1, v2, partial runs) | 164 | 504.6 s; 243,380 + 65,138 tokens | spent once |
+
+The model is `nvidia/nemotron-3.5-lightning-30b-a3b` with hidden thinking off (D-24): thinking on cost about 16 times the completion
+tokens and 9 times the time for the same JSON. BM25, for comparison, builds in 0.03 to 0.04 s with no call. The graph is the only
+retriever whose index costs LLM calls, and a document change costs one or two calls per changed chunk.
+
+### Where it fails
+
+Measured on our graph (DECISIONS known failures 9 to 18; the 10 graded triples in section 7: 3 correct, 5 wrong, 2 unsupported):
+
+- **Chunk boundaries.** A line read under the wrong heading gives a wrong edge whose quote is real, so validation cannot catch it:
+  `postroom owned_by Identity` (heading cut at the bottom of the chunk, failure 11) and `KST-2044 escalates_to Data Integrations`
+  (cut at the top, graded triple #1). A boundary also loses a subject (`ledger owned_by Payments Core`, failure 14) and cuts a name
+  ("Analytics Eng", failure 16).
+- **Tables.** The plans table gives no edge since D-27 and the team table is partly extracted, so q08's and q12's last hop (the
+  Messaging row with its channel) is missing (failures 13, 15).
+- **The schema forces a relation.** With no relation for "is printed on" or "a role can do X", the model falls back on `has_feature`,
+  and roles and people become `Team` or `Product` nodes (failure 12; 4 of the 7 bad graded triples).
+- **Missed merges.** One team, three nodes; walks from KST-3012 and KST-3020 stop after one hop (failure 16).
+- **Right chunk, wrong reason.** q08's team-table chunk is reached through the wrong Identity edge; Recall@k counts it (failure 17).
+- **No entity, no graph.** 5 of 12 questions name no entity and get nothing; the unanswerable q10 gets 5 hits (failure 18).
+
+### Optional features
+
+| Feature | Done? | What and why |
+|---|---|---|
+| **Aliases** | yes | An `aliases` table (7 aliases after resolution); the extraction lists them, the alias rule merges on them, merged names stay as aliases, and retrieval matches them when no node has that name (D-28, D-29). The `replaces` constraint keeps mailman and postroom apart even if the LLM calls one an alias of the other. |
+| **Time (valid from / until)** | no | The natural use is the `versions` questions (billing policy 2025 vs 2026). Not done: the dates belong to the document, not to each fact, so they could come from the file name with no LLM call, but the retriever would then need a rule for "which version does the question mean", and the gain is small (`versions` Hit@3 is already 1.00 with dense, section 3). A schema change also bumps the prompt and re-extracts all 43 chunks (about 82 calls). |
+| **Properties on nodes or edges** | no | Would hold what the fixed schema drops: a team's chat channel, a price, a plan's limit (failures 9, 15). The better fix is a deterministic parser for markdown tables (one row, one node or edge, the row as quote, no LLM), which would also restore the plans table and the Messaging row. Not done in the time we had. |
+| **A graph of the own corpus** | no | `GRAPH_CORPORA` is Kestrel only; selecting the graph on the own corpus returns 503. The own corpus (a single manual, 78 chunks at 500/20) has one `two_hop` question since D-34 (OWN-15), so a build of roughly 80 to 160 calls would be measured on n = 1. |
 
 ## 7. The graph in numbers
 
@@ -293,9 +384,29 @@ the chunk, here at the top. Cost: q01 asks exactly about KST-2044, and `python -
 so the graph path shown in the UI tells support to escalate an error the runbook says not to escalate. The quote check (D-21, D-27)
 cannot catch it: the quote is in the chunk and names an end of the relation.
 
+### How we would evaluate a concept graph beyond 10 triples
+
+Ten graded triples say little: 3 correct of 10 gives a 95% interval of about 0.11 to 0.60 (Wilson). What we would measure next, cheapest
+first:
+
+1. **Automatic checks, every build (0 calls).** Already: integrity (no node or edge without evidence, no unknown chunk id). Easy to add:
+   rules the domain gives, such as "a service has one owner" (would flag `postroom owned_by Identity`), "an error code escalates to one
+   place", and type sanity (a `Team` named like a person or a channel).
+2. **Precision on a larger, stratified sample.** About 50 triples, sampled per relation type and per chunk outcome (fully valid vs
+   kept in part, D-26), so the weak strata are visible instead of averaged away; two graders on the same triples, with their agreement
+   reported (we had one disagreement in ten, #5).
+3. **Recall on a small gold set.** Write by hand every triple of a few chunks (the team table, two runbook sections) and count how many
+   the graph has. Precision alone hides what was never extracted, and our worst losses are of that kind (failures 13, 15).
+4. **Entity resolution.** Label the true clusters of the Team and Service nodes and count wrong merges and missed merges
+   (we know of 0 wrong and at least 2 missed, failure 16).
+5. **The path, not only the chunk.** For each `two_hop` question, is every hop reached through a correct edge? Recall@k counts q08's
+   last hop as found through a wrong edge (failure 17), and the answer view shows that path to the user.
+6. **Downstream.** Per-hop Recall@k with and without the graph, and whether the graph's chunks reach the top k after fusion (section 3
+   and section 8). This is the measure that matters for retrieval, but with 3 `two_hop` questions one question moves Recall by up to 0.33.
+
 ## 8. Fusion: what happened to chunks after RRF
 
-There is no graph, but the same mechanism was measured with BM25. RRF uses ranks only, so a chunk found by two retrievers beats a chunk
+The mechanism was first measured with BM25 (below); the graph's chunks are at the end of this section. RRF uses ranks only, so a chunk found by two retrievers beats a chunk
 found by one, even when the second vote comes from deep in a list. Levers: `candidates`, `--rrf-k`, `--weights`. Measured on Kestrel:
 
 | Setting | Hit@3 | Hit@5 | Recall@3 | Recall@5 | q05 |
@@ -306,6 +417,36 @@ found by one, even when the second vote comes from deep in a list. Levers: `cand
 | **RRF, 10 candidates (default)** | **0.90** | **1.00** | 0.64 | **0.79** | **rank 2** |
 
 Not tried: `--rrf-k` below 60, a score threshold on dense, a cross-encoder re-ranker.
+
+### The graph's chunks after fusion (`dense+bm25+graph`)
+
+Final rank of each hop's gold chunk in the fused top 10, without → with the graph (`-` = not in the top 10; graph rank = rank in the
+graph's own list; from `kestrel__dense+bm25.json` and `kestrel__dense+bm25+graph.json`):
+
+| Question | Hop chunk | dense+bm25 | + graph | Graph rank | Why |
+|---|---|---:|---:|---:|---|
+| q08 | support-runbook-errors_md:8 | 1 | 1 | 1 | already first |
+| q08 | service-catalog_md:3 | - | **-** | 5 | graph only: 1/65 ≈ 0.0154, below the 10th chunk (0.0156) |
+| q11 | support-runbook-errors_md:10 | 2 | **1** | 1 | third vote |
+| q11 | service-catalog_md:4 | 6 | **2** | 3 | third vote (dense 10, BM25 2) |
+| q12 | service-catalog_md:2 (hops 1 and 2) | 1 | 1 | 1 | already first |
+| q12 | service-catalog_md:3 | - | **-** | 4 | graph only: 1/64 ≈ 0.0156, below the 10th chunk (0.0288) |
+| q01 | support-runbook-errors_md:4 | 4 | **1** | 1 | third vote (dense 7, BM25 1) |
+| q04 | product-guide_md:1 | 4 | 5 | 4 | `product-guide_md:4` (graph rank 1) overtakes it; the top 6 all have three votes |
+
+**The answer to the brief: the graph moves `two_hop` Recall@5 from 0.56 to 0.72, and Recall@10 stays at 0.72.** The graph's chunks
+that the other retrievers also return reach the top k, often first, because a third vote outscores two. The one hop only the graph finds,
+the team table for q08 and q12, does not: a chunk with one vote at rank 4 or 5 cannot beat chunks with two votes, which is what
+section 6 predicted for RRF with k = 60. That chunk is also reached through the wrong edge `postroom owned_by Identity` (known
+failure 17), so the hop the fusion drops is the one the graph found for the wrong reason.
+
+Worse with the graph: no question at its first gold chunk (summary). One later hop moves down, q04's `product-guide_md:1`, rank 4 → 5,
+still in the top 5. **Unanswerable q10** ("Business") is not scored, but 4 of the graph's chunks are in its final top 10, two of them at
+ranks 1 and 2 with three votes; an answer generated from that list has more plausible context to wrongly answer from (known failure 18).
+Caveat: 3 `two_hop` questions; the gain at k = 3 and 5 is one hop of one question (q11).
+
+Not tried: weighting the graph above 1 in RRF (`--weights`), which would let a graph-only hop at rank 4 or 5 enter the top 10 but would
+also promote the graph's noise (q10, q04), and has no held-out questions to be tuned on.
 
 ## 9. A question where adding a retriever made things worse
 
@@ -335,9 +476,12 @@ own OWN-02 rank 2 → 3. The full automatic list is in `data/results/v3/summary.
 
 ## 10. Decision log and known failures
 
-`DECISIONS.md`, D-01 to D-18 (V3), D-20 to D-27 (concept graph extraction), D-28 (entity resolution) and D-29 (graph retrieval), and its "Known failures" section. In short: BM25 returns nothing for vocabulary-mismatch questions;
-rank-only fusion lets double votes displace a correct single-retriever hit (q05); `split_answer` Recall@3 drops with BM25; `two_hop`
-Recall@5 and @10 are unchanged by BM25 (0.56, 0.72); the English-only stop-word list; no incremental BM25 update; gold chunks are found by quote matching
+`DECISIONS.md`, D-01 to D-18 (V3), D-20 to D-27 (concept graph extraction), D-28 (entity resolution), D-29 (graph retrieval), D-30
+(graph path in the UI), D-31 (answer validation), D-32 (shared tokenizer), D-33 (own-corpus storage), D-34 (own question labels),
+D-35 (answers with a reasoning model), and its "Known failures" section. In short: BM25 returns nothing for vocabulary-mismatch questions;
+rank-only fusion lets double votes displace a correct single-retriever hit (q05), and the graph's only new hop (section 8);
+`split_answer` Recall@3 drops with BM25; `two_hop` Recall@5 is 0.56 with or without BM25 and 0.72 with the graph, Recall@10 is 0.72 in
+every configuration; the English-only stop-word list; no incremental BM25 update; gold chunks are found by quote matching
 (a quote cut by a chunk boundary yields no gold chunk; none occurs in our question files, checked by `tests/test_questions.py`);
 graph retrieval can reach the right chunk through a wrong edge, and adds nothing to a question that names no entity (known failures
 8 to 18 for the graph).
