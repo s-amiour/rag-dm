@@ -1,20 +1,6 @@
-"""Retrieval evaluation: HitRate@k and Recall@k, overall and per question type.
-
-Definitions (also in README / REPORT):
-- A question has "hops": one per evidence quote (two_hop questions have several;
-  a legacy `answer_quote` is one hop). The gold chunks of a hop are the chunks
-  whose text contains the quote (case-insensitive, same document if `source` is
-  given). Same matching rule as V2, so V3 numbers stay comparable to V2.
-- Hit@k    = 1 if at least one hop has a gold chunk in the top k.   (V2's metric)
-- Recall@k = (hops with a gold chunk in the top k) / (all hops).     (new)
-  Recall tells whether ALL the hops of a chain were retrieved. A hop whose quote
-  matches no chunk (quote cut by a chunk boundary) counts as not retrieved and is
-  listed in `unmatched_hops`: it is an annotation/chunking problem, not noise.
-- not_in_corpus questions (answerable=false) have no gold chunk: they are
-  excluded from both metrics, as in V2, but still run (for cost and for display).
-- Cost per question: retrieval latency per retriever, LLM calls, prompt and
-  completion tokens, generation latency (only when generate_answers=True).
-"""
+"""Retrieval evaluation: Hit@k and Recall@k (per hop), overall and per question type,
+plus cost per question. Unanswerable questions are run but excluded from the metrics.
+Definitions: README.md, section "Evaluation" (Metrics)."""
 from __future__ import annotations
 
 import json
