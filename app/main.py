@@ -18,21 +18,29 @@ ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
 from . import evaluate as cli_eval  # the CLI's run-and-save path, shared with /api/evaluate (v3T08)
+from . import bm25 as bm25_module
+from . import retrieval as retrieval_module
+from . import traces
 from .core import (
     DATA,
     DEFAULT_CANDIDATES,
     DEFAULT_CHUNKING,
     DEFAULT_RRF_K,
     DEFAULT_TOP_K,
+    DENSE_MODEL_NAME,
+    records_fingerprint,
     resolve_chunking,
     INVALID_ANSWER_MESSAGE,
     build_chunks,
+    config_fingerprint,
     corpus_status,
     read_corpus,
     load_questions,
     generate_answer,
     generate_answer_with_usage,
+    llm_cost,
     llm_request_options,
+    pipeline_config,
     words_for_corpus,
     question_words,
     safe_name,
@@ -385,95 +393,201 @@ def config():
 @app.post("/api/index/{corpus}/rebuild")
 def rebuild_index(
     corpus: Literal["kestrel", "own"],
-    chunk_size: int = 800,
-    overlap: int = 10
+    chunk_size: int | None = None,
+    overlap: int | None = None
 ):
-    """Force a BM25 rebuild (it is normally rebuilt automatically when the
-    documents, their selection, or the chunking change)."""
-    retriever = get_bm25(corpus, chunk_size, overlap, force=True)
+    """Force a rebuild of the dense embeddings and the BM25 index (both are normally rebuilt
+    automatically when the documents, their selection, or the chunking change). No chunking given:
+    the corpus default (core.DEFAULT_CHUNKING), as in /api/ask. One `index` trace (v4T03)."""
+    size, overlap = resolve_chunking(corpus, chunk_size, overlap)
 
-    return retriever.info
+    with traces.trace("index", kind="index", corpus=corpus,
+                      chunk_size=size, overlap=overlap, trigger="rebuild") as trace:
+        with trace.span("load+chunk") as span:
+            records = build_chunks(corpus, size, overlap)
+            span.set(documents=len({r["document"] for r in records}), chunks=len(records),
+                     corpus_hash=records_fingerprint(records))
+
+        if not records:
+            raise HTTPException(400, f"No documents found for {corpus}. Upload the corpus documents first.")
+
+        # the fingerprint of the default pipeline over these chunks, so an index trace can be matched
+        # with the questions and evaluation runs that used it
+        trace.set(fingerprint=config_fingerprint(pipeline_config(
+            corpus, records, chunk_size=size, overlap=overlap, top_k=DEFAULT_TOP_K,
+            candidates=DEFAULT_CANDIDATES, retrievers=default_retrievers(), rrf_k=DEFAULT_RRF_K
+        )))
+
+        try:
+            with trace.span("embed") as span:
+                dense = retrieval_module.get_dense(corpus, size, overlap, records=records, strict=True, force=True)
+                dense_info = {
+                    "backend": dense.backend,
+                    "model": DENSE_MODEL_NAME,
+                    "chunks": len(records),
+                    "cache_hit": False,
+                    "build_seconds": round(float(dense.build_seconds), 3)
+                }
+                span.set(**dense_info)
+        except RetrieverUnavailable as e:
+            raise HTTPException(503, str(e))
+
+        with trace.span("bm25.build") as span:
+            retriever = get_bm25(corpus, size, overlap, records=records, force=True)
+            span.set(
+                chunks=retriever.info.get("chunks"),
+                vocabulary=retriever.info.get("terms"),
+                stopwords=bm25_module.stopwords_enabled(),
+                tokenizer_version=bm25_module.TOKENIZER_VERSION,
+                source=retriever.info.get("source"),
+                build_seconds=round(float(retriever.info.get("seconds") or 0.0), 4)
+            )
+
+        trace.set_outcome("ok")
+
+        # today's response (the BM25 info) is kept at the top level; the rest is added
+        return {
+            **retriever.info,
+            "trace_id": trace.id,
+            "chunks": len(records),
+            "dense": dense_info,
+            "bm25": retriever.info
+        }
+
+
+def question_outcome(valid: bool, cited_ids: list[str]) -> str:
+    """Outcome of an answered request (v4T02): invalid reply, abstention (a valid reply that cites
+    nothing: the prompt asks the model to say the answer is not in the documents), or answered.
+    "error" is set by the trace itself when an exception ends the request."""
+    if not valid:
+        return "invalid"
+    return "answered" if cited_ids else "abstained"
 
 
 @app.post("/api/ask")
 def ask(req: AskRequest):
     chunk_size, overlap = resolve_chunking(req.corpus, req.chunk_size, req.overlap)
-    records = build_chunks(
-        req.corpus,
-        chunk_size,
-        overlap
-    )
 
-    if not records:
-        raise HTTPException(
-            400,
-            f"No documents found for {req.corpus}. Upload the corpus documents first."
-        )
-
-    try:
-        out = retrieve(
+    # One trace per question (v4T02). An exception closes it with outcome "error" before the
+    # HTTP error reaches the user. T09: pass the redacted question here.
+    with traces.trace(
+        "request",
+        kind="question",
+        corpus=req.corpus,
+        question=req.question,
+        retrievers=list(dict.fromkeys(req.retrievers)),
+        top_k=req.top_k,
+        candidates=req.candidates,
+        rrf_k=req.rrf_k,
+        chunk_size=chunk_size,
+        overlap=overlap
+    ) as trace:
+        records = build_chunks(
             req.corpus,
-            req.question,
             chunk_size,
-            overlap,
-            req.retrievers,
-            depth=req.top_k,
-            candidates=req.candidates,
-            rrf_k=req.rrf_k,
-            strict_dense=not req.allow_tfidf_fallback,
-            records=records
+            overlap
         )
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    except RetrieverUnavailable as e:
-        raise HTTPException(503, str(e))
 
-    hits = out["hits"]
+        if not records:
+            raise HTTPException(
+                400,
+                f"No documents found for {req.corpus}. Upload the corpus documents first."
+            )
 
-    # Errors here are about reaching the LLM (missing config, network,
-    # timeout). A reply that arrives but is malformed is not an error:
-    # parse_llm_answer flags it with valid=False.
-    try:
-        raw, gen_usage = generate_answer_with_usage(req.question, hits)
-    except Exception as e:
-        raise HTTPException(503, str(e))
+        trace.set(fingerprint=config_fingerprint(pipeline_config(
+            req.corpus, records, chunk_size=chunk_size, overlap=overlap, top_k=req.top_k,
+            candidates=req.candidates, retrievers=req.retrievers, rrf_k=req.rrf_k
+        )))
 
-    answer = json.loads(raw)
-    valid = answer["valid"]
+        try:
+            out = retrieve(
+                req.corpus,
+                req.question,
+                chunk_size,
+                overlap,
+                req.retrievers,
+                depth=req.top_k,
+                candidates=req.candidates,
+                rrf_k=req.rrf_k,
+                strict_dense=not req.allow_tfidf_fallback,
+                records=records,
+                trace=trace
+            )
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        except RetrieverUnavailable as e:
+            raise HTTPException(503, str(e))
 
-    usage = {
-        "llm_calls": out["usage"]["llm_calls"] + gen_usage["llm_calls"],
-        "prompt_tokens": (
-            out["usage"]["prompt_tokens"] + gen_usage["prompt_tokens"]
-        ),
-        "completion_tokens": (
-            out["usage"]["completion_tokens"] + gen_usage["completion_tokens"]
-        ),
-        "generation_latency_s": gen_usage["latency_s"],
-        "finish_reason": gen_usage.get("finish_reason"),
-        "thinking": gen_usage.get("thinking")
-    }
+        hits = out["hits"]
 
-    return {
-        "answer": answer["answer"] if valid else answer.get("user_message", INVALID_ANSWER_MESSAGE),
-        "valid": valid,
-        "validation_error": answer.get("error"),
-        "citations": [
-            {**hit, "citation": hit["id"]}
-            for hit in hits
-            if hit["id"] in answer["citations"]
-        ],
-        "retrieved": hits,
-        "retrievers": out["retrievers"],
-        "backend": ", ".join(
-            f"{name}={detail if isinstance(detail, str) else detail.get('index')}"
-            for name, detail in out["backend"].items()
-        ),
-        "dense_backend": out["backend"].get("dense"),  # "sentence-transformers", "tfidf", or None if dense is off
-        "graph_path": out["graph_path"],
-        "timings": out["timings"],
-        "usage": usage
-    }
+        # Errors here are about reaching the LLM (missing config, network,
+        # timeout). A reply that arrives but is malformed is not an error:
+        # parse_llm_answer flags it with valid=False.
+        try:
+            with trace.span("generate") as span:
+                span.set(**{"gen_ai.request.model": os.getenv("LLM_MODEL")})
+                raw, gen_usage = generate_answer_with_usage(req.question, hits)
+                cost_usd, price_known = llm_cost(gen_usage["prompt_tokens"], gen_usage["completion_tokens"])
+                span.set(**{
+                    "gen_ai.request.model": gen_usage.get("request_model") or os.getenv("LLM_MODEL"),
+                    "gen_ai.response.model": gen_usage.get("response_model"),
+                    "gen_ai.usage.input_tokens": gen_usage["prompt_tokens"],
+                    "gen_ai.usage.output_tokens": gen_usage["completion_tokens"],
+                    "gen_ai.response.finish_reasons": [gen_usage.get("finish_reason")],
+                    "thinking": gen_usage.get("thinking"),
+                    "cost_usd": cost_usd,
+                    "price_known": price_known
+                })
+        except Exception as e:
+            raise HTTPException(503, str(e))
+
+        with trace.span("validate") as span:
+            answer = json.loads(raw)
+            valid = answer["valid"]
+            cited_ids = [hit["id"] for hit in hits if hit["id"] in answer["citations"]]
+            span.set(
+                valid=valid,
+                validation_error=answer.get("error"),
+                cited_ids=cited_ids,
+                dropped_citations=answer.get("dropped_citations", 0)
+            )
+
+        trace.set_outcome(question_outcome(valid, cited_ids))
+
+        usage = {
+            "llm_calls": out["usage"]["llm_calls"] + gen_usage["llm_calls"],
+            "prompt_tokens": (
+                out["usage"]["prompt_tokens"] + gen_usage["prompt_tokens"]
+            ),
+            "completion_tokens": (
+                out["usage"]["completion_tokens"] + gen_usage["completion_tokens"]
+            ),
+            "generation_latency_s": gen_usage["latency_s"],
+            "finish_reason": gen_usage.get("finish_reason"),
+            "thinking": gen_usage.get("thinking")
+        }
+
+        return {
+            "answer": answer["answer"] if valid else answer.get("user_message", INVALID_ANSWER_MESSAGE),
+            "valid": valid,
+            "validation_error": answer.get("error"),
+            "citations": [
+                {**hit, "citation": hit["id"]}
+                for hit in hits
+                if hit["id"] in answer["citations"]
+            ],
+            "retrieved": hits,
+            "retrievers": out["retrievers"],
+            "backend": ", ".join(
+                f"{name}={detail if isinstance(detail, str) else detail.get('index')}"
+                for name, detail in out["backend"].items()
+            ),
+            "dense_backend": out["backend"].get("dense"),  # "sentence-transformers", "tfidf", or None if dense is off
+            "graph_path": out["graph_path"],
+            "timings": out["timings"],
+            "usage": usage,
+            "trace_id": trace.id  # opens this answer's trace (Details panel, v4T04)
+        }
 
 
 @app.get("/api/words/{corpus}")

@@ -112,12 +112,22 @@ def run_and_save(
     started = time.perf_counter()
     # the run's stop-word setting applies to this run only, success or failure (v3T17)
     with bm25_module.stopwords_setting(stopwords):
+        records = core.build_chunks(corpus, size, overlap)
+        # same function as /api/ask, so a question and a run with the same settings share a fingerprint (v4T02)
+        pipeline = core.pipeline_config(
+            corpus, records, chunk_size=size, overlap=overlap, top_k=top_k, candidates=candidates,
+            retrievers=retrievers, rrf_k=rrf_k, weights=weights
+        )
         result = evaluate_corpus(
             corpus, size, overlap, top_k, retrievers, questions=questions,
             generate_answers=generate_answers, rrf_k=rrf_k, candidates=candidates, weights=weights,
-            strict_dense=strict_dense, label=name, progress=progress
+            strict_dense=strict_dense, label=name, records=records, progress=progress
         )
 
+    fingerprint = core.config_fingerprint(pipeline)
+    result["summary"]["fingerprint"] = fingerprint
+    result["summary"]["config"]["fingerprint"] = fingerprint
+    result["summary"]["pipeline_config"] = pipeline
     result["summary"]["wall_seconds"] = time.perf_counter() - started
     result["summary"]["run_at"] = time.strftime("%Y-%m-%d %H:%M:%S")  # v3T09: shows mixed-age results in the summary
     path = save(result, out_dir, corpus, name)
@@ -255,15 +265,16 @@ def write_atomic(path: Path, text: str) -> None:
 def configurations_table(runs) -> str:
     """One row per configuration file: when it was run and with which settings, so a configuration
     rerun after a code change stands out instead of silently mixing with older numbers (v3T09)."""
-    out = "| Corpus | Configuration | Run at | Chunking | Top-k | Candidates | RRF k | Dense backend |\n"
-    out += "|---|---|---|---|---:|---:|---:|---|\n"
+    out = "| Corpus | Configuration | Run at | Chunking | Top-k | Candidates | RRF k | Dense backend | Fingerprint |\n"
+    out += "|---|---|---|---|---:|---:|---:|---|---|\n"
 
     for corpus, name, result in runs:
         s = result["summary"]
         c = s["config"]
         out += (
             f"| {corpus} | {name} | {s.get('run_at') or '– (before v3T09)'} | {c.get('chunk_size')}/{c.get('overlap')} | "
-            f"{c.get('top_k')} | {c.get('candidates')} | {c.get('rrf_k')} | {c.get('dense_backend') or '–'} |\n"
+            f"{c.get('top_k')} | {c.get('candidates')} | {c.get('rrf_k')} | {c.get('dense_backend') or '–'} | "
+            f"{s.get('fingerprint') or '– (before v4T02)'} |\n"
         )
 
     return out

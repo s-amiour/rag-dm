@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 import time
+from contextlib import nullcontext
 from typing import Any
 
 from . import bm25 as bm25_module
@@ -85,14 +86,28 @@ DENSE_UNAVAILABLE = (
 )
 
 
-def get_dense(corpus: str, size: int, overlap: int, records=None, strict: bool = True):
-    """core.get_dense, with a strict-mode failure raised as RetrieverUnavailable (503 in the API)."""
+def get_dense(corpus: str, size: int, overlap: int, records=None, strict: bool = True, force: bool = False):
+    """core.get_dense, with a strict-mode failure raised as RetrieverUnavailable (503 in the API).
+    force=True recomputes the embeddings (explicit rebuild, v4T03); default unchanged."""
     try:
-        return core.get_dense(corpus, size, overlap, records=records, strict=strict)
+        return core.get_dense(corpus, size, overlap, records=records, strict=strict, force=force)
     except RuntimeError as exc:
         if strict:
             raise RetrieverUnavailable(f"{DENSE_UNAVAILABLE} ({exc})") from exc
         raise
+
+
+def _span(trace, name: str):
+    """A span of the request's trace, or nothing when retrieve() runs untraced (evaluation runs)."""
+    return trace.span(name) if trace is not None else nullcontext(None)
+
+
+def _ranked(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Chunk ids with rank and score, for a trace (never the chunk text)."""
+    return [
+        {"id": h["id"], "rank": i, "score": round(float(h.get("score", 0.0)), 6)}
+        for i, h in enumerate(hits, start=1)
+    ]
 
 
 def retrieve(
@@ -106,12 +121,15 @@ def retrieve(
     rrf_k: int = 60,
     weights: dict[str, float] | None = None,
     strict_dense: bool = False,
-    records: list[dict[str, Any]] | None = None
+    records: list[dict[str, Any]] | None = None,
+    trace=None
 ) -> dict[str, Any]:
     """Run the retrievers that are on and return the top `depth` chunks.
 
     One retriever on: its own ranking (no fusion). Several on: RRF over their
     top `candidates` lists. Every returned chunk carries "sources".
+    With a trace (app.traces), each retriever and the fusion get a span holding
+    their full candidate list (ids, ranks, scores); evaluation runs pass none.
     """
     names = normalize_retrievers(corpus, retrievers)
 
@@ -131,30 +149,59 @@ def retrieve(
     for name in names:
         t0 = time.perf_counter()
 
-        if name == "dense":
-            dense = get_dense(corpus, size, overlap, records=records, strict=strict_dense)
-            lists["dense"] = dense.search(question, n)
-            backend["dense"] = dense.backend
+        with _span(trace, f"retrieve.{name}") as span:
+            if name == "dense":
+                dense = get_dense(corpus, size, overlap, records=records, strict=strict_dense)
+                lists["dense"] = dense.search(question, n)
+                backend["dense"] = dense.backend
 
-        elif name == "bm25":
-            lexical = bm25_module.get_bm25(corpus, size, overlap, records=records)
-            lists["bm25"] = lexical.search(question, n)
-            backend["bm25"] = {
-                "index": lexical.info.get("source"),
-                "stopwords": bm25_module.stopwords_enabled()
-            }
+                if span:
+                    source = getattr(dense, "source", None)  # built / disk / memory (v4T03)
+                    span.set(
+                        backend=dense.backend,
+                        index_source=source,
+                        cache_hit=source != "built",
+                        build_seconds=0.0 if source == "memory" else round(float(getattr(dense, "build_seconds", 0.0)), 3),
+                        results=_ranked(lists["dense"])
+                    )
 
-        else:  # graph
-            out = _run_graph(corpus, question, n, size, overlap)
-            graph_path = out.get("path")
-            lists["graph"] = [
-                {**by_id[h["id"]], "score": float(h.get("score", 0.0))}
-                for h in out.get("hits", [])
-                if h.get("id") in by_id  # drop ids that are not in this chunking
-            ]
+            elif name == "bm25":
+                lexical = bm25_module.get_bm25(corpus, size, overlap, records=records)
+                lists["bm25"] = lexical.search(question, n)
+                backend["bm25"] = {
+                    "index": lexical.info.get("source"),
+                    "stopwords": bm25_module.stopwords_enabled()
+                }
 
-            for key in usage:
-                usage[key] += int((out.get("usage") or {}).get(key, 0) or 0)
+                if span:
+                    span.set(index=backend["bm25"]["index"], index_source=lexical.info.get("source"),
+                             build_seconds=round(float(lexical.info.get("seconds") or 0.0), 4)
+                             if lexical.info.get("source") == "built" else 0.0,
+                             stopwords=backend["bm25"]["stopwords"], results=_ranked(lists["bm25"]))
+
+            else:  # graph
+                out = _run_graph(corpus, question, n, size, overlap)
+                graph_path = out.get("path")
+                lists["graph"] = [
+                    {**by_id[h["id"]], "score": float(h.get("score", 0.0))}
+                    for h in out.get("hits", [])
+                    if h.get("id") in by_id  # drop ids that are not in this chunking
+                ]
+                graph_usage = {k: int((out.get("usage") or {}).get(k, 0) or 0) for k in usage}
+
+                for key in usage:
+                    usage[key] += graph_usage[key]
+
+                if span:
+                    path = graph_path or {}
+                    span.set(
+                        results=_ranked(lists["graph"]),
+                        entities=[{"name": e.get("name"), "type": e.get("type")}
+                                  for e in path.get("entities") or []],
+                        edges=[{k: e.get(k) for k in ("source", "relation", "target", "hop")}
+                               for e in path.get("edges") or []],
+                        **graph_usage
+                    )
 
         timings[f"{name}_s"] = time.perf_counter() - t0
 
@@ -169,7 +216,14 @@ def retrieve(
             for i, h in enumerate(hits[:depth], start=1)
         ]
     else:
-        fused = rrf(lists, k=rrf_k, weights=weights, limit=depth)
+        with _span(trace, "fuse.rrf") as span:
+            fused = rrf(lists, k=rrf_k, weights=weights, limit=depth)
+
+            if span:
+                span.set(rrf_k=rrf_k, weights=weights, results=[
+                    {**r, "sources": {name: src["rank"] for name, src in (h.get("sources") or {}).items()}}
+                    for r, h in zip(_ranked(fused), fused)
+                ])
 
     timings["fusion_s"] = time.perf_counter() - t0
     timings["total_s"] = time.perf_counter() - started

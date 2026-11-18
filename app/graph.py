@@ -51,6 +51,7 @@ from pydantic import (
 
 from . import core
 from . import graph_resolve
+from . import traces
 from .graph_schema import (
     ENTITY_TYPES,
     RELATIONS,
@@ -981,16 +982,57 @@ def _cost(con, where: str, params=()) -> dict[str, Any]:
             "llm_time_s": round(row["lat"], 2), "models": models}
 
 
+def _chunk_span_attributes(result: ChunkResult, price_prefix: str) -> dict[str, Any]:
+    """What a graph.extract span shows for a chunk sent to the LLM (v4T03): copied from the
+    ChunkResult and its CallLogs, the same numbers as llm_calls.jsonl, nothing measured again.
+    Never the raw reply (it can quote the chunk)."""
+    tokens_in = sum(c.prompt_tokens for c in result.calls)
+    tokens_out = sum(c.completion_tokens for c in result.calls)
+    cost_usd, price_known = core.llm_cost(tokens_in, tokens_out, price_prefix)
+    ex = result.extraction
+    attributes = {
+        "cached": False,
+        "result": result.status,
+        "entities": len(ex.entities) if ex else 0,
+        "relations": len(ex.relations) if ex else 0,
+        "attempts": len(result.calls),
+        "call_outcomes": [c.outcome for c in result.calls],
+        "gen_ai.request.model": result.calls[0].model if result.calls else None,
+        "gen_ai.usage.input_tokens": tokens_in,
+        "gen_ai.usage.output_tokens": tokens_out,
+        "cost_usd": cost_usd,
+        "price_known": price_known,
+    }
+    if result.status == "partial":
+        attributes["dropped_items"] = len(result.error.removeprefix("dropped: ").split(" | "))
+    return attributes
+
+
+def _cached_span_attributes(status: str, ex: ChunkExtraction | None, dropped: list[str]) -> dict[str, Any]:
+    return {
+        "cached": True, "result": "cached", "cached_status": status,
+        "entities": len(ex.entities) if ex else 0, "relations": len(ex.relations) if ex else 0,
+        "rechecked_dropped": len(dropped), "attempts": 0, "call_outcomes": [],
+        "gen_ai.usage.input_tokens": 0, "gen_ai.usage.output_tokens": 0, "cost_usd": 0.0,
+    }
+
+
 def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP,
           llm: LLM | None = None, records: list[dict[str, Any]] | None = None,
           retry_skipped: bool = False, limit: int | None = None,
           delay_s: float | None = None, log=None, strict: bool = False,
-          rules: tuple[str, ...] = graph_resolve.RULES) -> dict[str, Any]:
-    """Extract (or reuse) every chunk, rebuild the graph, check it, export the logs."""
+          rules: tuple[str, ...] = graph_resolve.RULES, trace: "traces.Trace | None" = None) -> dict[str, Any]:
+    """Extract (or reuse) every chunk, rebuild the graph, check it, export the logs.
+
+    With a trace (app.traces, v4T03): a load+chunk span, one graph.extract span per chunk (cached ones
+    included and flagged; skipped and failed chunks have status error), and a graph.resolve span. The
+    trace only observes: the cache, the call log and the exports are exactly the same without it."""
     if corpus not in GRAPH_CORPORA:
         raise ValueError(f"The concept graph is only built for: {', '.join(GRAPH_CORPORA)}.")
-    if records is None:
-        records = core.build_chunks(corpus, chunk_size, overlap)
+    with traces.span_of(trace, "load+chunk") as span:
+        if records is None:
+            records = core.build_chunks(corpus, chunk_size, overlap)
+        span.set(chunks=len(records))
     if not records:
         raise RuntimeError(f"No chunks for corpus {corpus!r}.")
     if delay_s is None:
@@ -1000,6 +1042,10 @@ def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap
     log = log or (lambda msg: print(msg, flush=True))
     started = time.perf_counter()
     build_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
+    graph_model = getattr(llm, "model", None) or os.getenv("GRAPH_LLM_MODEL") or os.getenv("LLM_MODEL")
+    price_prefix = "GRAPH_LLM" if os.getenv("GRAPH_LLM_MODEL") else "LLM"
+    traces.root_of(trace).set(corpus=corpus, chunk_size=chunk_size, overlap=overlap, trigger="graph.build",
+                              build_id=build_id, prompt_version=PROMPT_VERSION, model=graph_model, strict=strict)
     con = connect(corpus)
     pacer = _Pacer(delay_s)
     counts = {"extracted": 0, "retried": 0, "partial": 0, "salvaged_from_cache": 0, "cached": 0, "skipped": 0,
@@ -1012,68 +1058,78 @@ def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap
 
     try:
         for i, record in enumerate(records, start=1):
-            h = chunk_hash(record["text"])
-            row = con.execute("SELECT status, extraction, raw_reply FROM extraction_cache WHERE chunk_hash=?",
-                              (h,)).fetchone()
+            with traces.span_of(trace, "graph.extract", chunk_id=record["id"]) as span:
+                h = chunk_hash(record["text"])
+                row = con.execute("SELECT status, extraction, raw_reply FROM extraction_cache WHERE chunk_hash=?",
+                                  (h,)).fetchone()
 
-            # a chunk skipped by an earlier build: its stored reply may still have a valid part (no LLM call)
-            if row and row["status"] == "skipped" and not strict and not retry_skipped and row["raw_reply"]:
-                kept, dropped = salvage(row["raw_reply"], record["text"])
-                if kept is not None:
-                    con.execute("UPDATE extraction_cache SET status='partial', extraction=?, error=? WHERE chunk_hash=?",
-                                (kept.model_dump_json(), "dropped: " + " | ".join(dropped), h))
-                    con.commit()
-                    counts["salvaged_from_cache"] += 1
-                    row = con.execute("SELECT status, extraction, raw_reply FROM extraction_cache WHERE chunk_hash=?",
-                                      (h,)).fetchone()
+                # a chunk skipped by an earlier build: its stored reply may still have a valid part (no LLM call)
+                if row and row["status"] == "skipped" and not strict and not retry_skipped and row["raw_reply"]:
+                    kept, dropped = salvage(row["raw_reply"], record["text"])
+                    if kept is not None:
+                        con.execute("UPDATE extraction_cache SET status='partial', extraction=?, error=? WHERE chunk_hash=?",
+                                    (kept.model_dump_json(), "dropped: " + " | ".join(dropped), h))
+                        con.commit()
+                        counts["salvaged_from_cache"] += 1
+                        row = con.execute("SELECT status, extraction, raw_reply FROM extraction_cache WHERE chunk_hash=?",
+                                          (h,)).fetchone()
 
-            usable = {"ok"} if strict else {"ok", "partial"}
-            if row and (row["status"] in usable or not retry_skipped):
-                counts["cached"] += 1
-                if row["status"] in usable:
-                    ex, status, dropped = _recheck(row["extraction"], row["status"], record["text"], strict)
-                    if dropped:
-                        rechecked[record["id"]] = dropped
-                    if ex is None:
-                        counts["skipped"] += 1
+                usable = {"ok"} if strict else {"ok", "partial"}
+                if row and (row["status"] in usable or not retry_skipped):
+                    counts["cached"] += 1
+                    if row["status"] in usable:
+                        ex, status, dropped = _recheck(row["extraction"], row["status"], record["text"], strict)
+                        if dropped:
+                            rechecked[record["id"]] = dropped
+                        span.set(**_cached_span_attributes(status, ex, dropped))
+                        if ex is None:
+                            counts["skipped"] += 1
+                            span.fail("cached extraction no longer passes the current rules (re-checked, 0 calls)")
+                        else:
+                            extractions[record["id"]] = ex
+                            counts["partial"] += status == "partial"
                     else:
-                        extractions[record["id"]] = ex
-                        counts["partial"] += status == "partial"
-                else:
+                        counts["skipped"] += 1
+                        span.set(**_cached_span_attributes(row["status"], None, []))
+                        span.fail("skipped by an earlier build (invalid output twice); --retry-skipped asks again")
+                    continue
+
+                if aborted or (limit is not None and i > limit):  # only the first `limit` chunks: a rerun is free
+                    counts["not_attempted"] += 1
+                    span.set(cached=False, result="not_attempted", attempts=0,
+                             reason="build stopped early" if aborted else f"--limit {limit}")
+                    continue
+
+                if llm is None:
+                    llm = OpenAICompatibleLLM()  # only now: a fully cached rerun needs no key
+                llm_options = dict(getattr(llm, "options", None) or {"model": llm.model})
+                attempted += 1
+                log(f"  [{i:>3}/{len(records)}] {record['id']:<34} asking {llm.model} ...")
+                t_chunk = time.perf_counter()
+                try:
+                    result = extract_chunk(llm, record, pacer, notify=log, strict=strict)
+                except FatalLLMError as exc:
+                    result = ChunkResult("error", error=str(exc)[:1000], calls=exc.calls)
+                    aborted = str(exc)
+                _save_chunk_result(con, build_id, record, result)
+                span.set(**_chunk_span_attributes(result, price_prefix))
+                if result.status in ("skipped", "error"):
+                    span.fail(result.error)
+                consecutive_errors = consecutive_errors + 1 if result.status == "error" else 0
+                if consecutive_errors >= MAX_CONSECUTIVE_ERRORS and not aborted:
+                    aborted = f"{consecutive_errors} chunks in a row failed, last error: {result.error}"
+
+                if result.status in ("ok", "retried", "partial"):
+                    counts["extracted"] += 1
+                    counts["retried"] += result.status == "retried"
+                    counts["partial"] += result.status == "partial"
+                    extractions[record["id"]] = result.extraction
+                elif result.status == "skipped":
                     counts["skipped"] += 1
-                continue
-
-            if aborted or (limit is not None and i > limit):  # only the first `limit` chunks: a rerun is free
-                counts["not_attempted"] += 1
-                continue
-
-            if llm is None:
-                llm = OpenAICompatibleLLM()  # only now: a fully cached rerun needs no key
-            llm_options = dict(getattr(llm, "options", None) or {"model": llm.model})
-            attempted += 1
-            log(f"  [{i:>3}/{len(records)}] {record['id']:<34} asking {llm.model} ...")
-            t_chunk = time.perf_counter()
-            try:
-                result = extract_chunk(llm, record, pacer, notify=log, strict=strict)
-            except FatalLLMError as exc:
-                result = ChunkResult("error", error=str(exc)[:1000], calls=exc.calls)
-                aborted = str(exc)
-            _save_chunk_result(con, build_id, record, result)
-            consecutive_errors = consecutive_errors + 1 if result.status == "error" else 0
-            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS and not aborted:
-                aborted = f"{consecutive_errors} chunks in a row failed, last error: {result.error}"
-
-            if result.status in ("ok", "retried", "partial"):
-                counts["extracted"] += 1
-                counts["retried"] += result.status == "retried"
-                counts["partial"] += result.status == "partial"
-                extractions[record["id"]] = result.extraction
-            elif result.status == "skipped":
-                counts["skipped"] += 1
-            else:
-                counts["errors"] += 1
-            log(f"          -> {result.status}, {len(result.calls)} call(s), {time.perf_counter() - t_chunk:.1f} s"
-                + (f"  {result.error.splitlines()[0][:80]}" if result.error else ""))
+                else:
+                    counts["errors"] += 1
+                log(f"          -> {result.status}, {len(result.calls)} call(s), {time.perf_counter() - t_chunk:.1f} s"
+                    + (f"  {result.error.splitlines()[0][:80]}" if result.error else ""))
 
         missing = counts["errors"] + counts["not_attempted"]
         meta = {
@@ -1082,7 +1138,11 @@ def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap
             "prompt_version": PROMPT_VERSION, "built_at": _now(), "build_id": build_id,
             "chunks": str(len(records)), "chunks_missing": str(missing),
         }
-        rebuilt = _rebuild_graph(con, records, extractions, meta, rules)
+        with traces.span_of(trace, "graph.resolve") as span:
+            rebuilt = _rebuild_graph(con, records, extractions, meta, rules)
+            span.set(nodes=con.execute("SELECT COUNT(*) FROM nodes").fetchone()[0],
+                     edges=con.execute("SELECT COUNT(*) FROM edges").fetchone()[0],
+                     merges=rebuilt["resolution"]["merges"], raw_triples=rebuilt["raw_triples"])
         raw_triples = rebuilt["raw_triples"]
         integrity = check_integrity(con, records)
 
@@ -1121,6 +1181,13 @@ def build(corpus: str = "kestrel", chunk_size: int = DEFAULT_CHUNK_SIZE, overlap
         _export(con, summary)
     finally:
         con.close()
+
+    if trace is not None:
+        trace.set_outcome("error" if aborted else "ok")
+        trace.set(state=summary["state"], aborted=aborted[:200] or None,
+                  fingerprint=core.config_fingerprint(core.pipeline_config(
+                      corpus, records, chunk_size=chunk_size, overlap=overlap, top_k=core.DEFAULT_TOP_K,
+                      candidates=core.DEFAULT_CANDIDATES, retrievers=["graph"], rrf_k=core.DEFAULT_RRF_K)))
 
     return summary
 
@@ -1254,15 +1321,22 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.cmd == "build":
+        holder: dict[str, Any] = {}
         try:
             rules = parse_rules(args.rules)
-            summary = build(args.corpus, args.chunk_size, args.overlap,
-                            retry_skipped=args.retry_skipped, limit=args.limit, delay_s=args.delay,
-                            strict=args.strict, rules=rules)
+            # one index trace per build (v4T03); an exception still closes it, with outcome error
+            with traces.trace("index", kind="index", corpus=args.corpus) as t:
+                holder["trace"] = t
+                summary = build(args.corpus, args.chunk_size, args.overlap,
+                                retry_skipped=args.retry_skipped, limit=args.limit, delay_s=args.delay,
+                                strict=args.strict, rules=rules, trace=t)
         except (RuntimeError, ValueError) as exc:
             print(f"error: {exc}", file=sys.stderr)
+            if "trace" in holder:
+                print(f"trace: {holder['trace'].id}", file=sys.stderr)
             return 2
         print(format_summary(summary))
+        print(f"  trace              {t.id}" + ("" if t.stored else "  (not stored, see the warning above)"))
         return 0 if summary["integrity"]["ok"] else 1
 
     records = core.build_chunks(args.corpus, args.chunk_size, args.overlap)

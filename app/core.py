@@ -152,7 +152,10 @@ class Retriever:
     strict=True raises instead of silently falling back to TF-IDF: use it for
     every evaluation, otherwise "dense" numbers may really be TF-IDF numbers.
     cache_key enables an on-disk embedding cache (data/index/dense-<key>.npz),
-    validated by a fingerprint of the chunks.
+    validated by a fingerprint of the chunks. force=True ignores that cache (the
+    embeddings are recomputed, then saved again).
+    `source` says where this call got its embeddings: "built", "disk" (the .npz),
+    or "memory" (set by get_dense when it returns an already-loaded retriever).
     """
 
     def __init__(
@@ -160,9 +163,11 @@ class Retriever:
         records: list[dict[str, Any]],
         backend: str = "auto",
         strict: bool = False,
-        cache_key: str | None = None
+        cache_key: str | None = None,
+        force: bool = False
     ):
         self.records = records
+        self.force = force
         self.backend = "tfidf"
         self.model = None
         self.matrix = None
@@ -203,6 +208,7 @@ class Retriever:
             self._cosine = cosine_similarity
 
         self.build_seconds = time.perf_counter() - started
+        self.source = "disk" if self.cache_hit else "built"
         print(
             f"Retriever backend selected: {self.backend} "
             f"(embedding cache hit: {self.cache_hit}, "
@@ -215,7 +221,7 @@ class Retriever:
         fingerprint = records_fingerprint(self.records, DENSE_MODEL_NAME)
         path = INDEX_DIR / f"dense-{cache_key}.npz" if cache_key else None
 
-        if path is not None and path.exists():
+        if path is not None and path.exists() and not self.force:
             try:
                 with np.load(path, allow_pickle=False) as z:
                     if str(z["fingerprint"]) == fingerprint:
@@ -277,9 +283,11 @@ def get_dense(
     size: int,
     overlap: int,
     records: list[dict[str, Any]] | None = None,
-    strict: bool = False
+    strict: bool = False,
+    force: bool = False
 ) -> Retriever:
-    """Return a cached dense retriever, rebuilt only if the chunks changed."""
+    """Return a cached dense retriever, rebuilt only if the chunks changed.
+    force=True (explicit rebuild, v4T03) skips both caches and recomputes the embeddings."""
     if records is None:
         records = build_chunks(corpus, size, overlap)
 
@@ -287,15 +295,17 @@ def get_dense(
     key = (corpus, size, overlap)
     cached = _DENSE_CACHE.get(key)
 
-    if cached and cached[0] == fingerprint and (
+    if not force and cached and cached[0] == fingerprint and (
         cached[1].backend == "sentence-transformers" or not strict
     ):
+        cached[1].source = "memory"
         return cached[1]
 
     retriever = Retriever(
         records,
         strict=strict,
-        cache_key=f"{safe_name(corpus)}-{size}-{overlap}"
+        cache_key=f"{safe_name(corpus)}-{size}-{overlap}",
+        force=force
     )
     _DENSE_CACHE[key] = (fingerprint, retriever)
 
@@ -493,6 +503,74 @@ def llm_request_options() -> dict[str, Any]:
     return options
 
 
+# Bump whenever the answer prompt below changes: it is part of the config fingerprint (v4T02).
+ANSWER_PROMPT_VERSION = "1"
+
+
+def pipeline_config(
+    corpus: str,
+    records: list[dict[str, Any]],
+    *,
+    chunk_size: int,
+    overlap: int,
+    top_k: int,
+    candidates: int,
+    retrievers: list[str],
+    rrf_k: int,
+    weights: dict[str, float] | None = None,
+    reranker: str | None = None
+) -> dict[str, Any]:
+    """Everything that decides what a question or an evaluation run returns (v4T02). Built here only,
+    for /api/ask and for evaluation runs, so the same settings always give the same fingerprint.
+    A field that does not apply is None (no embedding model when dense is off, no graph prompt
+    version when the graph is off, no stop-word setting when BM25 is off)."""
+    from . import bm25 as bm25_module  # local imports: both import core
+
+    names = sorted(set(retrievers))
+    graph_prompt_version = None
+
+    if "graph" in names:
+        from .graph import PROMPT_VERSION as graph_prompt_version
+
+    return {
+        "answer_prompt_version": ANSWER_PROMPT_VERSION,
+        "graph_prompt_version": graph_prompt_version,
+        "llm_model": os.getenv("LLM_MODEL"),
+        "embedding_model": DENSE_MODEL_NAME if "dense" in names else None,
+        "chunk_size": chunk_size,
+        "overlap": overlap,
+        "top_k": top_k,
+        "candidates": candidates,
+        "retrievers": names,
+        "rrf_k": rrf_k,
+        "weights": weights,
+        "stopwords": bm25_module.stopwords_enabled() if "bm25" in names else None,
+        "reranker": reranker,
+        "corpus_hash": records_fingerprint(records),
+    }
+
+
+def config_fingerprint(cfg: dict[str, Any]) -> str:
+    """First 6 hex characters of SHA-256 over the canonical JSON of a pipeline_config():
+    two traces or runs with the same fingerprint ran the same pipeline on the same chunks."""
+    blob = json.dumps(cfg, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:6]
+
+
+def llm_cost(input_tokens: int, output_tokens: int, prefix: str = "LLM") -> tuple[float, bool]:
+    """(cost in USD, price known) from the provider's token counts and the prices per million tokens
+    in .env ({prefix}_PRICE_IN_PER_1M, {prefix}_PRICE_OUT_PER_1M; prefix "GRAPH_LLM" for a graph
+    build with its own model). Missing or unreadable prices: (0.0, False), shown as "free tier".
+    Tokens are never estimated."""
+    try:
+        price_in = float(os.environ[f"{prefix}_PRICE_IN_PER_1M"])
+        price_out = float(os.environ[f"{prefix}_PRICE_OUT_PER_1M"])
+    except (KeyError, ValueError):
+        return 0.0, False
+
+    return round(input_tokens / 1e6 * price_in + output_tokens / 1e6 * price_out, 8), True
+
+
 def generate_answer(
     question: str,
     retrieved: list[dict[str, Any]]
@@ -505,8 +583,9 @@ def generate_answer_with_usage(
     question: str,
     retrieved: list[dict[str, Any]]
 ) -> tuple[str, dict[str, Any]]:
-    """Same as generate_answer, plus {"llm_calls", "prompt_tokens",
-    "completion_tokens", "latency_s"} for cost reporting."""
+    """Same as generate_answer, plus {"llm_calls", "prompt_tokens", "completion_tokens", "latency_s",
+    "finish_reason", "thinking", "request_model", "response_model"} for cost reporting and traces.
+    response_model is the model the provider says answered: it reveals a silent model change."""
 
     load_dotenv(ROOT / ".env")
 
@@ -580,6 +659,8 @@ def generate_answer_with_usage(
     finish_reason = getattr(choice, "finish_reason", None)
     usage["finish_reason"] = finish_reason
     usage["thinking"] = "off" if disable_thinking else "default"
+    usage["request_model"] = model
+    usage["response_model"] = getattr(response, "model", None)
 
     content = choice.message.content or ""
     allowed = {r["id"] for r in retrieved}
