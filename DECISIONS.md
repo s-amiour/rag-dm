@@ -3,7 +3,7 @@
 Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented in V3;
 D-20 to D-27 record its extraction step (ticket v3T01), D-28 entity resolution (v3T02), D-29 graph retrieval (v3T03), D-30 the graph path in the UI (v3T04);
 D-31 to D-33 record answer validation (v3T12), the shared tokenizer (v3T11) and own-corpus storage (v3T10, v3T19);
-D-34 the own question labels (v3T13), D-35 answers with a reasoning model. D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
+D-34 the own question labels (v3T13), D-35 answers with a reasoning model, D-36 the injection scanner, and D-37 personal-data redaction. D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
 V2 decisions (chunk size, overlap, top-k, embedding model) are in `docs/REPORT_V2.md`.
 
 ## Fusion
@@ -370,6 +370,8 @@ Why the whole doc, not just the bad lines: cutting lines changes the chunks, and
 Tested: the real corpus scans clean (test), plus override, role markers, AI-addressed note, exfiltration, and invisible text (the hard case).
 Real check, the 14 course PDFs: caught the hidden “If you are an AI coding agent…” note (C7). Missed the hidden /about and /bm25 requests (they read like normal requirements). False positives: a slide line starting “system:”, and zero-width characters from PDF extraction.
 Limits: paraphrased instructions get through; English only; “System: …” lines can be false positives, which is why a person reviews.
+
+**D-37. Personal data redacted before the LLM call.** Redact emails, phone numbers, card numbers that pass Luhn, IBANs that pass mod-97, and names after a cue such as “I am” or “Mr”. Chose rules, not an LLM: asking an LLM to find personal data would send that data to the LLM. One mapping is shared across the question and retrieved chunks, so the same value gets the same placeholder; the original values are restored in the answer on this machine, and the mapping is never stored. Retrieval still uses the original text, so evaluation numbers do not change. Traces keep the redacted question and redaction counts only. `PII_REDACTION=0` turns redaction off and changes the fingerprint. A name without a cue is missed; a stop list keeps role and plan words from being treated as names. The graph build still sends chunk text to the LLM unredacted. That is the gap agreed with Saad: acceptable for Kestrel, which has no personal data, only role addresses such as `billing@`; it would matter if someone uploaded personal documents and built a graph on them.
 
 ## Words tab
 
