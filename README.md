@@ -209,6 +209,14 @@ The browser test (`tests/test_ui_smoke.py`) needs Playwright, which the app itse
 `pip install -r requirements-dev.txt`, then once `python -m playwright install chromium`.
 Run it alone with `python -m pytest tests/test_ui_smoke.py -rs`; without Playwright it is skipped.
 
+**API tests** (`tests/test_api.py`, fixtures in `tests/api_support.py`) call the endpoints the UI uses through FastAPI's
+`TestClient`: retriever toggles and their error codes (400, 422, 503), which retriever found each reference and at which rank,
+the graph path, `/api/config`, and `/api/evaluate`. Every test gets its own temporary data folder with a small fixture corpus,
+so nothing is written to `data/`. The fakes replace: the embedding model (a fixed dense ranking), the LLM (a canned answer that
+cites the first chunk, with a call counter), and the graph retriever (a module following the search contract, or none). A
+network guard fails any test that tries to open a connection. `tests/test_rrf_course.py` checks RRF against the two worked
+examples of the course (E47 → fused rank 4, calcium → descaling demoted to rank 4).
+
 ## Repository map
 
 | Path | Content |
