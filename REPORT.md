@@ -23,7 +23,7 @@
   (D-18) gives Hit@3 **0.90**, Hit@5 **1.00** and Recall@5 **0.79**, the best of all configurations at k = 3 and 5. It fixes
   `exact_identifier` (Hit@5 0.50 → 1.00). It costs a little on rank 1 (Hit@1 stays 0.50, q05 and q03 drop from rank 1 to 2) and on
   `split_answer` Recall@3 (1.00 → 0.38).
-- On our own corpus: Hit@1 0.67 → 0.75, no loss at k ≥ 3, identical with 10 or 30 candidates.
+- On our own corpus (13 answerable questions since v3T13): Hit@1 0.62 → 0.69, no loss at k ≥ 3.
 - BM25 needs no LLM call, builds in 0.03 to 0.04 s and adds no measurable query latency (15 to 20 ms per query in every configuration).
 - **Limit of this work:** `two_hop` Recall stays at 0.56 at k = 5 and 0.72 at k = 10 with or without BM25. Finding every hop of a chain is
   the unsolved part, and it is what the graph was meant to address.
@@ -66,22 +66,25 @@ row is V2's baseline re-measured on the extended question set and nothing else c
 | dense+bm25+graph | **ALL** | 10 | TODO(T5 run) | | | | | | | |
 | dense+bm25+graph | two_hop | 3 | TODO(T5 run) | | | | | | | |
 
-### Own corpus (500/20), identical with 10 and 30 candidates
+### Own corpus (500/20)
+
+Question set after v3T13 (D-34): 15 questions, 13 answerable (OWN-13 and OWN-14 are `not_in_corpus`). Rerun 18 November 2026; the
+earlier 12-question numbers are in git history. The check that 10 and 30 candidates give identical results was made on the earlier set.
 
 | Configuration | Type | n | Hit@1 | Hit@3 | Hit@5 | Hit@10 | Recall@1 | Recall@3 | Recall@5 | Recall@10 |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| dense | **ALL** | 12 | 0.67 | 0.92 | 1.00 | 1.00 | 0.67 | 0.92 | 1.00 | 1.00 |
+| dense | **ALL** | 13 | 0.62 | 0.85 | 0.92 | 0.92 | 0.62 | 0.85 | 0.92 | 0.92 |
 | dense | exact_identifier | 5 | 0.60 | 0.80 | 1.00 | 1.00 | 0.60 | 0.80 | 1.00 | 1.00 |
 | dense | split_answer | 2 | 0.50 | 1.00 | 1.00 | 1.00 | 0.50 | 1.00 | 1.00 | 1.00 |
 | dense | vocabulary | 3 | 0.67 | 1.00 | 1.00 | 1.00 | 0.67 | 1.00 | 1.00 | 1.00 |
-| dense | two_hop | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| dense | not_in_corpus_trap | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| **dense+bm25 (default)** | **ALL** | 12 | **0.75** | 0.92 | 1.00 | 1.00 | **0.75** | 0.92 | 1.00 | 1.00 |
+| dense | two_hop | 1 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| dense | other | 2 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| **dense+bm25 (default)** | **ALL** | 13 | **0.69** | 0.85 | 0.92 | 0.92 | **0.69** | 0.85 | 0.92 | 0.92 |
 | dense+bm25 | exact_identifier | 5 | **0.80** | 0.80 | 1.00 | 1.00 | **0.80** | 0.80 | 1.00 | 1.00 |
 | dense+bm25 | split_answer | 2 | 0.50 | 1.00 | 1.00 | 1.00 | 0.50 | 1.00 | 1.00 | 1.00 |
 | dense+bm25 | vocabulary | 3 | 0.67 | 1.00 | 1.00 | 1.00 | 0.67 | 1.00 | 1.00 | 1.00 |
-| dense+bm25 | two_hop | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| dense+bm25 | not_in_corpus_trap | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| dense+bm25 | two_hop | 1 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| dense+bm25 | other | 2 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 
 Reading the tables:
 
@@ -90,10 +93,10 @@ Reading the tables:
 - **`versions`:** Hit@1 0.00 → 0.50 with BM25; Hit@3 is already 1.00 with dense.
 - **`two_hop`:** Hit@10 is 1.00 but Recall@10 only 0.72: every chain is "found" but not every hop. In the V2 check, q08 alone has
   Recall@10 = 0.50 with dense: one of its two hops is not in the top 10.
-- **`not_in_corpus`:** the two Kestrel questions are excluded from the metrics. The own corpus has none: its `not_in_corpus_trap`
-  question (OWN-04, vinegar) is answerable and therefore scored (D-09). OWN-05 (`two_hops`) has a single evidence quote, so Hit = Recall there.
-  The own corpus has no `versions` question. Type names in `own.jsonl` (`different_vocabulary`, `two_hops`) are mapped to the assignment's
-  names when reporting; the file is untouched.
+- **`not_in_corpus`:** excluded from the metrics: q09 and q10 on Kestrel, OWN-13 and OWN-14 on the own corpus (D-34). OWN-04
+  (vinegar, answerable) and OWN-05 (one evidence quote) are now typed `other`. The own corpus has no `versions` question.
+- **Own `two_hop` (OWN-15, n = 1):** neither hop is in the top 10 with dense or with dense+bm25, so the own corpus's Hit@10 is 0.92,
+  not 1.00. There is no graph for the own corpus to try (section 6, optional features).
 
 ### Cost per question (no answer generation)
 
@@ -115,7 +118,7 @@ The measured costs of generation (1 LLM call per question) are the same in every
   Against the other fusion settings it is best at k = 3 and 5 (30 candidates: Hit@5 0.90, Recall@5 0.69; weighted 2:1 with 30 candidates: Hit@3 0.70).
   Price, stated openly: Recall@3 is 0.64 against 0.72 for dense alone (`split_answer` Recall@3 0.38 against 1.00: q03 loses a hop to chunks
   that BM25 promotes), and q05 and q03 sit at rank 2 instead of rank 1 (Hit@1 stays 0.50).
-- **Own corpus: `dense+bm25`, same settings.** Hit@1 0.67 → 0.75 (`exact_identifier` 0.60 → 0.80), no loss at any k ≥ 3, no cost.
+- **Own corpus: `dense+bm25`, same settings.** Hit@1 0.62 → 0.69 (`exact_identifier` 0.60 → 0.80), no loss at any k ≥ 3, no cost.
 - Set `DEFAULT_RETRIEVERS=dense,bm25` in `.env`; `candidates` defaults to 10 in code. Weights are an option (`--weights`), not the default,
   because they did not beat plain RRF with 10 candidates and need tuning data we do not have.
 - **Caveat:** `candidates` = 10 was chosen after seeing q05, on the questions it is scored on.
