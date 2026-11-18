@@ -142,5 +142,28 @@ class TraceStoreTest(unittest.TestCase):
         self.assertEqual(self.count("traces"), 3)
 
 
+class NoopSpanTest(unittest.TestCase):
+    def test_without_a_trace_the_same_calls_record_nothing(self):
+        with traces.span_of(None, "graph.extract", chunk_id="a:1") as s:
+            s.set(relations=0).fail("skipped")
+        self.assertEqual(s.status, "ok")
+        traces.root_of(None).set(build_id="x")
+
+    def test_fail_marks_a_span_without_an_exception(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        with mock.patch.dict(os.environ, {"TRACES_DB": str(tmp / "t.sqlite")}):
+            with traces.trace("index", kind="index") as t:
+                with traces.span_of(t, "graph.extract") as s:
+                    s.fail("invalid twice: " + "x" * 400)
+                traces.root_of(t).set(build_id="b1")
+            [root] = traces.get_trace(t.id)["spans"]
+        self.assertEqual(root["attributes"]["build_id"], "b1")
+        [child] = root["children"]
+        self.assertEqual(child["status"], "error")
+        self.assertEqual(len(child["error"]), traces.MAX_ERROR)
+        self.assertEqual(root["status"], "ok")
+
+
 if __name__ == "__main__":
     unittest.main()

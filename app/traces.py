@@ -32,7 +32,7 @@ import os
 import sqlite3
 import time
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
@@ -124,6 +124,13 @@ class Span:
         self.attributes.update(clean(attributes))
         return self
 
+    def fail(self, error: str) -> "Span":
+        """Mark the span as failed without an exception (a step that reports its own failure, e.g. a
+        graph chunk skipped after two invalid replies). The message is cut like an exception's."""
+        self.status = "error"
+        self.error = str(error)[:MAX_ERROR]
+        return self
+
     def _close(self) -> None:
         self.duration_ms = round((time.perf_counter() - self._t0) * 1000, 3)
 
@@ -173,6 +180,31 @@ class Trace:
     def set_outcome(self, outcome: str) -> "Trace":
         self.outcome = outcome
         return self
+
+
+class NoopSpan:
+    """Stands in for a span when there is no trace (callers that do not trace, tests that do not care):
+    the same calls work and record nothing, so traced code needs no `if trace:` branches."""
+    status = "ok"
+    error = None
+
+    def set(self, **attributes: Any) -> "NoopSpan":
+        return self
+
+    def fail(self, error: str) -> "NoopSpan":
+        return self
+
+
+def span_of(trace_: "Trace | None", name: str, **attributes: Any):
+    """trace_.span(name), or a context that yields a NoopSpan when trace_ is None."""
+    if trace_ is None:
+        return nullcontext(NoopSpan())
+    return trace_.span(name, **attributes)
+
+
+def root_of(trace_: "Trace | None") -> "Span | NoopSpan":
+    """The trace's root span, or a NoopSpan when there is no trace."""
+    return trace_.root if trace_ is not None and trace_.root is not None else NoopSpan()
 
 
 @contextmanager
