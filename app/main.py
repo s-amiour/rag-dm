@@ -32,6 +32,7 @@ from .core import (
     load_questions,
     generate_answer,
     generate_answer_with_usage,
+    llm_request_options,
     words_for_corpus,
     question_words,
     safe_name,
@@ -486,14 +487,15 @@ def no_context(req: EvalRequest):
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=2048
+                **llm_request_options()
             )
 
             rows.append({
                 "id": q.get("id"),
                 "question": q["question"],
                 "type": q.get("type"),
-                "answer": response.choices[0].message.content or ""
+                "answer": response.choices[0].message.content or "",
+                "finish_reason": response.choices[0].finish_reason
             })
 
         except Exception as e:
