@@ -152,7 +152,10 @@ class Retriever:
     strict=True raises instead of silently falling back to TF-IDF: use it for
     every evaluation, otherwise "dense" numbers may really be TF-IDF numbers.
     cache_key enables an on-disk embedding cache (data/index/dense-<key>.npz),
-    validated by a fingerprint of the chunks.
+    validated by a fingerprint of the chunks. force=True ignores that cache (the
+    embeddings are recomputed, then saved again).
+    `source` says where this call got its embeddings: "built", "disk" (the .npz),
+    or "memory" (set by get_dense when it returns an already-loaded retriever).
     """
 
     def __init__(
@@ -160,9 +163,11 @@ class Retriever:
         records: list[dict[str, Any]],
         backend: str = "auto",
         strict: bool = False,
-        cache_key: str | None = None
+        cache_key: str | None = None,
+        force: bool = False
     ):
         self.records = records
+        self.force = force
         self.backend = "tfidf"
         self.model = None
         self.matrix = None
@@ -203,6 +208,7 @@ class Retriever:
             self._cosine = cosine_similarity
 
         self.build_seconds = time.perf_counter() - started
+        self.source = "disk" if self.cache_hit else "built"
         print(
             f"Retriever backend selected: {self.backend} "
             f"(embedding cache hit: {self.cache_hit}, "
@@ -215,7 +221,7 @@ class Retriever:
         fingerprint = records_fingerprint(self.records, DENSE_MODEL_NAME)
         path = INDEX_DIR / f"dense-{cache_key}.npz" if cache_key else None
 
-        if path is not None and path.exists():
+        if path is not None and path.exists() and not self.force:
             try:
                 with np.load(path, allow_pickle=False) as z:
                     if str(z["fingerprint"]) == fingerprint:
@@ -277,9 +283,11 @@ def get_dense(
     size: int,
     overlap: int,
     records: list[dict[str, Any]] | None = None,
-    strict: bool = False
+    strict: bool = False,
+    force: bool = False
 ) -> Retriever:
-    """Return a cached dense retriever, rebuilt only if the chunks changed."""
+    """Return a cached dense retriever, rebuilt only if the chunks changed.
+    force=True (explicit rebuild, v4T03) skips both caches and recomputes the embeddings."""
     if records is None:
         records = build_chunks(corpus, size, overlap)
 
@@ -287,15 +295,17 @@ def get_dense(
     key = (corpus, size, overlap)
     cached = _DENSE_CACHE.get(key)
 
-    if cached and cached[0] == fingerprint and (
+    if not force and cached and cached[0] == fingerprint and (
         cached[1].backend == "sentence-transformers" or not strict
     ):
+        cached[1].source = "memory"
         return cached[1]
 
     retriever = Retriever(
         records,
         strict=strict,
-        cache_key=f"{safe_name(corpus)}-{size}-{overlap}"
+        cache_key=f"{safe_name(corpus)}-{size}-{overlap}",
+        force=force
     )
     _DENSE_CACHE[key] = (fingerprint, retriever)
 
@@ -547,13 +557,14 @@ def config_fingerprint(cfg: dict[str, Any]) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:6]
 
 
-def llm_cost(input_tokens: int, output_tokens: int) -> tuple[float, bool]:
+def llm_cost(input_tokens: int, output_tokens: int, prefix: str = "LLM") -> tuple[float, bool]:
     """(cost in USD, price known) from the provider's token counts and the prices per million tokens
-    in .env (LLM_PRICE_IN_PER_1M, LLM_PRICE_OUT_PER_1M). Missing or unreadable prices: (0.0, False),
-    shown as "free tier". Tokens are never estimated."""
+    in .env ({prefix}_PRICE_IN_PER_1M, {prefix}_PRICE_OUT_PER_1M; prefix "GRAPH_LLM" for a graph
+    build with its own model). Missing or unreadable prices: (0.0, False), shown as "free tier".
+    Tokens are never estimated."""
     try:
-        price_in = float(os.environ["LLM_PRICE_IN_PER_1M"])
-        price_out = float(os.environ["LLM_PRICE_OUT_PER_1M"])
+        price_in = float(os.environ[f"{prefix}_PRICE_IN_PER_1M"])
+        price_out = float(os.environ[f"{prefix}_PRICE_OUT_PER_1M"])
     except (KeyError, ValueError):
         return 0.0, False
 

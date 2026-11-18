@@ -86,10 +86,11 @@ DENSE_UNAVAILABLE = (
 )
 
 
-def get_dense(corpus: str, size: int, overlap: int, records=None, strict: bool = True):
-    """core.get_dense, with a strict-mode failure raised as RetrieverUnavailable (503 in the API)."""
+def get_dense(corpus: str, size: int, overlap: int, records=None, strict: bool = True, force: bool = False):
+    """core.get_dense, with a strict-mode failure raised as RetrieverUnavailable (503 in the API).
+    force=True recomputes the embeddings (explicit rebuild, v4T03); default unchanged."""
     try:
-        return core.get_dense(corpus, size, overlap, records=records, strict=strict)
+        return core.get_dense(corpus, size, overlap, records=records, strict=strict, force=force)
     except RuntimeError as exc:
         if strict:
             raise RetrieverUnavailable(f"{DENSE_UNAVAILABLE} ({exc})") from exc
