@@ -1,5 +1,6 @@
 """Query-time side of the concept graph (ticket v3T03): load the resolved graph,
 find the question's entities, walk, rank chunks. No LLM call.
+neighborhood() is the Concept map explorer's lookup (v4T07): one concept, its edges, its chunks.
 
 app/graph_retriever.py wraps this in the search() contract of retrieval.py.
 """
@@ -36,6 +37,7 @@ class LoadedGraph:
     neighbours: dict[int, list[tuple[int, int]]] = field(default_factory=dict)  # node -> [(other node, edge id)]
     node_chunks: dict[int, list[str]] = field(default_factory=dict)
     edge_chunks: dict[int, list[str]] = field(default_factory=dict)
+    aliases: dict[int, list[str]] = field(default_factory=dict)   # node id -> other names, as written
 
     def degree(self, node: int) -> int:
         return len({eid for _, eid in self.neighbours.get(node, [])})
@@ -77,8 +79,10 @@ def load(corpus: str, chunk_size: int, overlap: int,
         alias_keys: dict[str, set[int]] = defaultdict(set)
         for i, (name, _) in g.names.items():
             keys[graph_resolve.normalise_name(name)].add(i)
-        for i, alias in con.execute("SELECT node_id, alias FROM aliases"):
+        for i, alias in con.execute("SELECT DISTINCT node_id, alias FROM aliases ORDER BY alias"):
             alias_keys[graph_resolve.normalise_name(alias)].add(i)
+            if alias not in g.aliases.setdefault(i, []):
+                g.aliases[i].append(alias)
         g.keys, g.alias_keys = dict(keys), dict(alias_keys)
         neighbours: dict[int, list[tuple[int, int]]] = defaultdict(list)
         for eid, src, rel, dst in con.execute("SELECT id, source_id, relation, target_id FROM edges ORDER BY id"):
@@ -218,3 +222,67 @@ def search_graph(g: LoadedGraph, question: str, k: int, valid_ids: set[str] | No
         "capped": [g.names[n][0] for n in w.capped],
     }
     return {"hits": hits, "path": path}
+
+
+def find_concept(g: LoadedGraph, name: str) -> tuple[list[int], str]:
+    """Nodes for a concept the user typed, and how they were found (v4T07). Same keys as retrieval:
+    the whole text normalised, on node names ("name") then aliases ("alias"); if neither matches,
+    the question matcher on the text ("text": "the mailman service" or "error KST-5031" still work).
+    Unlike a question, a typed concept may be a generic word ("Team" is a plan): it is looked up."""
+    key = graph_resolve.normalise_name(name)
+    if key in g.keys:
+        return sorted(g.keys[key]), "name"
+    if key in g.alias_keys:
+        return sorted(g.alias_keys[key]), "alias"
+    found = match_entities(g, name)
+    return [e["id"] for e in found], "text" if found else "none"
+
+
+def neighborhood(g: LoadedGraph, name: str, chunk_docs: dict[str, str] | None = None,
+                 limit: int = HUB_CAP) -> dict:
+    """A concept and everything one hop away, for the Concept map tab (v4T07).
+
+    For each node found: its type, aliases, evidence chunks and the documents they come from
+    (chunk_docs: chunk id -> document name), and its edges in both directions, each with the
+    relation, the direction, the other end and the chunks the edge was extracted from. The hub
+    cap applies to the list: a concept with more than `limit` edges shows the first `limit`
+    (by relation, then name) and says how many more there are, so a hub cannot flood the screen.
+    No match: {"found": False, "concepts": []}, never an error."""
+    nodes, matched_by = find_concept(g, name)
+    concepts = []
+
+    for node in nodes:
+        node_name, node_type = g.names[node]
+        edges = []
+        for other, eid in g.neighbours.get(node, []):
+            if any(e["edge_id"] == eid for e in edges):  # a self-loop is listed twice in neighbours
+                continue
+            src, rel, dst = g.edges[eid]
+            other_name, other_type = g.names[other]
+            edges.append({
+                "edge_id": eid,
+                "relation": rel,
+                "direction": "out" if src == node else "in",
+                "source": g.names[src][0],
+                "target": g.names[dst][0],
+                "neighbour": {"id": other, "name": other_name, "type": other_type,
+                              "degree": g.degree(other), "hub": g.degree(other) > limit},
+                "chunks": g.edge_chunks.get(eid, []),
+            })
+        edges.sort(key=lambda e: (e["relation"], e["neighbour"]["name"].casefold(), e["edge_id"]))
+        chunks = g.node_chunks.get(node, [])
+        documents: dict[str, list[str]] = {}
+        for chunk in chunks:
+            documents.setdefault((chunk_docs or {}).get(chunk, chunk.rsplit(":", 1)[0]), []).append(chunk)
+        concepts.append({
+            "id": node, "name": node_name, "type": node_type,
+            "aliases": g.aliases.get(node, []),
+            "degree": len(edges),
+            "edges": edges[:limit],
+            "more_edges": max(0, len(edges) - limit),
+            "chunks": chunks,
+            "documents": [{"document": d, "chunks": c} for d, c in sorted(documents.items())],
+        })
+
+    return {"query": name, "matched_by": matched_by, "found": bool(concepts), "concepts": concepts,
+            "hub_cap": limit, "build_id": g.build_id}
