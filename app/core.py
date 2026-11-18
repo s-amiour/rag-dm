@@ -495,6 +495,73 @@ def llm_request_options() -> dict[str, Any]:
     return options
 
 
+# Bump whenever the answer prompt below changes: it is part of the config fingerprint (v4T02).
+ANSWER_PROMPT_VERSION = "1"
+
+
+def pipeline_config(
+    corpus: str,
+    records: list[dict[str, Any]],
+    *,
+    chunk_size: int,
+    overlap: int,
+    top_k: int,
+    candidates: int,
+    retrievers: list[str],
+    rrf_k: int,
+    weights: dict[str, float] | None = None,
+    reranker: str | None = None
+) -> dict[str, Any]:
+    """Everything that decides what a question or an evaluation run returns (v4T02). Built here only,
+    for /api/ask and for evaluation runs, so the same settings always give the same fingerprint.
+    A field that does not apply is None (no embedding model when dense is off, no graph prompt
+    version when the graph is off, no stop-word setting when BM25 is off)."""
+    from . import bm25 as bm25_module  # local imports: both import core
+
+    names = sorted(set(retrievers))
+    graph_prompt_version = None
+
+    if "graph" in names:
+        from .graph import PROMPT_VERSION as graph_prompt_version
+
+    return {
+        "answer_prompt_version": ANSWER_PROMPT_VERSION,
+        "graph_prompt_version": graph_prompt_version,
+        "llm_model": os.getenv("LLM_MODEL"),
+        "embedding_model": DENSE_MODEL_NAME if "dense" in names else None,
+        "chunk_size": chunk_size,
+        "overlap": overlap,
+        "top_k": top_k,
+        "candidates": candidates,
+        "retrievers": names,
+        "rrf_k": rrf_k,
+        "weights": weights,
+        "stopwords": bm25_module.stopwords_enabled() if "bm25" in names else None,
+        "reranker": reranker,
+        "corpus_hash": records_fingerprint(records),
+    }
+
+
+def config_fingerprint(cfg: dict[str, Any]) -> str:
+    """First 6 hex characters of SHA-256 over the canonical JSON of a pipeline_config():
+    two traces or runs with the same fingerprint ran the same pipeline on the same chunks."""
+    blob = json.dumps(cfg, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:6]
+
+
+def llm_cost(input_tokens: int, output_tokens: int) -> tuple[float, bool]:
+    """(cost in USD, price known) from the provider's token counts and the prices per million tokens
+    in .env (LLM_PRICE_IN_PER_1M, LLM_PRICE_OUT_PER_1M). Missing or unreadable prices: (0.0, False),
+    shown as "free tier". Tokens are never estimated."""
+    try:
+        price_in = float(os.environ["LLM_PRICE_IN_PER_1M"])
+        price_out = float(os.environ["LLM_PRICE_OUT_PER_1M"])
+    except (KeyError, ValueError):
+        return 0.0, False
+
+    return round(input_tokens / 1e6 * price_in + output_tokens / 1e6 * price_out, 8), True
+
+
 def generate_answer(
     question: str,
     retrieved: list[dict[str, Any]]
@@ -507,8 +574,9 @@ def generate_answer_with_usage(
     question: str,
     retrieved: list[dict[str, Any]]
 ) -> tuple[str, dict[str, Any]]:
-    """Same as generate_answer, plus {"llm_calls", "prompt_tokens",
-    "completion_tokens", "latency_s"} for cost reporting."""
+    """Same as generate_answer, plus {"llm_calls", "prompt_tokens", "completion_tokens", "latency_s",
+    "finish_reason", "thinking", "request_model", "response_model"} for cost reporting and traces.
+    response_model is the model the provider says answered: it reveals a silent model change."""
 
     load_dotenv(ROOT / ".env")
 
@@ -594,6 +662,8 @@ def generate_answer_with_usage(
     finish_reason = getattr(choice, "finish_reason", None)
     usage["finish_reason"] = finish_reason
     usage["thinking"] = "off" if disable_thinking else "default"
+    usage["request_model"] = model
+    usage["response_model"] = getattr(response, "model", None)
 
     content = choice.message.content or ""
     allowed = {r["id"] for r in retrieved}
