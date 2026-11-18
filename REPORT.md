@@ -507,3 +507,58 @@ python -m app.evaluate run --corpus kestrel --retrievers dense,bm25 --candidates
 ```
 
 Dense runs in strict mode: the evaluation stops rather than silently measuring TF-IDF.
+
+## 12. V4: Concept map explorer (ticket v4T07)
+
+A **Concept map** tab (Kestrel): type a concept (an error code, a service, a team, a plan) and see what it is linked to, by which
+relation, in which direction, and the passage each link was read from. Click a linked concept to move to it; **Documents** lists the
+documents that mention it; **Ask about this** opens the Ask tab on Kestrel with the concept graph switched on and asks about the
+concept. Endpoint `GET /api/graph/concept?name=`, built on the V3 graph search (`graph_search.neighborhood()`): the concept is found
+with the same keys as retrieval (node names, then aliases, then the question matcher, D-29), so "SSO", "Platform team" or "the
+Messaging team" work. Each lookup is one `concept.lookup` trace (spans `graph.load` and `concept.match`; outcome `found` or
+`not_found`); the chunk texts go to the tab, never into the trace.
+
+**Hub cap.** In a walk (V3) a hub is reached but not expanded. In a list of neighbours it means: at most 15 links are shown, the rest
+are counted ("N more link(s) not shown"), and a neighbour with more than 15 links is tagged *hub*. On our graph it never fires: the
+most connected node is postroom with 5 links. It is tested on a hand-made graph with 21 links.
+
+### Cost and latency
+
+| | LLM calls | Time |
+|---|---:|---|
+| First lookup after the app starts (loads the graph and the chunks) | 0 | 441 ms |
+| Each lookup after that (9 cases × 20 runs, n = 180) | 0 | median **34.6 ms**, p95 47.6 ms |
+
+Measured in-process (FastAPI test client, same laptop, real Kestrel graph of section 7). Most of the 35 ms is rebuilding the chunk
+list to attach document names and passages; the graph itself is cached per build. No LLM call, no token, no cost.
+
+### Cases tried
+
+| Typed | Why | What the tab shows |
+|---|---|---|
+| `KST-5031` | error code, start of q08 | 2 links, both to postroom (`raised_by`, `escalates_to`), from `support-runbook-errors_md:8` |
+| `postroom` | most connected node | 5 links: KST-5031 twice, `owned_by` **Identity** and `owned_by` **Messaging**, `replaces` mailman |
+| `Platform team` | a merged name | the merged `Platform` node (found by its normalised name), owner of auth, gateway and embed-svc |
+| `SSO` | an alias | `single sign-on` (found by alias; also written "Single sign-on (SAML)"), 4 links |
+| `mailman` | replaced service | its own node, linked to postroom by `replaces`: the alias trap of q12 does not occur here either |
+| `the Messaging team` | a phrase | the `Messaging` node, 1 link (`postroom owned_by Messaging`) |
+| `KST-2044` | the graded bad triple #1 | `escalates_to Data Integrations` (wrong, section 7) and `raised_by Kestrel` |
+| `Team` | a generic word | two nodes, the plan and a team, with 0 links each |
+| `KST-9999` | unknown | "No concept called … Try an error code (KST-5031), a service (postroom) or a team (Messaging)." |
+
+**What we found.**
+
+- **The explorer shows the graph's mistakes to the user, with their evidence.** postroom has two owners, Identity (known failure 11,
+  read from `service-catalog_md:1`, where the "Owner" line belongs to auth) and Messaging; KST-2044 shows the escalation the runbook
+  says not to do. In the Ask tab these edges were hidden inside a ranking; here a user sees two owners side by side and can open both
+  passages. It is also the quickest way we have to inspect the graph.
+- **Duplicate links between the same two concepts** (KST-5031 `raised_by` and `escalates_to` postroom) are two lines with the same
+  passage. Correct, but a user may read them as two facts.
+- **A generic word finds nodes but nothing useful:** "Team" is two nodes without links. And "Ask about this" on such a concept gets no
+  graph entity, because the question matcher ignores generic words on purpose (D-29); dense and BM25 still answer.
+- **What the graph never extracted cannot be explored:** the Messaging row of the team table (known failure 13) is not there, so
+  Messaging shows no on-call channel.
+
+Tests: `tests/test_concept_map.py` (hand-made graph: neighbours, relations, directions, chunks, alias, unknown, hub cap; the fixture
+graph of `test_graph_search`: KST-5031 → postroom with its source chunk; the API: the trace, a 503 when the graph is missing, a 400 on
+the own corpus, and the "Ask about this" question producing a `retrieve.graph` span).
