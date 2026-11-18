@@ -258,6 +258,27 @@ def _save(t: Trace) -> bool:
         return False
 
 
+def list_traces(limit: int = 20, kind: str | None = None) -> list[dict]:
+    """Most recent traces first, without their spans: id, kind, corpus, outcome, started_at,
+    duration_ms, fingerprint. Empty list if there is no store yet."""
+    path = db_path()
+    if not path.exists():
+        return []
+    sql = "SELECT id, kind, corpus, outcome, started_at, duration_ms, fingerprint FROM traces"
+    args: list = []
+    if kind:
+        sql += " WHERE kind = ?"
+        args.append(kind)
+    sql += " ORDER BY started_at DESC LIMIT ?"
+    args.append(max(1, min(int(limit), 200)))
+    con = _connect(path)
+    con.row_factory = sqlite3.Row
+    try:
+        return [dict(row) for row in con.execute(sql, args)]
+    finally:
+        con.close()
+
+
 def get_trace(trace_id: str) -> dict | None:
     """{"trace": {...}, "spans": [root spans, each with "children"]}, or None if there is no such trace."""
     path = db_path()

@@ -504,26 +504,7 @@ def trace_detail(trace_id: str):
 def trace_list(limit: int = 20, kind: str | None = None):
     """Most recent traces first, without their spans (v4T04: the Recent traces list, which is also
     where an indexing run or a failed request, which have no answer to click, can be opened)."""
-    import sqlite3
-
-    path = traces.db_path()
-    if not path.exists():
-        return []
-    sql = "SELECT id, kind, corpus, outcome, started_at, duration_ms, fingerprint FROM traces"
-    args: list = []
-    if kind:
-        sql += " WHERE kind = ?"
-        args.append(kind)
-    sql += " ORDER BY started_at DESC LIMIT ?"
-    args.append(max(1, min(int(limit), 200)))
-    con = sqlite3.connect(path)
-    con.row_factory = sqlite3.Row
-    try:
-        return [dict(row) for row in con.execute(sql, args)]
-    except sqlite3.OperationalError:  # store created by another version, or empty
-        return []
-    finally:
-        con.close()
+    return traces.list_traces(limit, kind)
 
 
 @app.get("/api/words/{corpus}")

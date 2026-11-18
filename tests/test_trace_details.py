@@ -55,8 +55,8 @@ class TraceEndpointsTest(unittest.TestCase):
 
     def test_list_filters_by_kind(self):
         self.make(kind="question")
-        indexing = self.make(kind="indexing", outcome=None)
-        listed = self.client.get("/api/traces?kind=indexing").json()
+        indexing = self.make(kind="index", outcome=None)
+        listed = self.client.get("/api/traces?kind=index").json()
         self.assertEqual([t["id"] for t in listed], [indexing])
 
     def test_empty_store_lists_nothing(self):
