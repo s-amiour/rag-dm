@@ -239,6 +239,15 @@ Measured on our graph (DECISIONS known failures 9 to 18; the 10 graded triples i
 - **Right chunk, wrong reason.** q08's team-table chunk is reached through the wrong Identity edge; Recall@k counts it (failure 17).
 - **No entity, no graph.** 5 of 12 questions name no entity and get nothing; the unanswerable q10 gets 5 hits (failure 18).
 
+### Optional features
+
+| Feature | Done? | What and why |
+|---|---|---|
+| **Aliases** | yes | An `aliases` table (7 aliases after resolution); the extraction lists them, the alias rule merges on them, merged names stay as aliases, and retrieval matches them when no node has that name (D-28, D-29). The `replaces` constraint keeps mailman and postroom apart even if the LLM calls one an alias of the other. |
+| **Time (valid from / until)** | no | The natural use is the `versions` questions (billing policy 2025 vs 2026). Not done: the dates belong to the document, not to each fact, so they could come from the file name with no LLM call, but the retriever would then need a rule for "which version does the question mean", and the gain is small (`versions` Hit@3 is already 1.00 with dense, section 3). A schema change also bumps the prompt and re-extracts all 43 chunks (about 82 calls). |
+| **Properties on nodes or edges** | no | Would hold what the fixed schema drops: a team's chat channel, a price, a plan's limit (failures 9, 15). The better fix is a deterministic parser for markdown tables (one row, one node or edge, the row as quote, no LLM), which would also restore the plans table and the Messaging row. Not done in the time we had. |
+| **A graph of the own corpus** | no | `GRAPH_CORPORA` is Kestrel only; selecting the graph on the own corpus returns 503. The own corpus (a single manual, 78 chunks at 500/20) has one `two_hop` question since D-34 (OWN-15), so a build of roughly 80 to 160 calls would be measured on n = 1. |
+
 ## 7. The graph in numbers
 
 *Ticket v3T01 (concept graph extraction).* Built with `python -m app.graph build --corpus kestrel` on Kestrel 800/10.
