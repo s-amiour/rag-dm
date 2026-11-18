@@ -507,3 +507,98 @@ python -m app.evaluate run --corpus kestrel --retrievers dense,bm25 --candidates
 ```
 
 Dense runs in strict mode: the evaluation stops rather than silently measuring TF-IDF.
+
+## 13. V4: Cross-encoder reranking, off and on (tickets v4T05, v4T06)
+
+With reranking on, each retriever returns 30 chunks, RRF keeps 30, and the cross-encoder
+`cross-encoder/ms-marco-MiniLM-L-6-v2` scores every (question, chunk) pair. The top-k is cut after
+that. Each kept chunk carries `rank_before` (its rank after fusion) and `rank_after`, and a `rerank`
+span records them. If the model cannot load, the request (or the run) fails with an error that names
+it; reranking is never skipped silently. Off is the default and gives exactly V3's results
+(`tests/test_rerank.py`).
+
+Runs: the V3 runner, the final V3 retrievers (Kestrel `dense+bm25+graph`, own `dense+bm25`), default
+chunking (800/10 and 500/20), top-k 10. Files are in `data/results/v4/`:
+
+| Corpus | Configuration | Fingerprint | Candidates |
+|---|---|---|---:|
+| kestrel | dense+bm25+graph | d535b5 | 10 |
+| kestrel | dense+bm25+graph (rerank) | 1b5b7a | 30 |
+| own | dense+bm25 | d59318 | 10 |
+| own | dense+bm25 (rerank) | 902d4e | 30 |
+
+### Results per question type (Recall@k, Hit@k in brackets where it differs)
+
+| Corpus | Type | n | Off R@1 | On R@1 | Off R@3 | On R@3 | Off R@5 | On R@5 | Off R@10 | On R@10 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| kestrel | **ALL** | 10 | 0.47 | 0.47 | 0.79 | **0.87** | 0.84 | **0.87** | 0.92 | 0.92 |
+| kestrel | exact_identifier | 2 | 0.75 | 0.75 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| kestrel | split_answer | 2 | 0.25 | 0.25 | 0.38 | **1.00** | 0.62 | **1.00** | 1.00 | 1.00 |
+| kestrel | vocabulary | 1 | 0.00 | **1.00** | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| kestrel | versions | 2 | 0.50 | *0.00* | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| kestrel | two_hop | 3 | 0.56 | 0.56 | 0.72 | *0.56* | 0.72 | *0.56* | 0.72 | 0.72 |
+| own | **ALL** | 13 | 0.69 | **0.77** | 0.85 | **0.96** | 0.92 | **0.96** | 0.92 | **0.96** |
+| own | exact_identifier | 5 | 0.80 | **1.00** | 0.80 | **1.00** | 1.00 | 1.00 | 1.00 | 1.00 |
+| own | split_answer | 2 | 0.50 | 0.50 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| own | vocabulary | 3 | 0.67 | 0.67 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| own | two_hop | 1 | 0.00 | 0.00 | 0.00 | **0.50** | 0.00 | **0.50** | 0.00 | **0.50** |
+| own | other | 2 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+
+Bold: better with reranking; italics: worse. Hit@k moves the same way, except Kestrel Hit@3/5/10,
+which stay at 1.00. not_in_corpus questions (Kestrel q09, q10) are excluded from the metrics, as in V3.
+
+### q05 and q03
+
+**q05** (vocabulary, "I lost my phone and I can't log in anymore"): the gold chunk `product-guide_md:6`
+("If you no longer have your authenticator device…") was rank 2 in V3. With reranking it is rank 1
+(rank 6 in the 30-chunk pool, which fuses deeper lists, so it is not the V3 order). This is the case
+reranking is meant for: no word of the question is in the chunk. But the cross-encoder's scores are all
+close to −9.5 for this question (−9.45 for the gold chunk, −9.52 for the next one): it found nothing
+clearly relevant, and the gold chunk won by a margin of 0.07. A different phrasing could flip it.
+
+**q03** (split_answer, "What happens, step by step, when a customer's card payment fails?"): three of the
+four hops are in `billing-policy-2026_md:5` (grace period, read-only, deletion after 60 days). In V3 that
+chunk was rank 9, so the LLM, which gets the top 5, never saw it: Recall@5 was 0.25. With reranking it is
+rank 2 (rank 6 in the pool) and Recall@3 is 1.00. This is the largest gain of the run.
+
+But the rank 1 for q03 is now `billing-policy-2025_md:4`, the **superseded** 2025 policy. The same happens
+for both versions questions: for q06 and q07 V3 put a 2026 chunk first, reranking puts the 2025 chunk
+first (q07's Recall@1 drops from 1.00 to 0.00). The cross-encoder judges whether a text answers the
+question, and the old policy does answer it; it cannot know that the document is outdated. Recall does
+not count a wrong chunk, so the metric hides most of this: the risk is an answer built on the old policy.
+
+### Where it hurts
+
+- **two_hop on Kestrel**, q11: the second hop is the service-catalog table row
+  `| Payments Core | Jonas Berg | #oncall-payments |`. V3 had it at rank 2 (BM25 rank 2, graph rank 3 through
+  KST-6010 → Payments Core). The cross-encoder sees a table row that shares no meaning with the question
+  and moves it to rank 10: Recall@3 0.72 → 0.56. A reranker scores each chunk alone, so it cannot see a
+  link between two chunks, which is exactly what the graph adds.
+- **versions**: the outdated-policy problem above.
+
+### Cost and latency
+
+No LLM call: 0 calls, 0 tokens, cost 0. The cost is CPU time on our laptop.
+
+| Corpus | Retrieval off (ms/question, mean) | Retrieval on (ms/question, mean) | Rerank alone (median) | Model load (once) |
+|---|---:|---:|---:|---:|
+| kestrel | 37 | 2,318 | 2,328 ms | 8.1 s |
+| own | 16 | 1,114 | – | – |
+
+Reranking makes retrieval about 60 times slower on Kestrel: 30 pairs of 800-character chunks through a
+small transformer, on CPU. Own chunks are shorter (500), so it is about twice as fast. Note that for
+Kestrel the pool of 30 is already 70% of the 43 chunks.
+
+### Cases tried
+
+The 12 Kestrel questions of the run, including the two not_in_corpus questions:
+
+- **q05** (answerable, vocabulary): gold moves 2 → 1, by a small margin (above).
+- **q03** (answerable, split_answer): gold moves 9 → 2, but the 2025 policy comes first (above).
+- **q09** (not in corpus, "Is there a Kestrel mobile app for iPhone?"): the best score is −1.75. That is
+  higher than the gold chunk of the answerable q05 (−9.45), so the cross-encoder score cannot be used as
+  an "answer is not in the documents" threshold.
+
+### Decision
+
+At top 5, the measure T10 uses to pick the final configuration, reranking wins on both corpora (Recall@5 0.84 → 0.87 on Kestrel, 0.92 → 0.96 on own; own Hit@5 0.92 → 1.00), so T10 makes it the app default. It comes with two known risks: about 2 s more per question (on CPU), and outdated documents ranked first on the versions questions (q03, q06, q07), which recall does not measure. It also loses the graph's second hop on q11. A version-aware rule (prefer the newest document of the same policy) is the follow-up that would remove the second risk.

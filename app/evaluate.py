@@ -11,6 +11,9 @@ Examples (from the repository root):
   # weighted RRF (any example with `graph` needs the graph built first: python -m app.graph build)
   python -m app.evaluate run --corpus kestrel --retrievers dense,bm25,graph --weights dense=1,bm25=1,graph=2
 
+  # with cross-encoder reranking (local model, no LLM call; saved as "dense+bm25 (rerank)")
+  python -m app.evaluate run --corpus kestrel --retrievers dense,bm25 --rerank
+
   # with generated answers (one LLM call per question, uses quota)
   python -m app.evaluate run --corpus kestrel --retrievers dense,bm25 --generate
 
@@ -31,6 +34,7 @@ from typing import Any
 
 from . import bm25 as bm25_module
 from . import core
+from . import rerank as rerank_module
 from .evaluation import CUTOFFS, REGRESSION_K, TYPE_ORDER, evaluate_corpus, regressions
 from .retrieval import graph_available
 
@@ -58,7 +62,7 @@ def parse_weights(text: str | None) -> dict[str, float] | None:
 
 def run_name(retrievers: list[str], stopwords: bool = True, weights=None, corpus: str | None = None,
              size: int | None = None, overlap: int | None = None, top_k: int | None = None,
-             candidates: int | None = None, rrf_k: int | None = None) -> str:
+             candidates: int | None = None, rrf_k: int | None = None, rerank: bool = False) -> str:
     """'dense+bm25' for a reference run. Any setting that differs from the defaults is added
     to the name ('dense+bm25 (500-20, cand 30)'), so a one-off run never overwrites a reference file."""
     name = "+".join(retrievers)
@@ -83,6 +87,9 @@ def run_name(retrievers: list[str], stopwords: bool = True, weights=None, corpus
     if extra:
         name += " (" + ", ".join(extra) + ")"
 
+    if rerank:  # own file, never overwrites the V3 run it is compared with (v4T05)
+        name += " (rerank)"
+
     return name
 
 
@@ -98,7 +105,8 @@ def run_and_save(
     corpus: str, retrievers: list[str], *, chunk_size: int | None = None, overlap: int | None = None,
     top_k: int | None = None, rrf_k: int | None = None, candidates: int | None = None, weights=None,
     stopwords: bool = True, strict_dense: bool = True, generate_answers: bool = False,
-    questions: list[dict[str, Any]] | None = None, out_dir: Path | None = None, progress=None
+    questions: list[dict[str, Any]] | None = None, out_dir: Path | None = None, progress=None,
+    rerank: bool = False
 ) -> tuple[str, dict[str, Any], Path]:
     """Evaluate one configuration and save it as {out_dir}/{corpus}__{name}.json, then rebuild the
     folder's summary. The one path used by the CLI and by /api/evaluate (v3T08): same defaults,
@@ -108,20 +116,22 @@ def run_and_save(
     rrf_k = rrf_k or core.DEFAULT_RRF_K
     candidates = candidates or core.DEFAULT_CANDIDATES
     out_dir = Path(out_dir or DEFAULT_OUT)
-    name = run_name(retrievers, stopwords, weights, corpus, size, overlap, top_k, candidates, rrf_k)
+    name = run_name(retrievers, stopwords, weights, corpus, size, overlap, top_k, candidates, rrf_k, rerank)
     started = time.perf_counter()
     # the run's stop-word setting applies to this run only, success or failure (v3T17)
     with bm25_module.stopwords_setting(stopwords):
         records = core.build_chunks(corpus, size, overlap)
         # same function as /api/ask, so a question and a run with the same settings share a fingerprint (v4T02)
         pipeline = core.pipeline_config(
-            corpus, records, chunk_size=size, overlap=overlap, top_k=top_k, candidates=candidates,
-            retrievers=retrievers, rrf_k=rrf_k, weights=weights
+            corpus, records, chunk_size=size, overlap=overlap, top_k=top_k,
+            candidates=rerank_module.pool_size(candidates, top_k) if rerank else candidates,
+            retrievers=retrievers, rrf_k=rrf_k, weights=weights,
+            reranker=rerank_module.MODEL_NAME if rerank else None
         )
         result = evaluate_corpus(
             corpus, size, overlap, top_k, retrievers, questions=questions,
             generate_answers=generate_answers, rrf_k=rrf_k, candidates=candidates, weights=weights,
-            strict_dense=strict_dense, label=name, records=records, progress=progress
+            strict_dense=strict_dense, label=name, records=records, progress=progress, rerank=rerank
         )
 
     fingerprint = core.config_fingerprint(pipeline)
@@ -155,7 +165,8 @@ def execute(
         overlap=overlap if overlap is not None else args.overlap,
         top_k=args.top_k, rrf_k=args.rrf_k, candidates=args.candidates, weights=weights,
         stopwords=stopwords, strict_dense=not args.allow_tfidf_fallback,
-        generate_answers=args.generate, questions=questions, out_dir=Path(args.out_dir), progress=progress
+        generate_answers=args.generate, questions=questions, out_dir=Path(args.out_dir), progress=progress,
+        rerank=args.rerank
     )
     print(f"  [{corpus} | {name}] done -> {path.relative_to(core.ROOT) if path.is_relative_to(core.ROOT) else path}      ")
 
@@ -412,6 +423,8 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--ids", default=None, help="only these question ids, e.g. q01,q02,q03 (V2 sanity check: q01..q10)")
         p.add_argument("--generate", action="store_true", help="also generate answers (LLM calls)")
         p.add_argument("--allow-tfidf-fallback", action="store_true")
+        p.add_argument("--rerank", action="store_true",
+                       help=f"fusion keeps {rerank_module.CANDIDATES} candidates, {rerank_module.MODEL_NAME} reorders them, top-k kept (v4T05)")
         p.add_argument("--out-dir", default=str(DEFAULT_OUT))
 
     run = sub.add_parser("run", help="evaluate one configuration")

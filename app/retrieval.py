@@ -26,6 +26,7 @@ from typing import Any
 
 from . import bm25 as bm25_module
 from . import core
+from . import rerank as rerank_module
 from .fusion import rrf
 
 RETRIEVERS = ("dense", "bm25", "graph")
@@ -122,7 +123,8 @@ def retrieve(
     weights: dict[str, float] | None = None,
     strict_dense: bool = False,
     records: list[dict[str, Any]] | None = None,
-    trace=None
+    trace=None,
+    rerank: bool = False
 ) -> dict[str, Any]:
     """Run the retrievers that are on and return the top `depth` chunks.
 
@@ -130,6 +132,10 @@ def retrieve(
     top `candidates` lists. Every returned chunk carries "sources".
     With a trace (app.traces), each retriever and the fusion get a span holding
     their full candidate list (ids, ranks, scores); evaluation runs pass none.
+
+    rerank=True (v4T05): each retriever returns, and fusion keeps, rerank.CANDIDATES chunks;
+    the cross-encoder reorders them and the top `depth` are kept, each with rank_before (after
+    fusion) and rank_after (after reranking). rerank=False is exactly V3.
     """
     names = normalize_retrievers(corpus, retrievers)
 
@@ -138,6 +144,10 @@ def retrieve(
 
     by_id = {r["id"]: r for r in records}
     n = max(int(candidates), int(depth))
+    keep = depth  # how many chunks fusion keeps (rerank: the pool the cross-encoder reorders)
+
+    if rerank:
+        n = keep = rerank_module.pool_size(candidates, depth)
 
     lists: dict[str, list[dict[str, Any]]] = {}
     timings: dict[str, float] = {}
@@ -213,11 +223,11 @@ def retrieve(
             {**{k: v for k, v in h.items() if k != "score"},
              "score": float(h["score"]),
              "sources": {only: {"rank": i, "score": float(h["score"])}}}
-            for i, h in enumerate(hits[:depth], start=1)
+            for i, h in enumerate(hits[:keep], start=1)
         ]
     else:
         with _span(trace, "fuse.rrf") as span:
-            fused = rrf(lists, k=rrf_k, weights=weights, limit=depth)
+            fused = rrf(lists, k=rrf_k, weights=weights, limit=keep)
 
             if span:
                 span.set(rrf_k=rrf_k, weights=weights, results=[
@@ -226,6 +236,31 @@ def retrieve(
                 ])
 
     timings["fusion_s"] = time.perf_counter() - t0
+
+    if rerank:
+        t0 = time.perf_counter()
+
+        with _span(trace, "rerank") as span:
+            if span:
+                span.set(model=rerank_module.MODEL_NAME, candidates=len(fused), top_k=depth)
+
+            try:
+                pool = fused
+                fused = rerank_module.rerank(question, pool, depth)
+            except rerank_module.RerankerUnavailable as exc:
+                raise RetrieverUnavailable(str(exc)) from exc
+
+            if span:
+                span.set(
+                    results=[{"id": h["id"], "rank_before": h["rank_before"], "rank_after": h["rank_after"],
+                              "score": round(h["rerank_score"], 6)} for h in fused],
+                    dropped=[h["id"] for h in pool if h["id"] not in {f["id"] for f in fused}],
+                    llm_calls=0,
+                    cost_usd=0.0
+                )
+
+        timings["rerank_s"] = time.perf_counter() - t0
+
     timings["total_s"] = time.perf_counter() - started
 
     return {
@@ -236,5 +271,6 @@ def retrieve(
         "usage": usage,
         "backend": backend,
         "rrf_k": rrf_k,
-        "candidates": n
+        "candidates": n,
+        "reranker": rerank_module.MODEL_NAME if rerank else None
     }
