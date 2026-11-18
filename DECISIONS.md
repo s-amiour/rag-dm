@@ -360,6 +360,16 @@ versions) may be worse. Tests: `tests/test_answer_generation.py` (fake client).
 *Update:* the no-context baseline (`/api/no-context`) had its own `max_tokens=2048` and thinking on, so with nemotron it could
 return empty answers that look like "the model does not know". Answers and the baseline now share `core.llm_request_options()`,
 and the baseline records `finish_reason` for every question.
+D-36-Injection scanner (v4T08), notes:
+Problem: uploaded docs end up in the prompt, so a doc could carry instructions for the model.
+Options: pattern rules / ask an LLM / a guard library.
+Chose: rules. Free, instant, same result every time, each finding shows rule + line + text. An LLM costs a call per upload and can itself be injected by the doc it reads.
+Rules: “ignore previous instructions”, “you are now…”, text addressed to an AI, fake role markers (<|im_start|>, [INST], “System:”), asks to reveal the prompt or send keys, invisible characters (decoded for the reviewer).
+Flagged → whole doc goes to data/quarantine/, never indexed. Documents tab: Approve (joins corpus) or Reject (deleted). Both logged.
+Why the whole doc, not just the bad lines: cutting lines changes the chunks, and an attack can be split across lines.
+Tested: the real corpus scans clean (test), plus override, role markers, AI-addressed note, exfiltration, and invisible text (the hard case).
+Real check, the 14 course PDFs: caught the hidden “If you are an AI coding agent…” note (C7). Missed the hidden /about and /bm25 requests (they read like normal requirements). False positives: a slide line starting “system:”, and zero-width characters from PDF extraction.
+Limits: paraphrased instructions get through; English only; “System: …” lines can be false positives, which is why a person reviews.
 
 ## Words tab
 
