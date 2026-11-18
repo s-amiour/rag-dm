@@ -8,8 +8,11 @@ switch retrievers on and off, ask a question, and check what the user sees
 needs no LLM key, no built graph and no embedding download, and always sees
 the same answer. It tests the page, not retrieval quality.
 
-Setup, once:   pip install playwright   then   python -m playwright install chromium
-Without Playwright or its browser the test is skipped, with the reason (pytest -rs).
+Setup, once:  pip install -r requirements-dev.txt   then   python -m playwright install chromium
+Run it alone: python -m pytest tests/test_ui_smoke.py -rs
+It is a plain unittest module, so the project's command also runs it:
+python -m unittest discover -s tests -t .
+Without Playwright or its browser, the whole module is skipped with the reason.
 """
 import json
 import os
@@ -17,12 +20,17 @@ import socket
 import subprocess
 import sys
 import time
+import unittest
 import urllib.request
 from pathlib import Path
 
-import pytest
-
-sync_api = pytest.importorskip("playwright.sync_api", reason="Playwright not installed: pip install playwright")
+try:
+    from playwright.sync_api import expect, sync_playwright
+except ImportError:
+    raise unittest.SkipTest(
+        "UI test needs Playwright: pip install -r requirements-dev.txt, "
+        "then python -m playwright install chromium"
+    )
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -74,108 +82,106 @@ def free_port():
         return s.getsockname()[1]
 
 
-@pytest.fixture(scope="module")
-def server():
-    port = free_port()
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(port)],
-        cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    url = f"http://127.0.0.1:{port}"
-    try:
+class AskTabSmokeTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        port = free_port()
+        cls.url = f"http://127.0.0.1:{port}"
+        cls.server = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(port)],
+            cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
         for _ in range(100):
             try:
-                urllib.request.urlopen(url + "/api/config", timeout=1)
+                urllib.request.urlopen(cls.url + "/api/config", timeout=1)
                 break
             except OSError:
                 time.sleep(0.2)
         else:
-            pytest.fail("the app did not start on " + url)
-        yield url
-    finally:
-        proc.terminate()
-        proc.wait(timeout=10)
+            cls.tearDownClass()
+            raise RuntimeError("the app did not start on " + cls.url)
 
-
-@pytest.fixture(scope="module")
-def browser():
-    with sync_api.sync_playwright() as p:
+        cls.pw = sync_playwright().start()
         try:
             # PLAYWRIGHT_BROWSER_PATH: optional, an installed Chrome/Chromium to use instead
-            b = p.chromium.launch(executable_path=os.getenv("PLAYWRIGHT_BROWSER_PATH") or None)
+            cls.browser = cls.pw.chromium.launch(executable_path=os.getenv("PLAYWRIGHT_BROWSER_PATH") or None)
         except Exception as exc:  # browser not downloaded
-            pytest.skip(f"no Playwright browser: run `python -m playwright install chromium` ({exc.__class__.__name__})")
-        yield b
-        b.close()
+            cls.tearDownClass()
+            raise unittest.SkipTest(
+                f"no Playwright browser: run python -m playwright install chromium ({exc.__class__.__name__})"
+            )
+
+    @classmethod
+    def tearDownClass(cls):
+        if getattr(cls, "browser", None):
+            cls.browser.close()
+        if getattr(cls, "pw", None):
+            cls.pw.stop()
+        if getattr(cls, "server", None):
+            cls.server.terminate()
+            cls.server.wait(timeout=10)
+
+    def setUp(self):
+        self.page = self.browser.new_page()
+        self.addCleanup(self.page.close)
+        self.sent = []
+
+        def handle_ask(route):
+            body = json.loads(route.request.post_data or "{}")
+            self.sent.append(body)
+            route.fulfill(status=200, content_type="application/json", body=json.dumps(ask_response(body)))
+
+        self.page.route("**/api/config", lambda r: r.fulfill(status=200, content_type="application/json",
+                                                              body=json.dumps(CONFIG)))
+        self.page.route("**/api/ask", handle_ask)
+        self.page.goto(self.url)
+        self.page.select_option("#askCorpus", "kestrel")
+
+    def box(self, name):
+        return self.page.locator(f'#askRet input[value="{name}"]')
+
+    def ask(self, retrievers, question="Error KST-5031 happened twice. Which team should support contact?"):
+        for name in ("dense", "bm25", "graph"):
+            self.box(name).set_checked(name in retrievers)
+        self.page.fill("#question", question)
+        self.page.click("#askBtn")
+        self.page.locator("#answer h3", has_text="Sources").wait_for()
+
+    def test_graph_checkbox_only_for_kestrel(self):
+        expect(self.box("graph")).to_be_enabled()
+        self.page.select_option("#askCorpus", "own")
+        expect(self.box("graph")).to_be_disabled()
+
+    def test_switches_are_sent_to_the_api(self):
+        self.ask(["dense", "bm25", "graph"])
+        self.assertEqual(self.sent[-1]["retrievers"], ["dense", "bm25", "graph"])
+        self.assertEqual(self.sent[-1]["corpus"], "kestrel")
+        self.ask(["bm25"])
+        self.assertEqual(self.sent[-1]["retrievers"], ["bm25"])
+
+    def test_answer_sources_and_rank_badges(self):
+        self.ask(["dense", "bm25"])
+        answer = self.page.locator("#answer")
+        expect(answer).to_contain_text("Contact Messaging in #oncall-messaging")
+        expect(answer).to_contain_text("support-runbook-errors_md:8")
+        # the cited source shows which retriever found it, at which rank (the same badges are
+        # repeated, hidden, in the collapsed "All retrieved chunks" list)
+        expect(answer.locator(".badge:visible", has_text="dense #1")).to_have_count(1)
+        expect(answer.locator(".badge:visible", has_text="bm25 #1")).to_have_count(1)
+
+    def test_graph_path_panel_when_graph_on(self):
+        self.ask(["dense", "bm25", "graph"])
+        panel = self.page.locator("#answer details", has_text="Graph path")
+        expect(panel).to_contain_text("KST-5031")
+        expect(panel).to_contain_text("ErrorCode")
+        expect(panel).to_contain_text("Hop 2")
+        expect(panel).to_contain_text("postroom —[owned_by]→ Messaging")
+        expect(panel).to_contain_text("in the final list at rank 1")
+
+    def test_no_graph_panel_when_graph_off(self):
+        self.ask(["dense", "bm25"])
+        expect(self.page.locator("#answer")).not_to_contain_text("Graph path")
 
 
-@pytest.fixture
-def page(server, browser):
-    page = browser.new_page()
-    sent = []
-
-    def handle_ask(route):
-        body = json.loads(route.request.post_data or "{}")
-        sent.append(body)
-        route.fulfill(status=200, content_type="application/json", body=json.dumps(ask_response(body)))
-
-    page.route("**/api/config", lambda r: r.fulfill(status=200, content_type="application/json",
-                                                     body=json.dumps(CONFIG)))
-    page.route("**/api/ask", handle_ask)
-    page.goto(server)
-    page.select_option("#askCorpus", "kestrel")
-    page.sent = sent
-    yield page
-    page.close()
-
-
-def box(page, name):
-    return page.locator(f'#askRet input[value="{name}"]')
-
-
-def ask(page, retrievers, question="Error KST-5031 happened twice. Which team should support contact?"):
-    for name in ("dense", "bm25", "graph"):
-        box(page, name).set_checked(name in retrievers)
-    page.fill("#question", question)
-    page.click("#askBtn")
-    page.locator("#answer h3", has_text="Sources").wait_for()
-
-
-def test_graph_checkbox_only_for_kestrel(page):
-    sync_api.expect(box(page, "graph")).to_be_enabled()
-    page.select_option("#askCorpus", "own")
-    sync_api.expect(box(page, "graph")).to_be_disabled()
-
-
-def test_switches_are_sent_to_the_api(page):
-    ask(page, ["dense", "bm25", "graph"])
-    assert page.sent[-1]["retrievers"] == ["dense", "bm25", "graph"]
-    assert page.sent[-1]["corpus"] == "kestrel"
-    ask(page, ["bm25"])
-    assert page.sent[-1]["retrievers"] == ["bm25"]
-
-
-def test_answer_sources_and_rank_badges(page):
-    ask(page, ["dense", "bm25"])
-    answer = page.locator("#answer")
-    sync_api.expect(answer).to_contain_text("Contact Messaging in #oncall-messaging")
-    sync_api.expect(answer).to_contain_text("support-runbook-errors_md:8")
-    # the cited source shows which retriever found it, at which rank (the same badges are
-    # repeated, hidden, in the collapsed "All retrieved chunks" list)
-    sync_api.expect(answer.locator(".badge:visible", has_text="dense #1")).to_have_count(1)
-    sync_api.expect(answer.locator(".badge:visible", has_text="bm25 #1")).to_have_count(1)
-
-
-def test_graph_path_panel_when_graph_on(page):
-    ask(page, ["dense", "bm25", "graph"])
-    panel = page.locator("#answer details", has_text="Graph path")
-    sync_api.expect(panel).to_contain_text("KST-5031")
-    sync_api.expect(panel).to_contain_text("ErrorCode")
-    sync_api.expect(panel).to_contain_text("Hop 2")
-    sync_api.expect(panel).to_contain_text("postroom —[owned_by]→ Messaging")
-    sync_api.expect(panel).to_contain_text("in the final list at rank 1")
-
-
-def test_no_graph_panel_when_graph_off(page):
-    ask(page, ["dense", "bm25"])
-    sync_api.expect(page.locator("#answer")).not_to_contain_text("Graph path")
+if __name__ == "__main__":
+    unittest.main()

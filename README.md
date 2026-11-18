@@ -206,7 +206,8 @@ metrics (per-hop recall, type mapping, regression detection), and graph extracti
 validation failure, retry then skip, rerun with 0 calls, staleness, 429 back-off, integrity). They use a fake embedding model and a
 fake LLM, so no download and no API key are needed.
 The browser test (`tests/test_ui_smoke.py`) needs Playwright, which the app itself does not:
-`pip install -r requirements-dev.txt`, then once `python -m playwright install chromium`. Without it, that test is skipped.
+`pip install -r requirements-dev.txt`, then once `python -m playwright install chromium`.
+Run it alone with `python -m pytest tests/test_ui_smoke.py -rs`; without Playwright it is skipped.
 ## Repository map
 
 | Path | Content |
