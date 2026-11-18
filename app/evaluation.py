@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 from . import bm25 as bm25_module
 from . import core
+from . import rerank as rerank_module
 from .retrieval import get_dense, retrieve
 
 CUTOFFS = (1, 3, 5, 10)
@@ -104,7 +105,8 @@ def _warm(
     overlap: int,
     names: list[str],
     records: list[dict[str, Any]],
-    strict_dense: bool
+    strict_dense: bool,
+    rerank: bool = False
 ) -> dict[str, Any]:
     """Build/load the indexes once, before timing any question, and report
     what that cost (so per-question latency is steady-state latency)."""
@@ -127,6 +129,14 @@ def _warm(
             "stopwords": bm25_module.stopwords_enabled()
         }
 
+    if rerank:  # load the cross-encoder before timing; fails the run if it cannot load (v4T05)
+        started = time.perf_counter()
+        try:
+            rerank_module.get_model()
+        except rerank_module.RerankerUnavailable as exc:
+            raise RuntimeError(str(exc)) from exc
+        info["rerank"] = {"model": rerank_module.MODEL_NAME, "load_seconds": time.perf_counter() - started}
+
     return info
 
 
@@ -144,7 +154,8 @@ def evaluate_corpus(
     label: str | None = None,
     questions: list[dict[str, Any]] | None = None,
     records: list[dict[str, Any]] | None = None,
-    progress: Callable[[int, int, str], None] | None = None
+    progress: Callable[[int, int, str], None] | None = None,
+    rerank: bool = False
 ) -> dict[str, Any]:
     questions = core.load_questions(corpus) if questions is None else questions
     records = core.build_chunks(corpus, chunk_size, overlap) if records is None else records
@@ -157,7 +168,7 @@ def evaluate_corpus(
 
     depth = max(top_k, max(CUTOFFS))
     cutoffs = tuple(sorted(set(CUTOFFS) | {top_k}))
-    index_info = _warm(corpus, chunk_size, overlap, list(dict.fromkeys(retrievers)), records, strict_dense)
+    index_info = _warm(corpus, chunk_size, overlap, list(dict.fromkeys(retrievers)), records, strict_dense, rerank)
     llm_ready = bool(
         os.getenv("LLM_API_KEY") and os.getenv("LLM_BASE_URL") and os.getenv("LLM_MODEL")
     )
@@ -177,7 +188,7 @@ def evaluate_corpus(
         out = retrieve(
             corpus, q["question"], chunk_size, overlap, retrievers,
             depth=depth, candidates=candidates, rrf_k=rrf_k,
-            weights=weights, strict_dense=strict_dense, records=records
+            weights=weights, strict_dense=strict_dense, records=records, rerank=rerank
         )
 
         ranked = [h["id"] for h in out["hits"]]
@@ -215,7 +226,8 @@ def evaluate_corpus(
             "hops": hops,
             "unmatched_hops": [h["quote"] for h in hops if not h["gold_chunk_ids"]],
             "retrieved": [
-                {k: h[k] for k in ("id", "document", "index", "score", "text", "sources")}
+                {k: h[k] for k in ("id", "document", "index", "score", "text", "sources",
+                                   "rank_before", "rank_after") if k in h}
                 for h in hits
             ],
             "hit_at_k": scored[f"hit_at_{top_k}"] if answerable else None,
@@ -271,6 +283,8 @@ def evaluate_corpus(
     def cost_mean(key: str) -> float:
         return sum(r["cost"][key] for r in rows) / n_rows
 
+    rerank_ms = sorted(r["cost"]["per_retriever_s"]["rerank_s"] * 1000 for r in rows) if rerank else []
+
     summary = {
         "label": label,
         "corpus": corpus,
@@ -280,7 +294,8 @@ def evaluate_corpus(
             "overlap": overlap,
             "top_k": top_k,
             "rrf_k": rrf_k,
-            "candidates": max(candidates, depth),
+            "candidates": rerank_module.pool_size(candidates, depth) if rerank else max(candidates, depth),
+            "reranker": rerank_module.MODEL_NAME if rerank else None,
             "weights": weights,
             "dense_backend": (index_info.get("dense") or {}).get("backend"),
             "allow_tfidf_fallback": not strict_dense,
@@ -301,7 +316,11 @@ def evaluate_corpus(
             "latency_ms": cost_mean("latency_s") * 1000,
             "llm_calls": cost_mean("llm_calls"),
             "prompt_tokens": cost_mean("prompt_tokens"),
-            "completion_tokens": cost_mean("completion_tokens")
+            "completion_tokens": cost_mean("completion_tokens"),
+            # the cross-encoder runs locally: no LLM call, no tokens, so its cost is its latency (v4T05)
+            "rerank_ms_median": (rerank_ms[len(rerank_ms) // 2] if len(rerank_ms) % 2
+                                 else (rerank_ms[len(rerank_ms) // 2 - 1] + rerank_ms[len(rerank_ms) // 2]) / 2)
+                                if rerank_ms else None
         }
     }
 

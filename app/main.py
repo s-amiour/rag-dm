@@ -20,6 +20,7 @@ load_dotenv(ROOT / ".env")
 from . import evaluate as cli_eval  # the CLI's run-and-save path, shared with /api/evaluate (v3T08)
 from . import bm25 as bm25_module
 from . import retrieval as retrieval_module
+from . import rerank as rerank_module
 from . import traces
 from .core import (
     DATA,
@@ -83,6 +84,8 @@ class AskRequest(BaseModel):
     candidates: int = Field(default=10, ge=1, le=200)
     # False (default): dense refuses the TF-IDF fallback, as the CLI does (503 if MiniLM cannot load).
     allow_tfidf_fallback: bool = False
+    # True: fusion keeps 30 candidates and a cross-encoder reorders them (v4T05). 503 if it cannot load.
+    rerank: bool = False
 
 
 class EvalRequest(BaseModel):
@@ -99,6 +102,7 @@ class EvalRequest(BaseModel):
     allow_tfidf_fallback: bool = False  # same meaning as the CLI's --allow-tfidf-fallback
     # True: fail instead of silently measuring TF-IDF when MiniLM cannot load.
     strict_dense: bool = False
+    rerank: bool = False  # same meaning as the CLI's --rerank (v4T05)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -501,6 +505,7 @@ def ask(req: AskRequest):
         top_k=req.top_k,
         candidates=req.candidates,
         rrf_k=req.rrf_k,
+        rerank=req.rerank,
         chunk_size=chunk_size,
         overlap=overlap
     ) as trace:
@@ -516,9 +521,12 @@ def ask(req: AskRequest):
                 f"No documents found for {req.corpus}. Upload the corpus documents first."
             )
 
+        # with reranking, the retrievers really return the larger pool: the fingerprint says so (v4T05)
         trace.set(fingerprint=config_fingerprint(pipeline_config(
             req.corpus, records, chunk_size=chunk_size, overlap=overlap, top_k=req.top_k,
-            candidates=req.candidates, retrievers=req.retrievers, rrf_k=req.rrf_k
+            candidates=rerank_module.pool_size(req.candidates, req.top_k) if req.rerank else req.candidates,
+            retrievers=req.retrievers, rrf_k=req.rrf_k,
+            reranker=rerank_module.MODEL_NAME if req.rerank else None
         )))
 
         try:
@@ -533,7 +541,8 @@ def ask(req: AskRequest):
                 rrf_k=req.rrf_k,
                 strict_dense=not req.allow_tfidf_fallback,
                 records=records,
-                trace=trace
+                trace=trace,
+                rerank=req.rerank
             )
         except ValueError as e:
             raise HTTPException(400, str(e))
@@ -607,6 +616,7 @@ def ask(req: AskRequest):
             ),
             "dense_backend": out["backend"].get("dense"),  # "sentence-transformers", "tfidf", or None if dense is off
             "graph_path": out["graph_path"],
+            "reranker": out["reranker"],  # None when reranking is off
             "timings": out["timings"],
             "usage": usage,
             "trace_id": trace.id  # opens this answer's trace (Details panel, v4T04)
@@ -664,6 +674,7 @@ def evaluate(req: EvalRequest):
             weights=req.weights,
             generate_answers=req.generate_answers,
             strict_dense=not req.allow_tfidf_fallback,
+            rerank=req.rerank,
             out_dir=cli_eval.DEFAULT_OUT
         )
     except ValueError as e:
