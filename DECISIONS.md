@@ -3,7 +3,7 @@
 Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented in V3;
 D-20 to D-27 record its extraction step (ticket v3T01), D-28 entity resolution (v3T02), D-29 graph retrieval (v3T03), D-30 the graph path in the UI (v3T04);
 D-31 to D-33 record answer validation (v3T12), the shared tokenizer (v3T11) and own-corpus storage (v3T10, v3T19);
-D-34 the own question labels (v3T13), D-35 answers with a reasoning model. D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
+D-34 the own question labels (v3T13), D-35 answers with a reasoning model, and D-37 answer-time redaction. D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
 V2 decisions (chunk size, overlap, top-k, embedding model) are in `docs/REPORT_V2.md`.
 
 ## Fusion
@@ -360,6 +360,15 @@ versions) may be worse. Tests: `tests/test_answer_generation.py` (fake client).
 *Update:* the no-context baseline (`/api/no-context`) had its own `max_tokens=2048` and thinking on, so with nemotron it could
 return empty answers that look like "the model does not know". Answers and the baseline now share `core.llm_request_options()`,
 and the baseline records `finish_reason` for every question.
+
+**D-37. Redacting personal data before answer generation.** Options: rules, a name-detection library such as spaCy (with a roughly
+500 MB model), or an LLM. The LLM would see the data we are trying to hide, so it defeats the point; the library adds a large model
+for this small job. **Chosen: rules.** Detected values are replaced with placeholders before the answer request, then restored in the
+answer so it stays useful (for example, people still get the support email). The placeholder-to-value mapping lives only in memory
+for that request, not in persistent storage. Card numbers and IBANs need to pass their checksums before we redact them, which helps
+avoid treating order numbers as payment details. We leave IP addresses, codes and dates alone because Kestrel answers need them.
+Limits: names without a cue can be missed, and the name cues cover English and French only. This applies to answer generation, not
+the graph build; that was Saad's call.
 
 ## Words tab
 

@@ -60,6 +60,55 @@ GRAPH_PATH = {
 }
 
 
+TRACE_ID = "3f2a9c"
+T0 = "2026-11-18T09:00:00.000+00:00"
+
+
+def span(name, ms, start_ms, attributes, children=(), status="ok", error=None):
+    return {"id": name, "trace_id": TRACE_ID, "parent_id": None, "name": name,
+            "started_at": f"2026-11-18T09:00:00.{start_ms:03d}+00:00", "duration_ms": ms, "status": status,
+            "error": error, "attributes": attributes, "children": list(children)}
+
+
+TRACE = {
+    "trace": {"id": TRACE_ID, "kind": "question", "started_at": T0, "duration_ms": 900.0, "outcome": "answered",
+              "fingerprint": "a1b2c3", "corpus": "kestrel", "attributes": {}},
+    "spans": [span("request", 900.0, 0, {"question": "I'm [NAME_1]: KST-5031?", "retrievers": ["dense", "bm25"],
+                                         "top_k": 5, "redactions": {"NAME": 1}}, [
+        span("retrieve.dense", 40.0, 5, {"backend": "sentence-transformers",
+                                         "results": [{"id": "support-runbook-errors_md:8", "rank": 1, "score": 0.61}]}),
+        span("retrieve.bm25", 3.0, 46, {"index": "memory", "stopwords": True,
+                                        "results": [{"id": "support-runbook-errors_md:8", "rank": 1, "score": 7.9}]}),
+        span("fuse.rrf", 1.0, 50, {"rrf_k": 60, "results": [{"id": "support-runbook-errors_md:8", "rank": 1,
+                                                            "score": 0.03, "sources": {"dense": 1, "bm25": 1}}]}),
+        span("generate", 800.0, 52, {"gen_ai.request.model": "nvidia/nemotron", "gen_ai.usage.input_tokens": 1093,
+                                     "gen_ai.usage.output_tokens": 120, "gen_ai.response.finish_reasons": ["stop"],
+                                     "thinking": "off", "cost_usd": 0.0, "price_known": False,
+                                     "redactions": {"EMAIL": 1, "NAME": 1}}),
+        span("validate", 1.0, 853, {"valid": True, "cited_ids": ["support-runbook-errors_md:8"], "dropped_citations": 0}),
+    ])],
+}
+
+
+INDEX_ID = "9b8a7c"
+INDEX_TRACE = {
+    "trace": {"id": INDEX_ID, "kind": "index", "started_at": "2026-11-18T09:00:00.000+00:00", "duration_ms": 30.0,
+              "outcome": "ok", "fingerprint": "c0ffee", "corpus": "kestrel", "attributes": {}},
+    "spans": [{
+        "id": "r", "trace_id": INDEX_ID, "parent_id": None, "name": "index", "started_at": "2026-11-18T09:00:00.000+00:00",
+        "duration_ms": 30.0, "status": "ok", "error": None, "attributes": {"trigger": "graph.build"},
+        "children": [
+            {"id": "a", "trace_id": INDEX_ID, "parent_id": "r", "name": "graph.extract", "started_at": "2026-11-18T09:00:00.001+00:00",
+             "duration_ms": 10.0, "status": "ok", "error": None, "attributes": {"chunk_id": "runbook:1", "cached": False, "result": "ok", "entities": 4, "relations": 3, "attempts": 1}, "children": []},
+            {"id": "b", "trace_id": INDEX_ID, "parent_id": "r", "name": "graph.extract", "started_at": "2026-11-18T09:00:00.011+00:00",
+             "duration_ms": 10.0, "status": "ok", "error": None, "attributes": {"chunk_id": "billing:2", "cached": False, "result": "partial", "entities": 2, "relations": 0, "attempts": 2, "dropped_items": 1}, "children": []},
+            {"id": "c", "trace_id": INDEX_ID, "parent_id": "r", "name": "graph.extract", "started_at": "2026-11-18T09:00:00.021+00:00",
+             "duration_ms": 9.0, "status": "error", "error": "skipped: invalid output twice", "attributes": {"chunk_id": "catalog:4", "cached": False, "result": "skipped", "entities": 0, "relations": 0, "attempts": 2}, "children": []},
+        ],
+    }],
+}
+
+
 def ask_response(body):
     graph_on = "graph" in body.get("retrievers", [])
     return {
@@ -73,6 +122,7 @@ def ask_response(body):
         "graph_path": GRAPH_PATH if graph_on else None,
         "timings": {"total_s": 0.01},
         "usage": {"llm_calls": 1, "prompt_tokens": 100, "completion_tokens": 20},
+        "trace_id": TRACE_ID,
     }
 
 
@@ -134,6 +184,13 @@ class AskTabSmokeTest(unittest.TestCase):
         self.page.route("**/api/config", lambda r: r.fulfill(status=200, content_type="application/json",
                                                               body=json.dumps(CONFIG)))
         self.page.route("**/api/ask", handle_ask)
+        self.page.route(f"**/api/traces/{TRACE_ID}", lambda r: r.fulfill(
+            status=200, content_type="application/json", body=json.dumps(TRACE)))
+        self.page.route(f"**/api/traces/{INDEX_ID}", lambda r: r.fulfill(
+            status=200, content_type="application/json", body=json.dumps(INDEX_TRACE)))
+        self.page.route("**/api/traces?*", lambda r: r.fulfill(
+            status=200, content_type="application/json", body=json.dumps([
+                {k: INDEX_TRACE["trace"][k] for k in ("id", "kind", "corpus", "outcome", "started_at", "duration_ms", "fingerprint")}])))
         self.page.goto(self.url)
         self.page.select_option("#askCorpus", "kestrel")
 
@@ -181,6 +238,37 @@ class AskTabSmokeTest(unittest.TestCase):
     def test_no_graph_panel_when_graph_off(self):
         self.ask(["dense", "bm25"])
         expect(self.page.locator("#answer")).not_to_contain_text("Graph path")
+
+    def test_details_opens_this_answers_trace(self):
+        self.ask(["dense", "bm25"])
+        self.page.click("#detailsBtn")
+        view = self.page.locator("#traceView")
+        expect(view).to_contain_text("What happened")
+        expect(view).to_contain_text("answered from the documents")
+        for step in ("request", "retrieve.dense", "retrieve.bm25", "fuse.rrf", "generate", "validate"):
+            expect(view).to_contain_text(step)
+        expect(view).to_contain_text("1093 in + 120 out")
+        expect(view).to_contain_text("free tier")
+        expect(view).to_contain_text("personal data removed before the call")
+        self.page.click("#detailsBtn")  # closes again
+        expect(view).to_be_empty()
+
+    def test_index_trace_from_recent_traces_with_filters(self):
+        self.page.click("#recentTracesBtn")
+        self.page.click(f'[data-open-trace="{INDEX_ID}"]')
+        view = self.page.locator("#recentTraceView")
+        expect(view).to_contain_text("3 graph.extract")
+        rows = view.locator(".span-row")
+        expect(rows).to_have_count(4)  # the index root + 3 graph.extract spans
+        view.locator('[data-filter="error"]').check()
+        expect(view.locator(".span-row:visible")).to_have_count(1)
+        expect(view.locator(".span-row:visible")).to_contain_text("skipped: invalid output twice")
+        view.locator('[data-filter="error"]').uncheck()
+        view.locator('[data-filter="zero"]').check()
+        zero = view.locator(".span-row:visible")
+        expect(zero).to_have_count(2)  # a partial chunk with 0 relations, and the skipped one
+        expect(zero.first).to_contain_text("billing:2")
+        expect(zero.last).to_contain_text("catalog:4")
 
 
 if __name__ == "__main__":
