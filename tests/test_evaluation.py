@@ -118,16 +118,18 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(row["recall_at_k"], 1.0)  # hop 2 at rank 4
         self.assertEqual(len(row["retrieved"]), 4)
 
-    def test_regressions_finds_worse_ranking(self):
+    def test_regressions_rank_change_inside_top_k_is_moved_not_worse(self):  # v3T21
         worse_rank = {**RANKINGS, "annual discount?": ["guide:1", "runbook:0", "guide:0"]}
         with mock.patch.dict(RANKINGS, worse_rank):
             new = run()
         out = ev.regressions(self.res, new)
-        self.assertEqual([r["id"] for r in out], ["q07"])
-        self.assertEqual((out[0]["rank_before"], out[0]["rank_after"]), (2, 3))
+        self.assertEqual(out["worse"], [])
+        self.assertEqual([r["id"] for r in out["moved"]], ["q07"])
+        self.assertEqual((out["moved"][0]["rank_before"], out["moved"][0]["rank_after"]), (2, 3))
 
     def test_regressions_none_when_equal(self):
-        self.assertEqual(ev.regressions(self.res, run()), [])
+        out = ev.regressions(self.res, run())
+        self.assertEqual((out["worse"], out["better"], out["moved"]), ([], [], []))
 
 
 if __name__ == "__main__":
