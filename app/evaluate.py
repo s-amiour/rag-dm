@@ -274,8 +274,8 @@ def write_summary(runs, out_dir: Path) -> Path:
 
     if fallback:
         md += (
-            "> Warning: dense used the TF-IDF fallback in: " + ", ".join(fallback)
-            + " (not comparable with V2).\n\n"
+            "> **WARNING: the dense retriever fell back to TF-IDF for: " + ", ".join(fallback)
+            + ". These numbers are NOT comparable with V2. Install sentence-transformers and rerun without --allow-tfidf-fallback.**\n\n"
         )
 
     md += "## Configurations in this folder\n\n" + configurations_table(runs)
@@ -385,7 +385,7 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--chunk-size", type=int, default=None, help="default: V2 final value per corpus")
         p.add_argument("--overlap", type=int, default=None, help="default: V2 final value per corpus")
         p.add_argument("--rrf-k", type=int, default=core.DEFAULT_RRF_K)
-        p.add_argument("--candidates", type=int, default=core.DEFAULT_CANDIDATES, help="how many results each retriever gives to the fusion (default 10)")
+        p.add_argument("--candidates", type=int, default=core.DEFAULT_CANDIDATES, help="how many results each retriever gives to the fusion (default %(default)s, D-18)")
         p.add_argument("--ids", default=None, help="only these question ids, e.g. q01,q02,q03 (V2 sanity check: q01..q10)")
         p.add_argument("--generate", action="store_true", help="also generate answers (LLM calls)")
         p.add_argument("--allow-tfidf-fallback", action="store_true")
