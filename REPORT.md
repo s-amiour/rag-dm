@@ -8,6 +8,8 @@
   - **Jaimie MATHANGI**
 - Team of 3 (GitHub: `s-amiour`, `Msaadjaved`, `Chimaera-Emerald`); Jaimie joined for V4. The "teams of 3" extra piece applies:
   weighted RRF compared with plain RRF (ticket B7).
+- Repository: https://github.com/s-amiour/rag-dm · tag `v3`
+- Previous report: `docs/REPORT_V2.md` · decision log: `DECISIONS.md` · how to run: `README.md`
 
 ## 2. Summary
 
