@@ -1,6 +1,6 @@
 # V3 evaluation summary
 
-_Generated 2026-11-18 02:12:23. Chunking per corpus: kestrel 800/10, own 500/20. Hit@k = at least one hop retrieved; Recall@k = share of hops retrieved. not_in_corpus questions are excluded from both._
+_Generated 2026-11-18 04:03:05. Chunking per corpus: kestrel 800/10, own 500/20. Hit@k = at least one hop retrieved; Recall@k = share of hops retrieved. not_in_corpus questions are excluded from both._
 
 ## Configurations in this folder
 
@@ -57,18 +57,56 @@ _Generated 2026-11-18 02:12:23. Chunking per corpus: kestrel 800/10, own 500/20.
 | own | dense | 29.0 | 29.0 | 0.00 | 0 | 0 | sentence-transformers | dense: 0.02s (cached) |
 | own | dense+bm25 | 19.2 | 19.2 | 0.00 | 0 | 0 | sentence-transformers | dense: 0.02s (cached); bm25: 0.00s (cached) |
 
-## Where adding a retriever made things worse
+## Where adding a retriever made things worse (top 5, the chunks the LLM receives)
 
-**kestrel: `dense` → `dense+bm25`**: 2 question(s) where the first gold chunk ranks worse.
-- `q03` (split_answer): rank 1 → 2 (recall@k 1.00 → 1.00) — What happens, step by step, when a customer's card payment fails?
-- `q05` (vocabulary): rank 1 → 2 (recall@k 1.00 → 1.00) — I lost my phone and I can't log in anymore. What can I do?
+**kestrel: `dense` → `dense+bm25`**: 1 worse, 1 better, 4 moved within the top 5.
 
-**kestrel: `dense+bm25` → `dense+bm25+graph`**: 0 question(s) where the first gold chunk ranks worse.
+_worse: a gold chunk left the top 5_
 
-**kestrel: `dense` → `dense+bm25+graph`**: 2 question(s) where the first gold chunk ranks worse.
-- `q03` (split_answer): rank 1 → 2 (recall@k 1.00 → 1.00) — What happens, step by step, when a customer's card payment fails?
-- `q05` (vocabulary): rank 1 → 2 (recall@k 1.00 → 1.00) — I lost my phone and I can't log in anymore. What can I do?
+- `q03` (split_answer): recall@5 1.00 → 0.25, first gold rank 1 → 2 — What happens, step by step, when a customer's card payment fails?
 
-**own: `dense` → `dense+bm25`**: 2 question(s) where the first gold chunk ranks worse.
-- `OWN-01` (exact_identifier): rank 4 → 5 (recall@k 1.00 → 1.00) — What is the capacity of the Vellora Duo water tank?
-- `OWN-02` (split_answer): rank 2 → 3 (recall@k 1.00 → 1.00) — How long should the water filter be soaked before installation, and how long does it last?
+_better: a gold chunk entered the top 5_
+
+- `q01` (exact_identifier): recall@5 0.00 → 1.00, first gold rank 7 → 4 — What does error KST-2044 mean and how do I fix it?
+
+_moved within the top 5 (same recall@5, rank changed)_
+
+- `q05` (vocabulary): recall@5 1.00 → 1.00, first gold rank 1 → 2 — I lost my phone and I can't log in anymore. What can I do?
+- `q07` (versions): recall@5 1.00 → 1.00, first gold rank 2 → 1 — How much do I save by paying annually instead of monthly?
+- `q11` (two_hop): recall@5 0.50 → 0.50, first gold rank 5 → 2 — Error KST-6010 showed up in the admin console for five different customers today. Which team should support contact, and in which channel?
+- `q12` (two_hop): recall@5 0.67 → 0.67, first gold rank 2 → 1 — An old alert says the mailman service is failing. Which team looks after that service today, and where can I reach them?
+
+**kestrel: `dense+bm25` → `dense+bm25+graph`**: 0 worse, 1 better, 1 moved within the top 5.
+
+_better: a gold chunk entered the top 5_
+
+- `q11` (two_hop): recall@5 0.50 → 1.00, first gold rank 2 → 1 — Error KST-6010 showed up in the admin console for five different customers today. Which team should support contact, and in which channel?
+
+_moved within the top 5 (same recall@5, rank changed)_
+
+- `q01` (exact_identifier): recall@5 1.00 → 1.00, first gold rank 4 → 1 — What does error KST-2044 mean and how do I fix it?
+
+**kestrel: `dense` → `dense+bm25+graph`**: 1 worse, 2 better, 3 moved within the top 5.
+
+_worse: a gold chunk left the top 5_
+
+- `q03` (split_answer): recall@5 1.00 → 0.25, first gold rank 1 → 2 — What happens, step by step, when a customer's card payment fails?
+
+_better: a gold chunk entered the top 5_
+
+- `q01` (exact_identifier): recall@5 0.00 → 1.00, first gold rank 7 → 1 — What does error KST-2044 mean and how do I fix it?
+- `q11` (two_hop): recall@5 0.50 → 1.00, first gold rank 5 → 1 — Error KST-6010 showed up in the admin console for five different customers today. Which team should support contact, and in which channel?
+
+_moved within the top 5 (same recall@5, rank changed)_
+
+- `q05` (vocabulary): recall@5 1.00 → 1.00, first gold rank 1 → 2 — I lost my phone and I can't log in anymore. What can I do?
+- `q07` (versions): recall@5 1.00 → 1.00, first gold rank 2 → 1 — How much do I save by paying annually instead of monthly?
+- `q12` (two_hop): recall@5 0.67 → 0.67, first gold rank 2 → 1 — An old alert says the mailman service is failing. Which team looks after that service today, and where can I reach them?
+
+**own: `dense` → `dense+bm25`**: 0 worse, 0 better, 3 moved within the top 5.
+
+_moved within the top 5 (same recall@5, rank changed)_
+
+- `OWN-01` (exact_identifier): recall@5 1.00 → 1.00, first gold rank 4 → 5 — What is the capacity of the Vellora Duo water tank?
+- `OWN-02` (split_answer): recall@5 1.00 → 1.00, first gold rank 2 → 3 — How long should the water filter be soaked before installation, and how long does it last?
+- `OWN-06` (exact_identifier): recall@5 1.00 → 1.00, first gold rank 3 → 1 — What is error E47 and how should it be fixed?
