@@ -3,7 +3,7 @@
 Format: decision, options considered, choice and why. D-12 records that the concept graph was not implemented in V3;
 D-20 to D-27 record its extraction step (ticket v3T01), D-28 entity resolution (v3T02), D-29 graph retrieval (v3T03), D-30 the graph path in the UI (v3T04);
 D-31 to D-33 record answer validation (v3T12), the shared tokenizer (v3T11) and own-corpus storage (v3T10, v3T19);
-D-34 the own question labels (v3T13). D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
+D-34 the own question labels (v3T13), D-35 answers with a reasoning model. D-19 (the v1 tag) is added by branch `docs/d19-v1-tag`.
 V2 decisions (chunk size, overlap, top-k, embedding model) are in `docs/REPORT_V2.md`.
 
 ## Fusion
@@ -102,6 +102,9 @@ weight, so the model is tempted to use one of them. `TYPE_ALIASES` stays in `eva
 `tests/test_questions.py` checks that own types are canonical, that every relabelled row is in the changelog, and that there is an
 unanswerable question. Effect: the own corpus has no `two_hop` question any more, and its per-type numbers change, so the V3 matrix
 must be rerun before REPORT numbers are updated.
+*Update (review of PR #12):* added OWN-14 (`not_in_corpus`, the price) and OWN-15 (`two_hop`: E25 → descaling programme →
+about 30 minutes, hops in different chunks at 500/20), so the own set now has 2 unanswerable questions and 1 real two_hop;
+tests check unique ids and that two_hop hops are in different chunks.
 
 ## Concept graph
 
@@ -115,7 +118,8 @@ that fails validation, how to merge aliases (q12: mailman → postroom), and how
 (entity-neighbourhood expansion, path search, GraphRAG community summaries, LightRAG-style dual-level retrieval).
 
 *Update (ticket v3T01):* extraction, schema, validation, provenance and build cost are now done (D-20 to D-27).
-Entity resolution (T2), the graph retriever (T3) and the UI (T4) are still open; until T3, selecting the graph returns 503.
+Entity resolution (D-28, v3T02), the graph retriever (D-29, v3T03) and the path in the UI (D-30, v3T04) followed. Selecting the graph
+returns 503 only when the graph is missing or stale for the current chunking, with the command to rebuild it.
 
 **D-20. Schema: fixed types, plus two relations.** File `app/graph_schema.py` (versioned: `SCHEMA_VERSION`). Options: (a) an
 **open** schema, where the LLM names whatever types it finds (as in GraphRAG's default prompt); (b) a **fixed** schema, where the LLM may
@@ -341,6 +345,22 @@ parsing is its own function (`parse_llm_answer`) so it can be tested without an 
 evaluation, an invalid answer is recorded as a `generation_error`. Not done: retrying once on an invalid reply (one more LLM call per
 failure), as the graph extraction does (D-21).
 
+**D-35. Answers with a reasoning model: thinking off, and a clear message when the reply is cut off.** After D-31, answers with
+`nvidia/nemotron-3.5-lightning-30b-a3b` often came back as "could not read": both failed answers we checked had used exactly 2048
+completion tokens, our `max_tokens`. The model spends tokens on hidden reasoning before writing the JSON (as measured for the graph build,
+D-24), ran out, and the reply was cut off (`finish_reason: length`). D-31's validation caught it, but the user could not get an answer.
+Options: (a) raise `max_tokens` (works sometimes, costs more tokens and time per answer, and the limit can still be hit); (b) **switch
+hidden thinking off, as the graph build does**; (c) change model (D-24: the other models we tried were retired or too slow).
+**Chosen: (b), with (a) available.** `LLM_DISABLE_THINKING=1` sends the same `chat_template_kwargs` as `GRAPH_DISABLE_THINKING`;
+servers that do not know it ignore it, so it is opt-in and the default request is unchanged. `LLM_MAX_TOKENS` (default 2048) makes the
+limit configurable. If a reply is invalid **and** `finish_reason` is `length`, the error says the token limit was hit and which setting
+to change, and the user sees "The model ran out of space before it finished its answer" instead of the generic message. `finish_reason`
+and the thinking setting are returned with the usage of every answer. Risk: with thinking off, answers on hard questions (two_hop,
+versions) may be worse. Tests: `tests/test_answer_generation.py` (fake client).
+*Update:* the no-context baseline (`/api/no-context`) had its own `max_tokens=2048` and thinking on, so with nemotron it could
+return empty answers that look like "the model does not know". Answers and the baseline now share `core.llm_request_options()`,
+and the baseline records `finish_reason` for every question.
+
 ## Words tab
 
 **D-32. One tokenizer for the Words tab and BM25 (v3T11).** The Words tab had its own regex: no accent folding ("Inès" became "in" and
@@ -381,14 +401,15 @@ are not visible on the slide, unless confirmed by the teacher.
 6. Rank-only fusion lets a chunk found by two retrievers outrank a correct chunk found by one, even when its second vote comes from deep
    in a list: Kestrel q05 (dense #1, BM25 absent) fell from rank 1 to 6 with 30 candidates; limiting to 10 candidates brings it back to
    rank 2 (D-18), still not rank 1. `split_answer` Recall@3 stays at 0.38 with BM25 on (q03 loses a hop to chunks BM25 promotes).
-7. `two_hop` Recall stays at 0.56 at k = 5 and 0.72 at k = 10 with dense, with or without BM25: finding every hop of a chain needs
-   something that follows relations between chunks (the missing graph).
-8. The concept graph is not queried yet: extraction is done (D-20 to D-23); resolution, retrieval and UI are not (D-12 update).
+7. `two_hop` Recall stays at 0.56 at k = 5 and 0.72 at k = 10 with dense, with or without BM25. With the graph, Recall@5 is 0.72 but
+   Recall@10 stays 0.72: the one hop only the graph finds (`service-catalog_md:3` for q08 and q12, at rank 4 to 5 of the graph's list)
+   gets a single RRF vote and is pushed out of the top 10 by chunks with two votes (REPORT section 8).
+8. The graph exists for Kestrel only (`GRAPH_CORPORA`): selecting it on the own corpus returns 503 (REPORT section 6, optional features).
 9. The fixed schema drops what fits no type: people, chat channels (`#oncall-messaging`), prices, IP addresses. A chain that ends at a
    channel stops at the `Team` node; the channel is only in that node's evidence chunk (the team table row).
 10. Cross-chunk relations are not extracted. Extraction sees one chunk at a time, so a relation whose two ends sit in different
     chunks is missed: e.g. "escalate to the team that owns postroom" gives `KST-5031 escalates_to postroom`, not `escalates_to Messaging`.
-    T2 is expected to join such pieces through shared nodes (postroom); what it cannot join will be listed here.
+    The walk joins such pieces through shared nodes (postroom → Messaging at hop 2, D-29); what it cannot join is in 13, 14 and 16.
 11. Quote checking catches invented quotes, not wrong readings of a true quote: a triple whose quote is in the chunk but whose direction
     or relation is wrong passes validation (to be measured by the 10-triple extraction-quality grading).
     **Seen in the built graph: `postroom owned_by Identity`** (quote "Owner: **Identity**.", `service-catalog_md:1`). That chunk ends

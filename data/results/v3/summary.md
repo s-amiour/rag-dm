@@ -1,6 +1,16 @@
 # V3 evaluation summary
 
-_Generated 2026-11-12 03:55:49. Chunking per corpus: kestrel 800/10, own 500/20. Hit@k = at least one hop retrieved; Recall@k = share of hops retrieved. not_in_corpus questions are excluded from both._
+_Generated 2026-11-18 02:12:23. Chunking per corpus: kestrel 800/10, own 500/20. Hit@k = at least one hop retrieved; Recall@k = share of hops retrieved. not_in_corpus questions are excluded from both._
+
+## Configurations in this folder
+
+| Corpus | Configuration | Run at | Chunking | Top-k | Candidates | RRF k | Dense backend |
+|---|---|---|---|---:|---:|---:|---|
+| kestrel | dense | 2026-11-18 02:12:21 | 800/10 | 10 | 10 | 60 | sentence-transformers |
+| kestrel | dense+bm25 | 2026-11-18 02:12:22 | 800/10 | 10 | 10 | 60 | sentence-transformers |
+| kestrel | dense+bm25+graph | 2026-11-18 02:12:22 | 800/10 | 10 | 10 | 60 | sentence-transformers |
+| own | dense | 2026-11-18 02:12:23 | 500/20 | 10 | 10 | 60 | sentence-transformers |
+| own | dense+bm25 | 2026-11-18 02:12:23 | 500/20 | 10 | 10 | 60 | sentence-transformers |
 
 ## Results: configurations × corpora × question types
 
@@ -18,31 +28,44 @@ _Generated 2026-11-12 03:55:49. Chunking per corpus: kestrel 800/10, own 500/20.
 | kestrel | dense+bm25 | vocabulary | 1 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 |
 | kestrel | dense+bm25 | versions | 2 | 0.50 | 1.00 | 1.00 | 1.00 | 0.50 | 1.00 | 1.00 | 1.00 |
 | kestrel | dense+bm25 | two_hop | 3 | 0.67 | 1.00 | 1.00 | 1.00 | 0.39 | 0.56 | 0.56 | 0.72 |
-| own | dense | **ALL** | 12 | 0.67 | 0.92 | 1.00 | 1.00 | 0.67 | 0.92 | 1.00 | 1.00 |
+| kestrel | dense+bm25+graph | **ALL** | 10 | 0.70 | 1.00 | 1.00 | 1.00 | 0.47 | 0.79 | 0.84 | 0.92 |
+| kestrel | dense+bm25+graph | exact_identifier | 2 | 1.00 | 1.00 | 1.00 | 1.00 | 0.75 | 1.00 | 1.00 | 1.00 |
+| kestrel | dense+bm25+graph | split_answer | 2 | 0.50 | 1.00 | 1.00 | 1.00 | 0.25 | 0.38 | 0.62 | 1.00 |
+| kestrel | dense+bm25+graph | vocabulary | 1 | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 |
+| kestrel | dense+bm25+graph | versions | 2 | 0.50 | 1.00 | 1.00 | 1.00 | 0.50 | 1.00 | 1.00 | 1.00 |
+| kestrel | dense+bm25+graph | two_hop | 3 | 1.00 | 1.00 | 1.00 | 1.00 | 0.56 | 0.72 | 0.72 | 0.72 |
+| own | dense | **ALL** | 13 | 0.62 | 0.85 | 0.92 | 0.92 | 0.62 | 0.85 | 0.92 | 0.92 |
 | own | dense | exact_identifier | 5 | 0.60 | 0.80 | 1.00 | 1.00 | 0.60 | 0.80 | 1.00 | 1.00 |
 | own | dense | split_answer | 2 | 0.50 | 1.00 | 1.00 | 1.00 | 0.50 | 1.00 | 1.00 | 1.00 |
 | own | dense | vocabulary | 3 | 0.67 | 1.00 | 1.00 | 1.00 | 0.67 | 1.00 | 1.00 | 1.00 |
-| own | dense | two_hop | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| own | dense | not_in_corpus_trap | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| own | dense+bm25 | **ALL** | 12 | 0.75 | 0.92 | 1.00 | 1.00 | 0.75 | 0.92 | 1.00 | 1.00 |
+| own | dense | two_hop | 1 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| own | dense | other | 2 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| own | dense+bm25 | **ALL** | 13 | 0.69 | 0.85 | 0.92 | 0.92 | 0.69 | 0.85 | 0.92 | 0.92 |
 | own | dense+bm25 | exact_identifier | 5 | 0.80 | 0.80 | 1.00 | 1.00 | 0.80 | 0.80 | 1.00 | 1.00 |
 | own | dense+bm25 | split_answer | 2 | 0.50 | 1.00 | 1.00 | 1.00 | 0.50 | 1.00 | 1.00 | 1.00 |
 | own | dense+bm25 | vocabulary | 3 | 0.67 | 1.00 | 1.00 | 1.00 | 0.67 | 1.00 | 1.00 | 1.00 |
-| own | dense+bm25 | two_hop | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| own | dense+bm25 | not_in_corpus_trap | 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| own | dense+bm25 | two_hop | 1 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| own | dense+bm25 | other | 2 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 
 ## Cost per question and index build
 
 | Corpus | Configuration | Retrieval ms/question | Total ms/question | LLM calls/question | Prompt tok/question | Completion tok/question | Dense backend | Index build |
 |---|---|---:|---:|---:|---:|---:|---|---|
-| kestrel | dense | 16.4 | 16.4 | 0.00 | 0 | 0 | sentence-transformers | dense: 22.64s (cached) |
-| kestrel | dense+bm25 | 15.2 | 15.2 | 0.00 | 0 | 0 | sentence-transformers | dense: 22.64s (cached); bm25: 0.00s (cached) |
-| own | dense | 20.0 | 20.0 | 0.00 | 0 | 0 | sentence-transformers | dense: 0.02s (cached) |
-| own | dense+bm25 | 13.0 | 13.0 | 0.00 | 0 | 0 | sentence-transformers | dense: 0.02s (cached); bm25: 0.00s (cached) |
+| kestrel | dense | 35.8 | 35.8 | 0.00 | 0 | 0 | sentence-transformers | dense: 21.99s (cached) |
+| kestrel | dense+bm25 | 27.6 | 27.6 | 0.00 | 0 | 0 | sentence-transformers | dense: 21.99s (cached); bm25: 0.00s (cached) |
+| kestrel | dense+bm25+graph | 33.4 | 33.4 | 0.00 | 0 | 0 | sentence-transformers | dense: 21.99s (cached); bm25: 0.00s (cached) |
+| own | dense | 29.0 | 29.0 | 0.00 | 0 | 0 | sentence-transformers | dense: 0.02s (cached) |
+| own | dense+bm25 | 19.2 | 19.2 | 0.00 | 0 | 0 | sentence-transformers | dense: 0.02s (cached); bm25: 0.00s (cached) |
 
 ## Where adding a retriever made things worse
 
 **kestrel: `dense` → `dense+bm25`**: 2 question(s) where the first gold chunk ranks worse.
+- `q03` (split_answer): rank 1 → 2 (recall@k 1.00 → 1.00) — What happens, step by step, when a customer's card payment fails?
+- `q05` (vocabulary): rank 1 → 2 (recall@k 1.00 → 1.00) — I lost my phone and I can't log in anymore. What can I do?
+
+**kestrel: `dense+bm25` → `dense+bm25+graph`**: 0 question(s) where the first gold chunk ranks worse.
+
+**kestrel: `dense` → `dense+bm25+graph`**: 2 question(s) where the first gold chunk ranks worse.
 - `q03` (split_answer): rank 1 → 2 (recall@k 1.00 → 1.00) — What happens, step by step, when a customer's card payment fails?
 - `q05` (vocabulary): rank 1 → 2 (recall@k 1.00 → 1.00) — I lost my phone and I can't log in anymore. What can I do?
 

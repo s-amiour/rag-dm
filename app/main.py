@@ -32,6 +32,7 @@ from .core import (
     load_questions,
     generate_answer,
     generate_answer_with_usage,
+    llm_request_options,
     words_for_corpus,
     question_words,
     safe_name,
@@ -349,11 +350,13 @@ def ask(req: AskRequest):
         "completion_tokens": (
             out["usage"]["completion_tokens"] + gen_usage["completion_tokens"]
         ),
-        "generation_latency_s": gen_usage["latency_s"]
+        "generation_latency_s": gen_usage["latency_s"],
+        "finish_reason": gen_usage.get("finish_reason"),
+        "thinking": gen_usage.get("thinking")
     }
 
     return {
-        "answer": answer["answer"] if valid else INVALID_ANSWER_MESSAGE,
+        "answer": answer["answer"] if valid else answer.get("user_message", INVALID_ANSWER_MESSAGE),
         "valid": valid,
         "validation_error": answer.get("error"),
         "citations": [
@@ -484,14 +487,15 @@ def no_context(req: EvalRequest):
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=2048
+                **llm_request_options()
             )
 
             rows.append({
                 "id": q.get("id"),
                 "question": q["question"],
                 "type": q.get("type"),
-                "answer": response.choices[0].message.content or ""
+                "answer": response.choices[0].message.content or "",
+                "finish_reason": response.choices[0].finish_reason
             })
 
         except Exception as e:

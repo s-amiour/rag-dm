@@ -438,6 +438,11 @@ INVALID_ANSWER_MESSAGE = (
 )
 
 
+TRUNCATED_ANSWER_MESSAGE = (
+    "The model ran out of space before it finished its answer. Please try again."
+)
+
+
 def strip_code_fence(content: str) -> str:
     """Some models wrap their JSON in a ```json ... ``` fence: remove it."""
     content = content.strip()
@@ -475,6 +480,17 @@ def parse_llm_answer(content: str, allowed_ids: set[str]) -> dict[str, Any]:
         "valid": True,
         "dropped_citations": len(parsed.citations) - len(kept)
     }
+
+
+def llm_request_options() -> dict[str, Any]:
+    """max_tokens and the thinking switch for every answer-type LLM call (answers and
+    the no-context baseline), from LLM_MAX_TOKENS and LLM_DISABLE_THINKING. DECISIONS D-35."""
+    options: dict[str, Any] = {"max_tokens": int(os.getenv("LLM_MAX_TOKENS", "2048"))}
+    if os.getenv("LLM_DISABLE_THINKING", "0").strip().lower() in ("1", "true", "yes"):
+        options["extra_body"] = {
+            "chat_template_kwargs": {"enable_thinking": False, "thinking": False}
+        }
+    return options
 
 
 def generate_answer(
@@ -532,13 +548,22 @@ def generate_answer_with_usage(
 
     started = time.perf_counter()
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=2048
-    )
+    # Reasoning models (e.g. NVIDIA's nemotron) spend completion tokens on hidden
+    # thinking before the JSON. With thinking on, 2048 tokens were often used up
+    # before the answer started, so the reply was cut off. Same switch as the graph
+    # build (graph.OpenAICompatibleLLM, DECISIONS D-24); servers that do not know
+    # chat_template_kwargs ignore it. DECISIONS D-35.
+    options = llm_request_options()
+    disable_thinking = "extra_body" in options
+    max_tokens = options["max_tokens"]
+
+    request = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        **options
+    }
+
+    response = client.chat.completions.create(**request)
 
     usage_obj = getattr(response, "usage", None)
 
@@ -551,8 +576,21 @@ def generate_answer_with_usage(
         "latency_s": time.perf_counter() - started
     }
 
-    content = response.choices[0].message.content or ""
+    choice = response.choices[0]
+    finish_reason = getattr(choice, "finish_reason", None)
+    usage["finish_reason"] = finish_reason
+    usage["thinking"] = "off" if disable_thinking else "default"
+
+    content = choice.message.content or ""
     allowed = {r["id"] for r in retrieved}
     result = parse_llm_answer(content, allowed)
+
+    if not result["valid"] and finish_reason == "length":
+        result["error"] = (
+            f"reply cut off by the token limit ({max_tokens} completion tokens, "
+            "finish_reason=length). If the model is a reasoning model, set "
+            "LLM_DISABLE_THINKING=1; otherwise raise LLM_MAX_TOKENS."
+        )
+        result["user_message"] = TRUNCATED_ANSWER_MESSAGE
 
     return json.dumps(result, ensure_ascii=False), usage
